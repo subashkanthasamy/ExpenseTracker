@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Expense Tracker</string>
+    <!-- Replace with your Web Client ID from Firebase Console → Authentication → Sign-in method → Google → Web client ID -->
+    <string name="default_web_client_id">236284003759-7kmpcpkhpht46t0k7vk4saa56tgsi1qu.apps.googleusercontent.com</string>
+</resources>

@@ -1,0 +1,80 @@
+# Built application files
+*.apk
+*.aab
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+
+# Gradle files
+.gradle/
+build/
+/build
+/app/build
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Android Studio
+*.iml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/vcs.xml
+.idea/jsLibraryMappings.xml
+.idea/dataSources/
+.idea/dataSources.ids
+.idea/dataSources.local.xml
+.idea/sqlDataSources.xml
+.idea/dynamic.xml
+.idea/uiDesigner.xml
+.idea/dbnavigator.xml
+.idea/deploymentTargetSelector.xml
+.idea/deviceManager.xml
+.idea/copilot.data.migration.ask2agent.xml
+.idea/studiobot.xml
+
+# Keystore files (signing keys - NEVER commit)
+*.jks
+*.keystore
+
+# Firebase config (contains API keys)
+app/google-services.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# External native build
+.externalNativeBuild
+.cxx
+
+# Captures (Android profiler)
+/captures
+
+# Kotlin
+.kotlin/
+
+# Claude Code
+.claude/
+
+# Misc
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+/.idea/
