@@ -1,6 +1,9 @@
 package com.bose.expensetracker.ui.screen.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,8 +17,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -28,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -56,6 +62,17 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showExportSheet by remember { mutableStateOf(false) }
     val exportSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val importFilePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            val inputStream = context.contentResolver.openInputStream(it)
+            if (inputStream != null) {
+                viewModel.importExpenses(inputStream)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.signOutEvent.collect {
@@ -144,34 +161,21 @@ fun SettingsScreen(
                     }
                 )
 
-                // Seed Categories
+                // Import
                 ListItem(
-                    headlineContent = { Text("Seed Categories") },
-                    supportingContent = { Text("Push preset categories to Firebase") },
+                    headlineContent = { Text("Import Data") },
+                    supportingContent = { Text("Import expenses from a CSV file") },
+                    leadingContent = { Icon(Icons.Default.FileUpload, contentDescription = null) },
                     trailingContent = {
-                        Button(onClick = { viewModel.seedCategories() }) { Text("Seed") }
+                        if (uiState.isImporting) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        } else {
+                            Button(onClick = { importFilePicker.launch("text/*") }) {
+                                Text("Import")
+                            }
+                        }
                     }
                 )
-
-                // Populate Dummy Data
-                ListItem(
-                    headlineContent = { Text("Populate Dummy Data") },
-                    supportingContent = { Text("Insert sample expenses for testing") },
-                    trailingContent = {
-                        Button(onClick = { viewModel.populateDummyData() }) { Text("Populate") }
-                    }
-                )
-
-                if (uiState.dummyDataMessage != null) {
-                    Text(
-                        uiState.dummyDataMessage!!,
-                        color = if (uiState.dummyDataMessage!!.startsWith("Error"))
-                            MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -207,6 +211,19 @@ fun SettingsScreen(
             onExport = { format, startDate, endDate ->
                 viewModel.exportExpenses(format, startDate, endDate)
                 showExportSheet = false
+            }
+        )
+    }
+
+    uiState.importMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearImportMessage() },
+            title = { Text("Import Result") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearImportMessage() }) {
+                    Text("OK")
+                }
             }
         )
     }

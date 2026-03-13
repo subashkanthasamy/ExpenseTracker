@@ -153,6 +153,16 @@ class AddEditExpenseViewModel @Inject constructor(
         _uiState.update { it.copy(notes = notes) }
     }
 
+    fun deleteCategory(id: String) {
+        viewModelScope.launch {
+            categoryRepository.deleteCategory(id)
+            // Clear selection if the deleted category was selected
+            if (_uiState.value.selectedCategory?.id == id) {
+                _uiState.update { it.copy(selectedCategory = null) }
+            }
+        }
+    }
+
     fun addCustomCategory(name: String) {
         viewModelScope.launch {
             val hId = householdId ?: return@launch

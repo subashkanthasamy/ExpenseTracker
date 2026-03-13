@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,10 +28,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -95,16 +100,33 @@ fun ExpenseListScreen(
                     }
                 }
                 else -> {
+                    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+                    val sorted = uiState.expenses.sortedByDescending { it.date }
+                    val grouped = sorted.groupBy { expense ->
+                        dateFormat.format(Date(expense.date))
+                    }
+
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(uiState.expenses, key = { it.id }) { expense ->
-                            ExpenseItem(
-                                expense = expense,
-                                onEdit = { onEditExpense(expense.id) },
-                                onDelete = { viewModel.deleteExpense(expense.id) }
-                            )
+                        grouped.forEach { (date, expenses) ->
+                            item(key = "header_$date") {
+                                Text(
+                                    text = date,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                )
+                            }
+                            items(expenses, key = { it.id }) { expense ->
+                                ExpenseItem(
+                                    expense = expense,
+                                    onEdit = { onEditExpense(expense.id) },
+                                    onDelete = { viewModel.deleteExpense(expense.id) }
+                                )
+                            }
                         }
                     }
                 }
@@ -121,6 +143,7 @@ private fun ExpenseItem(
 ) {
     val currencyFormat = NumberFormat.getCurrencyInstance(java.util.Locale("en", "IN"))
     val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -171,7 +194,7 @@ private fun ExpenseItem(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.error
             )
-            IconButton(onClick = onDelete) {
+            IconButton(onClick = { showDeleteConfirmation = true }) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Delete",
@@ -179,5 +202,28 @@ private fun ExpenseItem(
                 )
             }
         }
+    }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Expense") },
+            text = {
+                Text("Are you sure you want to delete this ${expense.categoryName} expense of ${currencyFormat.format(expense.amount)}?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmation = false
+                    onDelete()
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

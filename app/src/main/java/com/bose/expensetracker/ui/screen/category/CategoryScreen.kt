@@ -105,7 +105,7 @@ fun CategoryScreen(viewModel: CategoryViewModel) {
                         name = category.name,
                         color = category.color,
                         isPreset = true,
-                        onDelete = null
+                        onDelete = { viewModel.deleteCategory(category.id) }
                     )
                 }
 
@@ -161,6 +161,8 @@ private fun CategoryItem(
     isPreset: Boolean,
     onDelete: (() -> Unit)?
 ) {
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -191,8 +193,10 @@ private fun CategoryItem(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            } else if (onDelete != null) {
-                IconButton(onClick = onDelete) {
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            if (onDelete != null) {
+                IconButton(onClick = { showDeleteConfirmation = true }) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Delete",
@@ -201,6 +205,27 @@ private fun CategoryItem(
                 }
             }
         }
+    }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Category") },
+            text = { Text("Are you sure you want to delete \"$name\"? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmation = false
+                    onDelete?.invoke()
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

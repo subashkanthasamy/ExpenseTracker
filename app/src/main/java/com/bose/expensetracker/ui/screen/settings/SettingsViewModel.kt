@@ -11,7 +11,9 @@ import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
 import com.bose.expensetracker.domain.usecase.export.ExportExpensesUseCase
+import com.bose.expensetracker.domain.usecase.importdata.ImportExpensesUseCase
 import java.io.File
+import java.io.InputStream
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +35,8 @@ data class SettingsUiState(
     val biometricEnabled: Boolean = false,
     val isLoading: Boolean = true,
     val isExporting: Boolean = false,
+    val isImporting: Boolean = false,
+    val importMessage: String? = null,
     val dummyDataMessage: String? = null
 )
 
@@ -43,6 +47,7 @@ class SettingsViewModel @Inject constructor(
     private val expenseRepository: ExpenseRepository,
     private val categoryRepository: CategoryRepository,
     private val exportExpensesUseCase: ExportExpensesUseCase,
+    private val importExpensesUseCase: ImportExpensesUseCase,
     private val biometricPreferences: BiometricPreferences
 ) : ViewModel() {
 
@@ -126,6 +131,35 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update { it.copy(isExporting = false) }
             }
         }
+    }
+
+    fun importExpenses(inputStream: InputStream) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isImporting = true, importMessage = null) }
+            try {
+                val uid = authRepository.getCurrentUserId() ?: return@launch
+                val hId = householdRepository.getUserHouseholdId(uid) ?: return@launch
+                val userName = authRepository.getCurrentUserDisplayName() ?: "User"
+                val result = importExpensesUseCase.importCsv(inputStream, hId, uid, userName)
+                val message = if (result.errors.isNotEmpty() && result.importedCount == 0) {
+                    "Import failed: ${result.errors.first()}"
+                } else {
+                    buildString {
+                        append("Imported ${result.importedCount} of ${result.totalRows} expenses.")
+                        if (result.skippedCount > 0) append("\n${result.skippedCount} rows skipped.")
+                    }
+                }
+                _uiState.update { it.copy(importMessage = message) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(importMessage = "Import failed: ${e.message}") }
+            } finally {
+                _uiState.update { it.copy(isImporting = false) }
+            }
+        }
+    }
+
+    fun clearImportMessage() {
+        _uiState.update { it.copy(importMessage = null) }
     }
 
     fun populateDummyData() {
