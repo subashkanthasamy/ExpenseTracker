@@ -3,7 +3,6 @@ package com.bose.expensetracker.ui.screen.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.domain.model.Expense
-import com.bose.expensetracker.domain.model.User
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository

@@ -35,4 +35,7 @@ interface AssetDao {
 
     @Query("DELETE FROM assets WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM assets WHERE householdId = :householdId")
+    suspend fun deleteAllForHousehold(householdId: String)
 }

@@ -29,7 +29,8 @@ class AuthRepositoryImpl @Inject constructor(
                 uid = firebaseUser.uid,
                 email = firebaseUser.email ?: "",
                 displayName = firebaseUser.displayName ?: "",
-                householdId = null
+                householdIds = emptyList(),
+                activeHouseholdId = null
             )
             try { firestoreDataSource.createUser(user) } catch (_: Exception) { }
             user
@@ -48,7 +49,8 @@ class AuthRepositoryImpl @Inject constructor(
                     uid = firebaseUser.uid,
                     email = firebaseUser.email ?: "",
                     displayName = firebaseUser.displayName ?: "",
-                    householdId = null
+                    householdIds = emptyList(),
+                activeHouseholdId = null
                 )
                 firestoreDataSource.createUser(user)
                 user
@@ -62,7 +64,8 @@ class AuthRepositoryImpl @Inject constructor(
                 uid = firebaseUser.uid,
                 email = firebaseUser.email ?: "",
                 displayName = displayName,
-                householdId = null
+                householdIds = emptyList(),
+                activeHouseholdId = null
             )
             firestoreDataSource.createUser(user)
             user
@@ -79,7 +82,8 @@ class AuthRepositoryImpl @Inject constructor(
                     uid = firebaseUser.uid,
                     email = firebaseUser.email ?: "",
                     displayName = firebaseUser.displayName ?: "",
-                    householdId = null
+                    householdIds = emptyList(),
+                activeHouseholdId = null
                 )
                 firestoreDataSource.createUser(user)
                 user
@@ -114,7 +118,8 @@ class AuthRepositoryImpl @Inject constructor(
                     uid = firebaseUser.uid,
                     email = firebaseUser.email ?: "",
                     displayName = firebaseUser.displayName ?: firebaseUser.phoneNumber ?: "",
-                    householdId = null
+                    householdIds = emptyList(),
+                activeHouseholdId = null
                 )
                 firestoreDataSource.createUser(user)
                 user

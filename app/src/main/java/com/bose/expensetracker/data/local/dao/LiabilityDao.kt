@@ -35,4 +35,7 @@ interface LiabilityDao {
 
     @Query("DELETE FROM liabilities WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM liabilities WHERE householdId = :householdId")
+    suspend fun deleteAllForHousehold(householdId: String)
 }

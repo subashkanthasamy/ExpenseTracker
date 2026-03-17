@@ -49,9 +49,6 @@ import androidx.compose.ui.unit.dp
 import com.bose.expensetracker.ui.components.LineChart
 import com.bose.expensetracker.ui.components.LineChartEntry
 import java.text.NumberFormat
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

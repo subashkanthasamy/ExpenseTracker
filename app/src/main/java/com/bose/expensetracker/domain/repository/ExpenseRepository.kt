@@ -12,6 +12,7 @@ interface ExpenseRepository {
     suspend fun addExpense(expense: Expense): Result<Unit>
     suspend fun updateExpense(expense: Expense): Result<Unit>
     suspend fun deleteExpense(id: String): Result<Unit>
+    suspend fun deleteAllExpenses(householdId: String): Result<Unit>
     suspend fun syncPendingExpenses()
     fun startRealtimeSync(householdId: String)
     fun stopRealtimeSync()

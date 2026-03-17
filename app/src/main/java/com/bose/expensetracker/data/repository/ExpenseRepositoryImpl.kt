@@ -81,6 +81,11 @@ class ExpenseRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun deleteAllExpenses(householdId: String): Result<Unit> = runCatching {
+        firestoreDataSource.deleteAllExpenses(householdId)
+        expenseDao.deleteAllForHousehold(householdId)
+    }
+
     override suspend fun syncPendingExpenses() {
         val pending = expenseDao.getPendingSyncExpenses()
         for (entity in pending) {

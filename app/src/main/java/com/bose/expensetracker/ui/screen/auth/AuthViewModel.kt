@@ -215,7 +215,7 @@ class AuthViewModel @Inject constructor(
     }
 
     private suspend fun checkHouseholdAndNavigate(user: User) {
-        if (user.householdId != null) {
+        if (user.householdIds.isNotEmpty()) {
             _events.emit(AuthEvent.NavigateToDashboard)
         } else {
             _events.emit(AuthEvent.NavigateToHouseholdSetup)

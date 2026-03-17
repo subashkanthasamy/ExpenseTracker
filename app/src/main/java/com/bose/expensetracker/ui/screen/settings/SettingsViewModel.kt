@@ -3,6 +3,7 @@ package com.bose.expensetracker.ui.screen.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.data.preferences.BiometricPreferences
+import com.bose.expensetracker.data.preferences.SmsImportPreferences
 import com.bose.expensetracker.domain.model.Expense
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.User
@@ -12,8 +13,6 @@ import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
 import com.bose.expensetracker.domain.usecase.export.ExportExpensesUseCase
 import com.bose.expensetracker.domain.usecase.importdata.ImportExpensesUseCase
-import java.io.File
-import java.io.InputStream
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +23,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.InputStream
 import java.util.Calendar
 import java.util.UUID
 import javax.inject.Inject
@@ -31,13 +32,18 @@ import javax.inject.Inject
 data class SettingsUiState(
     val user: User? = null,
     val household: Household? = null,
+    val households: List<Household> = emptyList(),
     val members: List<User> = emptyList(),
     val biometricEnabled: Boolean = false,
     val isLoading: Boolean = true,
     val isExporting: Boolean = false,
     val isImporting: Boolean = false,
     val importMessage: String? = null,
-    val dummyDataMessage: String? = null
+    val dummyDataMessage: String? = null,
+    val isResetting: Boolean = false,
+    val resetMessage: String? = null,
+    val smsImportEnabled: Boolean = false,
+    val errorMessage: String? = null
 )
 
 @HiltViewModel
@@ -48,14 +54,18 @@ class SettingsViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository,
     private val exportExpensesUseCase: ExportExpensesUseCase,
     private val importExpensesUseCase: ImportExpensesUseCase,
-    private val biometricPreferences: BiometricPreferences
+    private val biometricPreferences: BiometricPreferences,
+    private val smsImportPreferences: SmsImportPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
-    private val _signOutEvent = MutableSharedFlow<Unit>()
+    private val _signOutEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val signOutEvent: SharedFlow<Unit> = _signOutEvent.asSharedFlow()
+
+    private val _householdSwitchedEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val householdSwitchedEvent: SharedFlow<Unit> = _householdSwitchedEvent.asSharedFlow()
 
     init {
         loadSettings()
@@ -69,22 +79,11 @@ class SettingsViewModel @Inject constructor(
                     return@collect
                 }
                 _uiState.update { it.copy(user = user) }
-
-                val hId = user.householdId
-                if (hId == null) {
-                    _uiState.update { it.copy(isLoading = false) }
-                    return@collect
-                }
-
-                householdRepository.getHousehold(hId).onSuccess { household ->
-                    _uiState.update { it.copy(household = household) }
-                }.onFailure {
-                    _uiState.update { it.copy(isLoading = false) }
-                }
-                householdRepository.getHouseholdMembers(hId).onSuccess { members ->
-                    _uiState.update { it.copy(members = members, isLoading = false) }
-                }.onFailure {
-                    _uiState.update { it.copy(isLoading = false) }
+                try {
+                    loadHouseholdData(user.uid)
+                } catch (e: Exception) {
+                    android.util.Log.e("SettingsVM", "loadHouseholdData failed: ${e.message}", e)
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to load household data") }
                 }
             }
         }
@@ -94,6 +93,42 @@ class SettingsViewModel @Inject constructor(
             biometricPreferences.isBiometricEnabled(uid).collect { enabled ->
                 _uiState.update { it.copy(biometricEnabled = enabled) }
             }
+        }
+        viewModelScope.launch {
+            val uid = authRepository.getCurrentUserId() ?: return@launch
+            smsImportPreferences.isSmsImportEnabled(uid).collect { enabled ->
+                _uiState.update { it.copy(smsImportEnabled = enabled) }
+            }
+        }
+    }
+
+    private suspend fun loadHouseholdData(uid: String) {
+        val hId = householdRepository.getUserHouseholdId(uid)
+        android.util.Log.d("SettingsVM", "loadHouseholdData: uid=$uid, activeHouseholdId=$hId")
+        if (hId == null) {
+            _uiState.update { it.copy(isLoading = false) }
+            return
+        }
+
+        // Load all households for switching
+        householdRepository.getUserHouseholds(uid).onSuccess { allHouseholds ->
+            android.util.Log.d("SettingsVM", "loadHouseholdData: ${allHouseholds.size} households loaded")
+            _uiState.update { it.copy(households = allHouseholds) }
+        }.onFailure { error ->
+            android.util.Log.e("SettingsVM", "loadHouseholdData: getUserHouseholds failed: ${error.message}")
+        }
+
+        householdRepository.getHousehold(hId).onSuccess { household ->
+            android.util.Log.d("SettingsVM", "loadHouseholdData: active household=${household.name}")
+            _uiState.update { it.copy(household = household) }
+        }.onFailure { error ->
+            android.util.Log.e("SettingsVM", "loadHouseholdData: getHousehold failed: ${error.message}")
+            _uiState.update { it.copy(isLoading = false) }
+        }
+        householdRepository.getHouseholdMembers(hId).onSuccess { members ->
+            _uiState.update { it.copy(members = members, isLoading = false) }
+        }.onFailure {
+            _uiState.update { it.copy(isLoading = false) }
         }
     }
 
@@ -109,6 +144,72 @@ class SettingsViewModel @Inject constructor(
             val uid = authRepository.getCurrentUserId() ?: return@launch
             biometricPreferences.setBiometricEnabled(uid, enabled)
         }
+    }
+
+    fun setSmsImportEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            val uid = authRepository.getCurrentUserId() ?: return@launch
+            smsImportPreferences.setSmsImportEnabled(uid, enabled)
+        }
+    }
+
+    fun switchHousehold(householdId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(errorMessage = null) }
+            val uid = authRepository.getCurrentUserId() ?: run {
+                _uiState.update { it.copy(errorMessage = "Not signed in") }
+                return@launch
+            }
+            android.util.Log.d("SettingsVM", "switchHousehold: uid=$uid, target=$householdId")
+            householdRepository.setActiveHousehold(uid, householdId).onSuccess {
+                android.util.Log.d("SettingsVM", "switchHousehold: success, navigating")
+                _householdSwitchedEvent.emit(Unit)
+            }.onFailure { error ->
+                android.util.Log.e("SettingsVM", "switchHousehold failed: ${error.message}", error)
+                _uiState.update { it.copy(errorMessage = "Switch failed: ${error.message}") }
+            }
+        }
+    }
+
+    fun createNewHousehold(name: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(errorMessage = null) }
+            val uid = authRepository.getCurrentUserId() ?: run {
+                _uiState.update { it.copy(errorMessage = "Not signed in") }
+                return@launch
+            }
+            android.util.Log.d("SettingsVM", "createNewHousehold: uid=$uid, name=$name")
+            householdRepository.createHousehold(name, uid).onSuccess { household ->
+                android.util.Log.d("SettingsVM", "createNewHousehold: success, id=${household.id}")
+                categoryRepository.seedPresetCategories(household.id)
+                _householdSwitchedEvent.emit(Unit)
+            }.onFailure { error ->
+                android.util.Log.e("SettingsVM", "createNewHousehold failed: ${error.message}", error)
+                _uiState.update { it.copy(errorMessage = "Create failed: ${error.message}") }
+            }
+        }
+    }
+
+    fun joinNewHousehold(inviteCode: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(errorMessage = null) }
+            val uid = authRepository.getCurrentUserId() ?: run {
+                _uiState.update { it.copy(errorMessage = "Not signed in") }
+                return@launch
+            }
+            android.util.Log.d("SettingsVM", "joinNewHousehold: uid=$uid, code=$inviteCode")
+            householdRepository.joinHousehold(inviteCode, uid).onSuccess {
+                android.util.Log.d("SettingsVM", "joinNewHousehold: success")
+                _householdSwitchedEvent.emit(Unit)
+            }.onFailure { error ->
+                android.util.Log.e("SettingsVM", "joinNewHousehold failed: ${error.message}", error)
+                _uiState.update { it.copy(errorMessage = "Join failed: ${error.message}") }
+            }
+        }
+    }
+
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 
     private val _exportedFile = MutableSharedFlow<File>()
@@ -160,6 +261,26 @@ class SettingsViewModel @Inject constructor(
 
     fun clearImportMessage() {
         _uiState.update { it.copy(importMessage = null) }
+    }
+
+    fun resetAllExpenses() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isResetting = true) }
+            try {
+                val uid = authRepository.getCurrentUserId() ?: return@launch
+                val hId = householdRepository.getUserHouseholdId(uid) ?: return@launch
+                expenseRepository.deleteAllExpenses(hId).getOrThrow()
+                _uiState.update { it.copy(resetMessage = "All expenses have been deleted.") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(resetMessage = "Failed to reset expenses: ${e.message}") }
+            } finally {
+                _uiState.update { it.copy(isResetting = false) }
+            }
+        }
+    }
+
+    fun clearResetMessage() {
+        _uiState.update { it.copy(resetMessage = null) }
     }
 
     fun populateDummyData() {

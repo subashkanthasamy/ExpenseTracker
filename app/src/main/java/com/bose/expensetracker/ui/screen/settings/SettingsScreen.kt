@@ -1,25 +1,29 @@
 package com.bose.expensetracker.ui.screen.settings
 
+import android.Manifest
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -27,7 +31,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -45,9 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -55,12 +56,25 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onHouseholdSwitched: () -> Unit = {},
+    onNavigateToHousehold: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     var showExportSheet by remember { mutableStateOf(false) }
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+    val smsPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val smsGranted = permissions[Manifest.permission.RECEIVE_SMS] == true
+        if (smsGranted) {
+            viewModel.setSmsImportEnabled(true)
+        } else {
+            viewModel.setSmsImportEnabled(false)
+        }
+    }
     val exportSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val importFilePicker = rememberLauncherForActivityResult(
@@ -77,6 +91,12 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         viewModel.signOutEvent.collect {
             onSignOut()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.householdSwitchedEvent.collect {
+            onHouseholdSwitched()
         }
     }
 
@@ -115,27 +135,18 @@ fun SettingsScreen(
                 }
 
                 // Household
-                uiState.household?.let { household ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Household", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Name: ${household.name}")
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Invite Code: ${household.inviteCode}", fontWeight = FontWeight.Bold)
-                                IconButton(onClick = {
-                                    clipboardManager.setText(AnnotatedString(household.inviteCode))
-                                }) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Members:", style = MaterialTheme.typography.labelMedium)
-                            uiState.members.forEach { member ->
-                                Text("  ${member.displayName} (${member.email})")
-                            }
+                Card(
+                    onClick = onNavigateToHousehold,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    ListItem(
+                        headlineContent = { Text("Household") },
+                        supportingContent = { Text(uiState.household?.name ?: "Manage households") },
+                        leadingContent = { Icon(Icons.Default.Home, contentDescription = null) },
+                        trailingContent = {
+                            Icon(Icons.Default.ChevronRight, contentDescription = null)
                         }
-                    }
+                    )
                 }
 
                 // Biometric
@@ -147,6 +158,31 @@ fun SettingsScreen(
                         Switch(
                             checked = uiState.biometricEnabled,
                             onCheckedChange = { viewModel.setBiometricEnabled(it) }
+                        )
+                    }
+                )
+
+                // SMS Auto-Import
+                ListItem(
+                    headlineContent = { Text("SMS Auto-Import") },
+                    supportingContent = { Text("Automatically create expenses from bank SMS") },
+                    leadingContent = { Icon(Icons.Default.Sms, contentDescription = null) },
+                    trailingContent = {
+                        Switch(
+                            checked = uiState.smsImportEnabled,
+                            onCheckedChange = { enabled ->
+                                if (enabled) {
+                                    val permissions = buildList {
+                                        add(Manifest.permission.RECEIVE_SMS)
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            add(Manifest.permission.POST_NOTIFICATIONS)
+                                        }
+                                    }.toTypedArray()
+                                    smsPermissionLauncher.launch(permissions)
+                                } else {
+                                    viewModel.setSmsImportEnabled(false)
+                                }
+                            }
                         )
                     }
                 )
@@ -173,6 +209,25 @@ fun SettingsScreen(
                             Button(onClick = { importFilePicker.launch("text/*") }) {
                                 Text("Import")
                             }
+                        }
+                    }
+                )
+
+                // Reset All Expenses
+                ListItem(
+                    headlineContent = { Text("Reset All Expenses") },
+                    supportingContent = { Text("Delete all expenses from this household") },
+                    leadingContent = { Icon(Icons.Default.DeleteForever, contentDescription = null) },
+                    trailingContent = {
+                        if (uiState.isResetting) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        } else {
+                            Button(
+                                onClick = { showResetConfirmDialog = true },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) { Text("Reset") }
                         }
                     }
                 )
@@ -222,6 +277,58 @@ fun SettingsScreen(
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = { viewModel.clearImportMessage() }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    uiState.errorMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearErrorMessage() },
+            title = { Text("Error") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearErrorMessage() }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    if (showResetConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirmDialog = false },
+            title = { Text("Reset All Expenses") },
+            text = { Text("Are you sure you want to delete all expenses? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.resetAllExpenses()
+                        showResetConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete All")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    uiState.resetMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearResetMessage() },
+            title = { Text("Reset Expenses") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearResetMessage() }) {
                     Text("OK")
                 }
             }

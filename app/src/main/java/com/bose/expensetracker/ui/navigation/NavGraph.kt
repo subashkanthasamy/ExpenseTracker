@@ -14,7 +14,6 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -32,6 +31,8 @@ import com.bose.expensetracker.ui.screen.expense.AddEditExpenseScreen
 import com.bose.expensetracker.ui.screen.expense.AddEditExpenseViewModel
 import com.bose.expensetracker.ui.screen.expense.ExpenseListScreen
 import com.bose.expensetracker.ui.screen.expense.ExpenseListViewModel
+import com.bose.expensetracker.ui.screen.household.HouseholdScreen
+import com.bose.expensetracker.ui.screen.household.HouseholdViewModel
 import com.bose.expensetracker.ui.screen.insights.InsightsScreen
 import com.bose.expensetracker.ui.screen.insights.InsightsViewModel
 import com.bose.expensetracker.ui.screen.networth.NetWorthScreen
@@ -241,6 +242,19 @@ fun ExpenseTrackerNavGraph(
             NetWorthScreen(viewModel = viewModel)
         }
 
+        composable<HouseholdManageRoute> {
+            val viewModel: HouseholdViewModel = hiltViewModel()
+            HouseholdScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onHouseholdSwitched = {
+                    navController.navigate(DashboardRoute) {
+                        popUpTo(DashboardRoute) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable<SettingsRoute> {
             val viewModel: SettingsViewModel = hiltViewModel()
             SettingsScreen(
@@ -249,6 +263,14 @@ fun ExpenseTrackerNavGraph(
                     navController.navigate(LoginRoute) {
                         popUpTo(0) { inclusive = true }
                     }
+                },
+                onHouseholdSwitched = {
+                    navController.navigate(DashboardRoute) {
+                        popUpTo(DashboardRoute) { inclusive = true }
+                    }
+                },
+                onNavigateToHousehold = {
+                    navController.navigate(HouseholdManageRoute)
                 }
             )
         }

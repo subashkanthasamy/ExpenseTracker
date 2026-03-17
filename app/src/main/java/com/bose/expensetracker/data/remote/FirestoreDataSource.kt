@@ -7,7 +7,6 @@ import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.Liability
 import com.bose.expensetracker.domain.model.User
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Source
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -28,7 +27,8 @@ class FirestoreDataSource @Inject constructor(
             mapOf(
                 "email" to user.email,
                 "displayName" to user.displayName,
-                "householdId" to user.householdId,
+                "householdIds" to user.householdIds,
+                "activeHouseholdId" to user.activeHouseholdId,
                 "createdAt" to System.currentTimeMillis()
             )
         ).await()
@@ -56,20 +56,72 @@ class FirestoreDataSource @Inject constructor(
             android.util.Log.w("FirestoreDS", "getUser doc does not exist for $uid")
             return null
         }
+        // Backward compat: read new fields, fall back to old householdId
+        @Suppress("UNCHECKED_CAST")
+        val householdIds = (doc.get("householdIds") as? List<String>)
+        val activeHouseholdId = doc.getString("activeHouseholdId")
+        val legacyHouseholdId = doc.getString("householdId")
+
+        val resolvedIds = householdIds ?: listOfNotNull(legacyHouseholdId)
+        val resolvedActive = activeHouseholdId ?: legacyHouseholdId
+
         val user = User(
             uid = uid,
             email = doc.getString("email") ?: "",
             displayName = doc.getString("displayName") ?: "",
-            householdId = doc.getString("householdId")
+            householdIds = resolvedIds,
+            activeHouseholdId = resolvedActive
         )
-        android.util.Log.d("FirestoreDS", "getUser success: uid=$uid, householdId=${user.householdId}")
+        android.util.Log.d("FirestoreDS", "getUser success: uid=$uid, activeHouseholdId=${user.activeHouseholdId}, householdIds=${user.householdIds}")
         return user
     }
 
     suspend fun updateUserHouseholdId(uid: String, householdId: String) {
+        addUserHouseholdId(uid, householdId)
+        setActiveHouseholdId(uid, householdId)
+    }
+
+    suspend fun addUserHouseholdId(uid: String, householdId: String) {
+        val docRef = firestore.collection("users").document(uid)
+        // Ensure householdIds field exists first, then array union
+        val doc = docRef.get(Source.SERVER).await()
+        if (doc.get("householdIds") == null) {
+            // Field doesn't exist (old user) — create it with current + new
+            val existing = listOfNotNull(doc.getString("householdId"))
+            val updated = (existing + householdId).distinct()
+            docRef.set(mapOf("householdIds" to updated), com.google.firebase.firestore.SetOptions.merge()).await()
+        } else {
+            docRef.update("householdIds", com.google.firebase.firestore.FieldValue.arrayUnion(householdId)).await()
+        }
+    }
+
+    suspend fun setActiveHouseholdId(uid: String, householdId: String) {
         firestore.collection("users").document(uid)
-            .set(mapOf("householdId" to householdId), com.google.firebase.firestore.SetOptions.merge())
-            .await()
+            .set(
+                mapOf("activeHouseholdId" to householdId),
+                com.google.firebase.firestore.SetOptions.merge()
+            ).await()
+    }
+
+    suspend fun getUserFromServer(uid: String): User? {
+        val doc = try {
+            firestore.collection("users").document(uid).get(Source.SERVER).await()
+        } catch (e: Exception) {
+            android.util.Log.e("FirestoreDS", "getUserFromServer failed for $uid: ${e.message}")
+            return null
+        }
+        if (!doc.exists()) return null
+        @Suppress("UNCHECKED_CAST")
+        val householdIds = (doc.get("householdIds") as? List<String>)
+        val activeHouseholdId = doc.getString("activeHouseholdId")
+        val legacyHouseholdId = doc.getString("householdId")
+        return User(
+            uid = uid,
+            email = doc.getString("email") ?: "",
+            displayName = doc.getString("displayName") ?: "",
+            householdIds = householdIds ?: listOfNotNull(legacyHouseholdId),
+            activeHouseholdId = activeHouseholdId ?: legacyHouseholdId
+        )
     }
 
     // --- Households ---
@@ -140,6 +192,49 @@ class FirestoreDataSource @Inject constructor(
             .await()
     }
 
+    suspend fun deleteHousehold(householdId: String) {
+        firestore.collection("households").document(householdId).delete().await()
+    }
+
+    suspend fun removeHouseholdFromUser(uid: String, householdId: String) {
+        val docRef = firestore.collection("users").document(uid)
+        docRef.update(
+            "householdIds",
+            com.google.firebase.firestore.FieldValue.arrayRemove(householdId)
+        ).await()
+        // If the deleted household was the active one, clear it
+        val doc = docRef.get(Source.SERVER).await()
+        if (doc.getString("activeHouseholdId") == householdId) {
+            @Suppress("UNCHECKED_CAST")
+            val remainingIds = (doc.get("householdIds") as? List<String>) ?: emptyList()
+            val newActive = remainingIds.firstOrNull()
+            docRef.update("activeHouseholdId", newActive).await()
+        }
+    }
+
+    private suspend fun deleteAllInSubCollection(householdId: String, subCollection: String) {
+        val collection = firestore.collection("households").document(householdId)
+            .collection(subCollection)
+        val snapshot = collection.get().await()
+        snapshot.documents.chunked(500).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { doc -> batch.delete(doc.reference) }
+            batch.commit().await()
+        }
+    }
+
+    suspend fun deleteAllCategories(householdId: String) {
+        deleteAllInSubCollection(householdId, "categories")
+    }
+
+    suspend fun deleteAllAssets(householdId: String) {
+        deleteAllInSubCollection(householdId, "assets")
+    }
+
+    suspend fun deleteAllLiabilities(householdId: String) {
+        deleteAllInSubCollection(householdId, "liabilities")
+    }
+
     // --- Expenses ---
 
     suspend fun addExpense(householdId: String, expense: Expense) {
@@ -179,6 +274,18 @@ class FirestoreDataSource @Inject constructor(
     suspend fun deleteExpense(householdId: String, expenseId: String) {
         firestore.collection("households").document(householdId)
             .collection("expenses").document(expenseId).delete().await()
+    }
+
+    suspend fun deleteAllExpenses(householdId: String) {
+        val collection = firestore.collection("households").document(householdId)
+            .collection("expenses")
+        val snapshot = collection.get().await()
+        val batchSize = 500
+        snapshot.documents.chunked(batchSize).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { doc -> batch.delete(doc.reference) }
+            batch.commit().await()
+        }
     }
 
     fun observeExpenses(householdId: String): Flow<List<Expense>> = callbackFlow {
