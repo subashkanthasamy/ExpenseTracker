@@ -1,6 +1,7 @@
 package com.bose.expensetracker.ui.screen.networth
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,18 +60,20 @@ fun NetWorthScreen(viewModel: NetWorthViewModel) {
     var isAddingAsset by remember { mutableStateOf(true) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Net Worth") })
-        },
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add")
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = com.bose.expensetracker.ui.theme.AccentPurple,
+                shape = androidx.compose.foundation.shape.CircleShape
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
             }
         }
     ) { padding ->
         if (uiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = com.bose.expensetracker.ui.theme.AccentPurple)
             }
         } else {
             LazyColumn(
@@ -81,7 +84,18 @@ fun NetWorthScreen(viewModel: NetWorthViewModel) {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Net Worth",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                item {
                     // Net Worth Summary
                     Card(
                         modifier = Modifier.fillMaxWidth(),

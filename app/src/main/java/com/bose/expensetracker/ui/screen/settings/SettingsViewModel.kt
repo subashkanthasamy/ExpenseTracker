@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.data.preferences.BiometricPreferences
 import com.bose.expensetracker.data.preferences.SmsImportPreferences
+import com.bose.expensetracker.data.preferences.ThemePreferences
 import com.bose.expensetracker.domain.model.Expense
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.User
@@ -43,6 +44,7 @@ data class SettingsUiState(
     val isResetting: Boolean = false,
     val resetMessage: String? = null,
     val smsImportEnabled: Boolean = false,
+    val themeMode: Int = ThemePreferences.THEME_SYSTEM,
     val errorMessage: String? = null
 )
 
@@ -55,7 +57,8 @@ class SettingsViewModel @Inject constructor(
     private val exportExpensesUseCase: ExportExpensesUseCase,
     private val importExpensesUseCase: ImportExpensesUseCase,
     private val biometricPreferences: BiometricPreferences,
-    private val smsImportPreferences: SmsImportPreferences
+    private val smsImportPreferences: SmsImportPreferences,
+    private val themePreferences: ThemePreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -98,6 +101,11 @@ class SettingsViewModel @Inject constructor(
             val uid = authRepository.getCurrentUserId() ?: return@launch
             smsImportPreferences.isSmsImportEnabled(uid).collect { enabled ->
                 _uiState.update { it.copy(smsImportEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            themePreferences.getThemeMode().collect { mode ->
+                _uiState.update { it.copy(themeMode = mode) }
             }
         }
     }
@@ -143,6 +151,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val uid = authRepository.getCurrentUserId() ?: return@launch
             biometricPreferences.setBiometricEnabled(uid, enabled)
+        }
+    }
+
+    fun setThemeMode(mode: Int) {
+        viewModelScope.launch {
+            themePreferences.setThemeMode(mode)
         }
     }
 
@@ -267,11 +281,21 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isResetting = true) }
             try {
-                val uid = authRepository.getCurrentUserId() ?: return@launch
-                val hId = householdRepository.getUserHouseholdId(uid) ?: return@launch
+                val uid = authRepository.getCurrentUserId()
+                if (uid == null) {
+                    _uiState.update { it.copy(resetMessage = "Not signed in") }
+                    return@launch
+                }
+                val hId = householdRepository.getUserHouseholdId(uid)
+                if (hId == null) {
+                    _uiState.update { it.copy(resetMessage = "No active household") }
+                    return@launch
+                }
+                android.util.Log.d("SettingsVM", "resetAllExpenses: uid=$uid, hId=$hId")
                 expenseRepository.deleteAllExpenses(hId).getOrThrow()
                 _uiState.update { it.copy(resetMessage = "All expenses have been deleted.") }
             } catch (e: Exception) {
+                android.util.Log.e("SettingsVM", "resetAllExpenses failed", e)
                 _uiState.update { it.copy(resetMessage = "Failed to reset expenses: ${e.message}") }
             } finally {
                 _uiState.update { it.copy(isResetting = false) }

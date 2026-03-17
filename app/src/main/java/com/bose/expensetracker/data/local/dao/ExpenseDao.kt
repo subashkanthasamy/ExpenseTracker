@@ -47,4 +47,12 @@ interface ExpenseDao {
 
     @Query("DELETE FROM expenses WHERE householdId = :householdId")
     suspend fun deleteAllForHousehold(householdId: String)
+
+    @Query("SELECT categoryId, SUM(amount) as total FROM expenses WHERE householdId = :householdId AND date BETWEEN :startDate AND :endDate AND syncStatus != ${SyncStatus.PENDING_DELETE} GROUP BY categoryId")
+    suspend fun getCategorySpending(householdId: String, startDate: Long, endDate: Long): List<CategorySpending>
 }
+
+data class CategorySpending(
+    val categoryId: String,
+    val total: Double
+)

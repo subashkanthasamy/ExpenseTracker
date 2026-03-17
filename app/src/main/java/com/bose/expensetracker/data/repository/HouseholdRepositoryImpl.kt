@@ -85,33 +85,47 @@ class HouseholdRepositoryImpl @Inject constructor(
 
     override suspend fun deleteHousehold(householdId: String, userId: String): Result<Unit> =
         runCatching {
-            // Get household to find all members
+            android.util.Log.d("HouseholdRepo", "deleteHousehold: id=$householdId, userId=$userId")
             val household = firestoreDataSource.getHousehold(householdId)
                 ?: throw Exception("Household not found")
 
-            // Delete all Firestore sub-collections
-            firestoreDataSource.deleteAllExpenses(householdId)
-            firestoreDataSource.deleteAllCategories(householdId)
-            firestoreDataSource.deleteAllAssets(householdId)
-            firestoreDataSource.deleteAllLiabilities(householdId)
-
-            // Delete the household document
-            firestoreDataSource.deleteHousehold(householdId)
-
-            // Remove household from all members
+            // 1. Remove household from all members FIRST (this updates user docs, which we have permission for)
+            android.util.Log.d("HouseholdRepo", "Removing from ${household.memberUids.size} members...")
             for (memberUid in household.memberUids) {
                 try {
                     firestoreDataSource.removeHouseholdFromUser(memberUid, householdId)
-                } catch (_: Exception) {
-                    // Continue even if a member update fails
+                } catch (e: Exception) {
+                    android.util.Log.w("HouseholdRepo", "Failed to remove from user $memberUid: ${e.message}")
                 }
             }
 
-            // Delete local Room data
+            // 2. Delete all Firestore sub-collections
+            android.util.Log.d("HouseholdRepo", "Deleting sub-collections...")
+            try {
+                firestoreDataSource.deleteAllExpenses(householdId)
+                firestoreDataSource.deleteAllCategories(householdId)
+                firestoreDataSource.deleteAllAssets(householdId)
+                firestoreDataSource.deleteAllLiabilities(householdId)
+            } catch (e: Exception) {
+                android.util.Log.w("HouseholdRepo", "Sub-collection delete error (continuing): ${e.message}")
+            }
+
+            // 3. Delete the household document (may fail due to Firestore rules)
+            android.util.Log.d("HouseholdRepo", "Deleting household document...")
+            try {
+                firestoreDataSource.deleteHousehold(householdId)
+            } catch (e: Exception) {
+                android.util.Log.w("HouseholdRepo", "Household doc delete failed (continuing): ${e.message}")
+                // Continue anyway — the user is already removed from this household
+            }
+
+            // 4. Delete local Room data
+            android.util.Log.d("HouseholdRepo", "Deleting local Room data...")
             expenseDao.deleteAllForHousehold(householdId)
             categoryDao.deleteAllForHousehold(householdId)
             assetDao.deleteAllForHousehold(householdId)
             liabilityDao.deleteAllForHousehold(householdId)
+            android.util.Log.d("HouseholdRepo", "deleteHousehold complete")
         }
 
     private fun generateInviteCode(): String {

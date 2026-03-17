@@ -39,6 +39,16 @@ import com.bose.expensetracker.ui.screen.networth.NetWorthScreen
 import com.bose.expensetracker.ui.screen.networth.NetWorthViewModel
 import com.bose.expensetracker.ui.screen.receipt.ReceiptScannerScreen
 import com.bose.expensetracker.ui.screen.receipt.ReceiptScannerViewModel
+import com.bose.expensetracker.ui.screen.notification.NotificationsScreen
+import com.bose.expensetracker.ui.screen.notification.NotificationsViewModel
+import com.bose.expensetracker.ui.screen.reminder.ReminderScreen
+import com.bose.expensetracker.ui.screen.budget.BudgetScreen
+import com.bose.expensetracker.ui.screen.budget.BudgetViewModel
+import com.bose.expensetracker.ui.screen.recurring.RecurringScreen
+import com.bose.expensetracker.ui.screen.recurring.RecurringViewModel
+import com.bose.expensetracker.ui.screen.savings.SavingsScreen
+import com.bose.expensetracker.ui.screen.savings.SavingsViewModel
+import com.bose.expensetracker.ui.screen.reminder.ReminderViewModel
 import com.bose.expensetracker.ui.screen.settings.SettingsScreen
 import com.bose.expensetracker.ui.screen.settings.SettingsViewModel
 import com.bose.expensetracker.ui.screen.voice.VoiceExpenseParser
@@ -151,7 +161,9 @@ fun ExpenseTrackerNavGraph(
                 viewModel = viewModel,
                 onAddExpense = { navController.navigate(AddEditExpenseRoute()) },
                 onEditExpense = { id -> navController.navigate(AddEditExpenseRoute(expenseId = id)) },
-                onViewAllExpenses = { navController.navigate(ExpenseListRoute) }
+                onViewAllExpenses = { navController.navigate(ExpenseListRoute) },
+                onNavigateToNotifications = { navController.navigate(NotificationsRoute) },
+                onNavigateToReminders = { navController.navigate(ReminderRoute) }
             )
         }
 
@@ -242,6 +254,47 @@ fun ExpenseTrackerNavGraph(
             NetWorthScreen(viewModel = viewModel)
         }
 
+        composable<NotificationsRoute> {
+            val viewModel: NotificationsViewModel = hiltViewModel()
+            NotificationsScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onEditExpense = { id -> navController.navigate(AddEditExpenseRoute(expenseId = id)) }
+            )
+        }
+
+        composable<ReminderRoute> {
+            val viewModel: ReminderViewModel = hiltViewModel()
+            ReminderScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<BudgetRoute> {
+            val viewModel: BudgetViewModel = hiltViewModel()
+            BudgetScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<RecurringRoute> {
+            val viewModel: RecurringViewModel = hiltViewModel()
+            RecurringScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<SavingsRoute> {
+            val viewModel: SavingsViewModel = hiltViewModel()
+            SavingsScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
         composable<HouseholdManageRoute> {
             val viewModel: HouseholdViewModel = hiltViewModel()
             HouseholdScreen(
@@ -271,6 +324,18 @@ fun ExpenseTrackerNavGraph(
                 },
                 onNavigateToHousehold = {
                     navController.navigate(HouseholdManageRoute)
+                },
+                onNavigateToReminders = {
+                    navController.navigate(ReminderRoute)
+                },
+                onNavigateToBudgets = {
+                    navController.navigate(BudgetRoute)
+                },
+                onNavigateToRecurring = {
+                    navController.navigate(RecurringRoute)
+                },
+                onNavigateToSavings = {
+                    navController.navigate(SavingsRoute)
                 }
             )
         }

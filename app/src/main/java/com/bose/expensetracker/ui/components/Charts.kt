@@ -20,8 +20,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun PieChart(
@@ -97,44 +100,54 @@ fun BarChart(
     val maxValue = data.maxOf { it.value }.toFloat()
     if (maxValue <= 0f) return
 
-    val barColor = MaterialTheme.colorScheme.primary
+    val barColor = com.bose.expensetracker.ui.theme.AccentPurple
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-        ) {
-            val barCount = data.size
-            val spacing = 4.dp.toPx()
-            val barWidth = (size.width - (spacing * (barCount + 1))) / barCount
-            val chartHeight = size.height - 20f
+    val labelStep = when {
+        data.size > 10 -> 3
+        data.size > 6 -> 2
+        else -> 1
+    }
 
-            data.forEachIndexed { index, entry ->
-                val barHeight = (entry.value / maxValue) * chartHeight
-                val x = spacing + index * (barWidth + spacing)
-                val y = chartHeight - barHeight
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(200.dp)
+    ) {
+        val barCount = data.size
+        val spacing = 4.dp.toPx()
+        val labelAreaHeight = 24.dp.toPx()
+        val chartHeight = size.height - labelAreaHeight
+        val barWidth = (size.width - (spacing * (barCount + 1))) / barCount
 
-                drawRect(
-                    color = barColor,
-                    topLeft = Offset(x, y),
-                    size = Size(barWidth, barHeight)
-                )
-            }
+        val textPaint = android.graphics.Paint().apply {
+            color = labelColor.hashCode()
+            textSize = 10.sp.toPx()
+            textAlign = android.graphics.Paint.Align.CENTER
+            isAntiAlias = true
         }
 
-        // Labels
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            data.forEach { entry ->
-                Text(
+        data.forEachIndexed { index, entry ->
+            val barHeight = (entry.value / maxValue) * chartHeight
+            val x = spacing + index * (barWidth + spacing)
+            val y = chartHeight - barHeight
+
+            // Draw bar with rounded top
+            drawRect(
+                color = barColor,
+                topLeft = Offset(x, y),
+                size = Size(barWidth, barHeight)
+            )
+
+            // Draw label centered under bar
+            if (index % labelStep == 0) {
+                val labelX = x + barWidth / 2
+                val labelY = size.height - 4.dp.toPx()
+                drawContext.canvas.nativeCanvas.drawText(
                     entry.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = labelColor,
-                    maxLines = 1
+                    labelX,
+                    labelY,
+                    textPaint
                 )
             }
         }
@@ -152,7 +165,7 @@ fun LineChart(
     val minValue = data.minOf { it.value }.toFloat()
     val range = if (maxValue == minValue) 1f else maxValue - minValue
 
-    val lineColor = MaterialTheme.colorScheme.primary
+    val lineColor = com.bose.expensetracker.ui.theme.AccentPurple
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(modifier = modifier.fillMaxWidth()) {

@@ -1,12 +1,11 @@
 package com.bose.expensetracker.domain.usecase.smsimport
 
 import android.util.Log
+import com.bose.expensetracker.data.local.dao.PendingSmsDao
 import com.bose.expensetracker.data.local.dao.ProcessedSmsDao
-import com.bose.expensetracker.data.local.entity.ProcessedSmsEntity
-import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.data.local.entity.PendingSmsEntity
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
-import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
 import com.bose.expensetracker.util.NotificationHelper
 import kotlinx.coroutines.flow.firstOrNull
@@ -19,11 +18,11 @@ import javax.inject.Singleton
 class ProcessSmsUseCase @Inject constructor(
     private val parser: SmsTransactionParser,
     private val categoryMatcher: SmsCategoryMatcher,
-    private val expenseRepository: ExpenseRepository,
     private val categoryRepository: CategoryRepository,
     private val authRepository: AuthRepository,
     private val householdRepository: HouseholdRepository,
     private val processedSmsDao: ProcessedSmsDao,
+    private val pendingSmsDao: PendingSmsDao,
     private val notificationHelper: NotificationHelper
 ) {
     suspend fun process(sender: String, body: String, receivedTimestamp: Long): Boolean {
@@ -40,8 +39,8 @@ class ProcessSmsUseCase @Inject constructor(
         }
 
         val hash = computeHash(sender, body, receivedTimestamp)
-        if (processedSmsDao.exists(hash)) {
-            Log.d(TAG, "SMS already processed (duplicate hash)")
+        if (processedSmsDao.exists(hash) || pendingSmsDao.exists(hash)) {
+            Log.d(TAG, "SMS already processed or pending (duplicate hash)")
             return false
         }
 
@@ -58,50 +57,44 @@ class ProcessSmsUseCase @Inject constructor(
         Log.d(TAG, "Category: $categoryName (found=${category != null})")
 
         val userName = authRepository.getCurrentUserDisplayName() ?: "User"
-        val now = System.currentTimeMillis()
-        val expense = Expense(
-            id = UUID.randomUUID().toString(),
-            householdId = householdId,
+        val pendingId = UUID.randomUUID().toString()
+        val notificationId = notificationHelper.generateNotificationId(pendingId)
+
+        val pendingEntity = PendingSmsEntity(
+            id = pendingId,
+            smsHash = hash,
+            sender = sender,
+            body = body,
             amount = transaction.amount,
+            merchant = transaction.merchant,
             categoryId = category?.id ?: "",
             categoryName = category?.name ?: categoryName,
-            date = receivedTimestamp,
-            notes = buildNotes(transaction, sender),
-            addedBy = uid,
-            addedByName = userName,
-            createdAt = now,
-            updatedAt = now
+            cardOrAccount = transaction.cardOrAccount,
+            householdId = householdId,
+            userId = uid,
+            userName = userName,
+            receivedTimestamp = receivedTimestamp,
+            notificationId = notificationId
         )
 
-        val result = expenseRepository.addExpense(expense)
-        if (result.isSuccess) {
-            processedSmsDao.insert(ProcessedSmsEntity(hash, expense.id, now))
-            notificationHelper.showSmsImportNotification(
-                transaction.merchant ?: sender,
-                transaction.amount,
-                category?.name ?: categoryName
-            )
-            Log.d(TAG, "Expense created: ${expense.id}, amount=${expense.amount}")
-            return true
-        } else {
-            Log.e(TAG, "Failed to add expense: ${result.exceptionOrNull()?.message}")
-        }
-        return false
+        pendingSmsDao.insert(pendingEntity)
+        Log.d(TAG, "Pending SMS created: $pendingId")
+
+        notificationHelper.showPendingSmsNotification(
+            pendingSmsId = pendingId,
+            merchant = transaction.merchant ?: sender,
+            amount = transaction.amount,
+            categoryName = category?.name ?: categoryName,
+            notificationId = notificationId
+        )
+
+        return true
     }
 
     private fun computeHash(sender: String, body: String, timestamp: Long): String {
         val input = "$sender|$body|$timestamp"
         val digest = MessageDigest.getInstance("SHA-256")
         return digest.digest(input.toByteArray()).joinToString("") { "%02x".format(it) }
-    }
-
-    private fun buildNotes(transaction: ParsedTransaction, sender: String): String {
-        return buildString {
-            append("SMS Import")
-            transaction.merchant?.let { append(": $it") }
-            transaction.cardOrAccount?.let { append(" (XX$it)") }
-            append(" [$sender]")
-        }
     }
 
     companion object {

@@ -20,10 +20,24 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
+enum class SummaryPeriod(val label: String) { WEEK("Week"), MONTH("Month"), YEAR("Year") }
+
+data class PeriodSummary(
+    val totalSpent: Double = 0.0,
+    val previousPeriodSpent: Double = 0.0,
+    val percentChange: Double = 0.0,
+    val topCategory: String = "",
+    val topCategoryAmount: Double = 0.0,
+    val averageDailySpend: Double = 0.0,
+    val daysInPeriod: Int = 1
+)
+
 data class InsightsUiState(
     val insights: List<SpendingInsight> = emptyList(),
     val dailySpending: Map<String, Double> = emptyMap(),
     val categoryBreakdown: Map<String, Double> = emptyMap(),
+    val selectedPeriod: SummaryPeriod = SummaryPeriod.MONTH,
+    val periodSummary: PeriodSummary = PeriodSummary(),
     val isLoading: Boolean = true
 )
 
@@ -37,8 +51,84 @@ class InsightsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(InsightsUiState())
     val uiState: StateFlow<InsightsUiState> = _uiState.asStateFlow()
 
+    private var allExpensesCache: List<Expense> = emptyList()
+
     init {
         loadInsights()
+    }
+
+    fun selectPeriod(period: SummaryPeriod) {
+        _uiState.update { it.copy(selectedPeriod = period) }
+        recomputePeriod(allExpensesCache, period)
+    }
+
+    private fun recomputePeriod(allExpenses: List<Expense>, period: SummaryPeriod) {
+        val now = Calendar.getInstance()
+        val (currentStart, currentEnd) = periodRange(now, period)
+        val prevCal = Calendar.getInstance().apply { timeInMillis = currentStart }
+        when (period) {
+            SummaryPeriod.WEEK -> prevCal.add(Calendar.WEEK_OF_YEAR, -1)
+            SummaryPeriod.MONTH -> prevCal.add(Calendar.MONTH, -1)
+            SummaryPeriod.YEAR -> prevCal.add(Calendar.YEAR, -1)
+        }
+        val (prevStart, prevEnd) = periodRange(prevCal, period)
+
+        val currentExpenses = allExpenses.filter { it.date in currentStart until currentEnd }
+        val prevExpenses = allExpenses.filter { it.date in prevStart until prevEnd }
+
+        val totalSpent = currentExpenses.sumOf { it.amount }
+        val prevTotal = prevExpenses.sumOf { it.amount }
+        val pctChange = if (prevTotal > 0) ((totalSpent - prevTotal) / prevTotal * 100) else 0.0
+        val days = ((currentEnd - currentStart) / 86400000L).coerceAtLeast(1).toInt()
+
+        val topCat = currentExpenses.groupBy { it.categoryName }
+            .maxByOrNull { (_, e) -> e.sumOf { it.amount } }
+
+        val categoryBreakdown = currentExpenses
+            .groupBy { it.categoryName }
+            .mapValues { (_, expenses) -> expenses.sumOf { it.amount } }
+
+        val dayFormat = SimpleDateFormat("dd", Locale.getDefault())
+        val dailySpending = currentExpenses
+            .groupBy { dayFormat.format(Date(it.date)) }
+            .mapValues { (_, expenses) -> expenses.sumOf { it.amount } }
+
+        _uiState.update {
+            it.copy(
+                periodSummary = PeriodSummary(
+                    totalSpent = totalSpent,
+                    previousPeriodSpent = prevTotal,
+                    percentChange = pctChange,
+                    topCategory = topCat?.key ?: "",
+                    topCategoryAmount = topCat?.value?.sumOf { e -> e.amount } ?: 0.0,
+                    averageDailySpend = totalSpent / days,
+                    daysInPeriod = days
+                ),
+                categoryBreakdown = categoryBreakdown,
+                dailySpending = dailySpending
+            )
+        }
+    }
+
+    private fun periodRange(cal: Calendar, period: SummaryPeriod): Pair<Long, Long> {
+        val start = cal.clone() as Calendar
+        val end = cal.clone() as Calendar
+        start.set(Calendar.HOUR_OF_DAY, 0); start.set(Calendar.MINUTE, 0); start.set(Calendar.SECOND, 0); start.set(Calendar.MILLISECOND, 0)
+        when (period) {
+            SummaryPeriod.WEEK -> {
+                start.set(Calendar.DAY_OF_WEEK, start.firstDayOfWeek)
+                end.timeInMillis = start.timeInMillis; end.add(Calendar.WEEK_OF_YEAR, 1)
+            }
+            SummaryPeriod.MONTH -> {
+                start.set(Calendar.DAY_OF_MONTH, 1)
+                end.timeInMillis = start.timeInMillis; end.add(Calendar.MONTH, 1)
+            }
+            SummaryPeriod.YEAR -> {
+                start.set(Calendar.DAY_OF_YEAR, 1)
+                end.timeInMillis = start.timeInMillis; end.add(Calendar.YEAR, 1)
+            }
+        }
+        return start.timeInMillis to end.timeInMillis
     }
 
     private fun loadInsights() {
@@ -55,6 +145,7 @@ class InsightsViewModel @Inject constructor(
             expenseRepository.startRealtimeSync(householdId)
 
             expenseRepository.getExpenses(householdId).collect { allExpenses ->
+                allExpensesCache = allExpenses
                 val now = Calendar.getInstance()
                 val currentMonth = now.get(Calendar.MONTH)
                 val currentYear = now.get(Calendar.YEAR)
@@ -78,23 +169,15 @@ class InsightsViewModel @Inject constructor(
                 }
 
                 val insights = generateInsights(thisMonthExpenses, lastMonthExpenses)
-                val categoryBreakdown = thisMonthExpenses
-                    .groupBy { it.categoryName }
-                    .mapValues { (_, expenses) -> expenses.sumOf { it.amount } }
-
-                val dayFormat = SimpleDateFormat("dd", Locale.getDefault())
-                val dailySpending = thisMonthExpenses
-                    .groupBy { dayFormat.format(Date(it.date)) }
-                    .mapValues { (_, expenses) -> expenses.sumOf { it.amount } }
 
                 _uiState.update {
                     it.copy(
                         insights = insights,
-                        dailySpending = dailySpending,
-                        categoryBreakdown = categoryBreakdown,
                         isLoading = false
                     )
                 }
+
+                recomputePeriod(allExpenses, _uiState.value.selectedPeriod)
             }
         }
     }

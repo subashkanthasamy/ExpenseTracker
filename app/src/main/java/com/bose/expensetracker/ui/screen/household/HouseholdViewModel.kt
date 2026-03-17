@@ -126,15 +126,20 @@ class HouseholdViewModel @Inject constructor(
                 return@launch
             }
 
-            if (_uiState.value.households.size <= 1) {
+            val householdCount = _uiState.value.households.size
+            android.util.Log.d("HouseholdVM", "deleteHousehold: id=$householdId, uid=$uid, householdCount=$householdCount")
+
+            if (householdCount <= 1) {
                 _uiState.update { it.copy(errorMessage = "Cannot delete your only household. Create or join another one first.") }
                 return@launch
             }
 
             _uiState.update { it.copy(isDeleting = true, errorMessage = null) }
             householdRepository.deleteHousehold(householdId, uid).onSuccess {
+                android.util.Log.d("HouseholdVM", "deleteHousehold success, navigating")
                 _householdSwitchedEvent.emit(Unit)
             }.onFailure { error ->
+                android.util.Log.e("HouseholdVM", "deleteHousehold failed: ${error.message}", error)
                 _uiState.update { it.copy(isDeleting = false, errorMessage = "Delete failed: ${error.message}") }
             }
         }

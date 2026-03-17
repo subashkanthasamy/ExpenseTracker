@@ -6,6 +6,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -14,10 +15,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.bose.expensetracker.data.preferences.BiometricPreferences
+import com.bose.expensetracker.data.preferences.ThemePreferences
 import com.bose.expensetracker.ui.navigation.BottomNavBar
 import com.bose.expensetracker.ui.navigation.DashboardRoute
 import com.bose.expensetracker.ui.navigation.ExpenseTrackerNavGraph
 import com.bose.expensetracker.ui.navigation.LoginRoute
+import com.bose.expensetracker.ui.navigation.NotificationsRoute
 import com.bose.expensetracker.ui.screen.auth.BiometricHelper
 import com.bose.expensetracker.ui.theme.ExpenseTrackerTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -35,11 +38,18 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var biometricPreferences: BiometricPreferences
 
+    @Inject
+    lateinit var themePreferences: ThemePreferences
+
     private var biometricAuthenticated = false
+
+    private var navDestination: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        navDestination = intent.getStringExtra("nav_destination")
 
         val currentUser = firebaseAuth.currentUser
 
@@ -73,7 +83,7 @@ class MainActivity : FragmentActivity() {
 
     private fun setupContent() {
         setContent {
-            ExpenseTrackerTheme {
+            ExpenseTrackerTheme(themePreferences = themePreferences) {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
@@ -83,6 +93,13 @@ class MainActivity : FragmentActivity() {
                         DashboardRoute
                     } else {
                         LoginRoute
+                    }
+                }
+
+                val pendingDestination = remember { navDestination }
+                if (pendingDestination == "sms_report" && startDestination == DashboardRoute) {
+                    LaunchedEffect(Unit) {
+                        navController.navigate(NotificationsRoute)
                     }
                 }
 

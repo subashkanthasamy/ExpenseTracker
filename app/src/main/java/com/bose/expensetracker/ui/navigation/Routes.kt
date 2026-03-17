@@ -15,4 +15,9 @@ import kotlinx.serialization.Serializable
 @Serializable object NetWorthRoute
 @Serializable data class AddEditAssetRoute(val assetId: String? = null, val isAsset: Boolean = true)
 @Serializable object HouseholdManageRoute
+@Serializable object NotificationsRoute
 @Serializable object SettingsRoute
+@Serializable object ReminderRoute
+@Serializable object BudgetRoute
+@Serializable object RecurringRoute
+@Serializable object SavingsRoute

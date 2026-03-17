@@ -82,7 +82,11 @@ class ExpenseRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteAllExpenses(householdId: String): Result<Unit> = runCatching {
-        firestoreDataSource.deleteAllExpenses(householdId)
+        try {
+            firestoreDataSource.deleteAllExpenses(householdId)
+        } catch (e: Exception) {
+            android.util.Log.w("ExpenseRepoImpl", "Firestore deleteAll failed (continuing locally): ${e.message}")
+        }
         expenseDao.deleteAllForHousehold(householdId)
     }
 

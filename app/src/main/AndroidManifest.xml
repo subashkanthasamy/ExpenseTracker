@@ -44,6 +44,10 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".data.receiver.SmsActionReceiver"
+            android:exported="false" />
+
         <!-- Disable default WorkManager initializer so Hilt can provide HiltWorkerFactory -->
         <provider
             android:name="androidx.startup.InitializationProvider"

@@ -70,18 +70,20 @@ fun CategoryScreen(viewModel: CategoryViewModel) {
     var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Categories") })
-        },
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Category")
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = com.bose.expensetracker.ui.theme.AccentPurple,
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Category", tint = Color.White)
             }
         }
     ) { padding ->
         if (uiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = com.bose.expensetracker.ui.theme.AccentPurple)
             }
         } else {
             LazyColumn(
@@ -92,7 +94,18 @@ fun CategoryScreen(viewModel: CategoryViewModel) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Categories",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                item {
                     Text(
                         "Preset Categories",
                         style = MaterialTheme.typography.titleMedium,
