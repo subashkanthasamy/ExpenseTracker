@@ -53,7 +53,9 @@ import com.bose.expensetracker.ui.screen.settings.SettingsScreen
 import com.bose.expensetracker.ui.screen.settings.SettingsViewModel
 import com.bose.expensetracker.ui.screen.voice.VoiceExpenseParser
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import androidx.credentials.exceptions.NoCredentialException
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -92,17 +94,29 @@ fun ExpenseTrackerNavGraph(
                     coroutineScope.launch {
                         try {
                             val credentialManager = CredentialManager.create(context)
-                            val googleIdOption = GetGoogleIdOption.Builder()
-                                .setFilterByAuthorizedAccounts(false)
-                                .setServerClientId(context.getString(R.string.default_web_client_id))
-                                .build()
-                            val request = GetCredentialRequest.Builder()
-                                .addCredentialOption(googleIdOption)
-                                .build()
-                            val result = credentialManager.getCredential(context as Activity, request)
+
+                            // Try One Tap first, fallback to Sign In With Google button
+                            val result = try {
+                                val googleIdOption = GetGoogleIdOption.Builder()
+                                    .setFilterByAuthorizedAccounts(false)
+                                    .setServerClientId(context.getString(R.string.default_web_client_id))
+                                    .build()
+                                val request = GetCredentialRequest.Builder()
+                                    .addCredentialOption(googleIdOption)
+                                    .build()
+                                credentialManager.getCredential(context as Activity, request)
+                            } catch (e: NoCredentialException) {
+                                val signInOption = GetSignInWithGoogleOption.Builder(
+                                    context.getString(R.string.default_web_client_id)
+                                ).build()
+                                val request = GetCredentialRequest.Builder()
+                                    .addCredentialOption(signInOption)
+                                    .build()
+                                credentialManager.getCredential(context as Activity, request)
+                            }
+
                             val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(result.credential.data)
-                            val idToken = googleIdTokenCredential.idToken
-                            authViewModel.signInWithGoogle(idToken)
+                            authViewModel.signInWithGoogle(googleIdTokenCredential.idToken)
                         } catch (e: GetCredentialCancellationException) {
                             Log.d("GoogleSignIn", "User cancelled Google Sign-In")
                         } catch (e: Exception) {
@@ -163,7 +177,12 @@ fun ExpenseTrackerNavGraph(
                 onEditExpense = { id -> navController.navigate(AddEditExpenseRoute(expenseId = id)) },
                 onViewAllExpenses = { navController.navigate(ExpenseListRoute) },
                 onNavigateToNotifications = { navController.navigate(NotificationsRoute) },
-                onNavigateToReminders = { navController.navigate(ReminderRoute) }
+                onNavigateToReminders = { navController.navigate(ReminderRoute) },
+                onNavigateToHouseholdSetup = {
+                    navController.navigate(HouseholdSetupRoute) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -303,6 +322,11 @@ fun ExpenseTrackerNavGraph(
                 onHouseholdSwitched = {
                     navController.navigate(DashboardRoute) {
                         popUpTo(DashboardRoute) { inclusive = true }
+                    }
+                },
+                onNavigateToSetup = {
+                    navController.navigate(HouseholdSetupRoute) {
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )

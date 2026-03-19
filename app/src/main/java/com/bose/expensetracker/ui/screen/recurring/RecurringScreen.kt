@@ -152,7 +152,7 @@ private fun RecurringCard(
         RecurringExpenseEntity.FREQ_WEEKLY -> "Weekly"
         RecurringExpenseEntity.FREQ_MONTHLY -> "Monthly"
         RecurringExpenseEntity.FREQ_YEARLY -> "Yearly"
-        else -> ""
+        else -> "Custom"
     }
 
     Card(
@@ -168,14 +168,14 @@ private fun RecurringCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(item.categoryName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                Text(item.categoryName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Text(
                     "\u20B9${"%.2f".format(item.amount)} \u2022 $freqLabel",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (item.notes.isNotBlank()) {
-                    Text(item.notes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(item.notes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 }
             }
             Switch(

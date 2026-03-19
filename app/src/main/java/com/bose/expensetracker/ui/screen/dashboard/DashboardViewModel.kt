@@ -37,7 +37,8 @@ data class DashboardUiState(
     val categoryBreakdown: List<CategoryBreakdown> = emptyList(),
     val personFilter: String? = null,
     val members: List<HouseholdMember> = emptyList(),
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val noHousehold: Boolean = false
 )
 
 @HiltViewModel
@@ -74,7 +75,7 @@ class DashboardViewModel @Inject constructor(
             }
             householdId = hId
             if (hId == null) {
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update { it.copy(isLoading = false, noHousehold = true) }
                 return@launch
             }
 

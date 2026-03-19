@@ -41,7 +41,7 @@ class SavingsViewModel @Inject constructor(
             val hId = householdRepository.getUserHouseholdId(uid) ?: return@launch
             householdId = hId
 
-            savingsGoalDao.getGoals(hId).collect { entities ->
+            try { savingsGoalDao.getGoals(hId).collect { entities ->
                 val goals = entities.map { e ->
                     SavingsGoal(
                         id = e.id,
@@ -55,6 +55,9 @@ class SavingsViewModel @Inject constructor(
                     )
                 }
                 _uiState.update { it.copy(goals = goals, isLoading = false) }
+            }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }

@@ -1,7 +1,5 @@
 package com.bose.expensetracker.domain.model
 
-import java.util.Calendar
-
 data class SavingsGoal(
     val id: String,
     val householdId: String,
@@ -23,12 +21,8 @@ data class SavingsGoal(
             val td = targetDate ?: return null
             val now = System.currentTimeMillis()
             if (td <= now || remaining <= 0) return null
-            val cal = Calendar.getInstance()
-            cal.timeInMillis = now
-            val nowMonth = cal.get(Calendar.YEAR) * 12 + cal.get(Calendar.MONTH)
-            cal.timeInMillis = td
-            val targetMonth = cal.get(Calendar.YEAR) * 12 + cal.get(Calendar.MONTH)
-            val months = (targetMonth - nowMonth).coerceAtLeast(1)
-            return remaining / months
+            val daysRemaining = ((td - now) / 86_400_000L).coerceAtLeast(1)
+            val monthsRemaining = (daysRemaining / 30.44).coerceAtLeast(1.0) // avg days per month
+            return remaining / monthsRemaining
         }
 }

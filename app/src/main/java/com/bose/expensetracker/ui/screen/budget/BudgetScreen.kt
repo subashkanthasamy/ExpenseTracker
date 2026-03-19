@@ -166,7 +166,7 @@ private fun BudgetCard(
         BudgetStatus.WARNING -> Color(0xFFFFA726)
         BudgetStatus.EXCEEDED -> ExpenseRed
     }
-    val progress = (budget.spent / budget.monthlyLimit).coerceIn(0.0, 1.0).toFloat()
+    val progress = if (budget.monthlyLimit > 0) (budget.spent / budget.monthlyLimit).coerceIn(0.0, 1.0).toFloat() else 0f
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -198,7 +198,9 @@ private fun BudgetCard(
                     Text(
                         budget.categoryName,
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Text(
                         "\u20B9${"%.0f".format(budget.spent)} / \u20B9${"%.0f".format(budget.monthlyLimit)}",

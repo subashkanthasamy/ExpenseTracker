@@ -69,7 +69,8 @@ fun DashboardScreen(
     onEditExpense: (String) -> Unit,
     onViewAllExpenses: () -> Unit,
     onNavigateToNotifications: () -> Unit = {},
-    onNavigateToReminders: () -> Unit = {}
+    onNavigateToReminders: () -> Unit = {},
+    onNavigateToHouseholdSetup: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -81,6 +82,42 @@ fun DashboardScreen(
         if (uiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = AccentPurple)
+            }
+        } else if (uiState.noHousehold) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.Home,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = AccentPurple.copy(alpha = 0.6f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "No Household Found",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "You are not associated with any household. Create or join one to start tracking expenses.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                androidx.compose.material3.Button(
+                    onClick = onNavigateToHouseholdSetup,
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = AccentPurple)
+                ) {
+                    Text("Create or Join Household", color = Color.White)
+                }
             }
         } else {
             LazyColumn(

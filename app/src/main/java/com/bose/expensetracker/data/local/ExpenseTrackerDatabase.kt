@@ -35,7 +35,7 @@ import com.bose.expensetracker.data.local.entity.ReminderEntity
         BudgetEntity::class,
         RecurringExpenseEntity::class,
         SavingsGoalEntity::class
-    ],
+],
     version = 7,
     exportSchema = true
 )

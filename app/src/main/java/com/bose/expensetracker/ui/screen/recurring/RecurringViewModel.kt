@@ -50,14 +50,20 @@ class RecurringViewModel @Inject constructor(
             userName = authRepository.getCurrentUserDisplayName() ?: "User"
 
             launch {
-                recurringExpenseDao.getAll(hId).collect { items ->
-                    _uiState.update { it.copy(items = items, isLoading = false) }
+                try {
+                    recurringExpenseDao.getAll(hId).collect { items ->
+                        _uiState.update { it.copy(items = items, isLoading = false) }
+                    }
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(isLoading = false) }
                 }
             }
             launch {
-                categoryRepository.getCategories(hId).collect { cats ->
-                    _uiState.update { it.copy(categories = cats) }
-                }
+                try {
+                    categoryRepository.getCategories(hId).collect { cats ->
+                        _uiState.update { it.copy(categories = cats) }
+                    }
+                } catch (_: Exception) { }
             }
         }
     }

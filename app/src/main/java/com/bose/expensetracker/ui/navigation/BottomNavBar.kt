@@ -1,6 +1,6 @@
 package com.bose.expensetracker.ui.navigation
 
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Home
@@ -23,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bose.expensetracker.ui.theme.AccentPurple
@@ -36,10 +38,10 @@ data class BottomNavItem(
 )
 
 val bottomNavItems = listOf(
-    BottomNavItem("Dashboard", Icons.Outlined.Home, Icons.Filled.Home, DashboardRoute),
-    BottomNavItem("Expenses", Icons.Outlined.Receipt, Icons.Filled.Receipt, ExpenseListRoute),
+    BottomNavItem("Home", Icons.Outlined.Home, Icons.Filled.Home, DashboardRoute),
+    BottomNavItem("Expense", Icons.Outlined.Receipt, Icons.Filled.Receipt, ExpenseListRoute),
     BottomNavItem("Insights", Icons.Outlined.Insights, Icons.Filled.Insights, InsightsRoute),
-    BottomNavItem("Net Worth", Icons.Outlined.AccountBalance, Icons.Filled.AccountBalance, NetWorthRoute),
+    BottomNavItem("Worth", Icons.Outlined.AccountBalance, Icons.Filled.AccountBalance, NetWorthRoute),
     BottomNavItem("Settings", Icons.Outlined.Settings, Icons.Filled.Settings, SettingsRoute)
 )
 
@@ -50,36 +52,41 @@ fun BottomNavBar(
 ) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        modifier = Modifier.height(80.dp)
+        tonalElevation = 0.dp
     ) {
         bottomNavItems.forEach { item ->
             val routeName = item.route::class.qualifiedName ?: ""
-            val isSelected = currentRoute?.contains(routeName.substringAfterLast(".")) == true
+            val shortName = routeName.substringAfterLast(".")
+            val isSelected = currentRoute?.endsWith(shortName) == true
 
             NavigationBarItem(
                 icon = {
                     Icon(
                         imageVector = if (isSelected) item.selectedIcon else item.icon,
-                        contentDescription = item.label
+                        contentDescription = item.label,
+                        modifier = Modifier.size(22.dp)
                     )
                 },
                 label = {
                     Text(
                         text = item.label,
-                        fontSize = 11.sp,
+                        fontSize = 10.sp,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        softWrap = false
                     )
                 },
                 selected = isSelected,
                 onClick = { onItemClick(item.route) },
+                alwaysShowLabel = true,
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = AccentPurple,
                     selectedTextColor = AccentPurple,
                     unselectedIconColor = NavInactive,
                     unselectedTextColor = NavInactive,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                    indicatorColor = Color.Transparent
                 )
             )
         }

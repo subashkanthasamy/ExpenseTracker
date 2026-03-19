@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -163,10 +164,10 @@ private fun SavingsGoalCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Circular progress
-            Box(modifier = Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                 val progress = goal.progress.toFloat()
                 val color = if (progress >= 1f) IncomeGreen else AccentPurple
-                Canvas(modifier = Modifier.size(56.dp)) {
+                Canvas(modifier = Modifier.size(48.dp)) {
                     drawArc(
                         color = color.copy(alpha = 0.15f),
                         startAngle = -90f,
@@ -193,7 +194,7 @@ private fun SavingsGoalCard(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(goal.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                Text(goal.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Text(
                     "\u20B9${"%.0f".format(goal.currentAmount)} / \u20B9${"%.0f".format(goal.targetAmount)}",
                     style = MaterialTheme.typography.bodySmall,
@@ -219,7 +220,7 @@ private fun SavingsGoalCard(
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = IncomeGreen),
                     modifier = Modifier.height(30.dp),
-                    contentPadding = ButtonDefaults.ContentPadding
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
                 ) {
                     Text("+", style = MaterialTheme.typography.labelLarge, color = Color.White)
                 }

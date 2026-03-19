@@ -47,14 +47,20 @@ class BudgetViewModel @Inject constructor(
             householdId = hId
 
             launch {
-                budgetRepository.getBudgetsWithSpending(hId).collect { budgets ->
-                    _uiState.update { it.copy(budgets = budgets, isLoading = false) }
+                try {
+                    budgetRepository.getBudgetsWithSpending(hId).collect { budgets ->
+                        _uiState.update { it.copy(budgets = budgets, isLoading = false) }
+                    }
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(isLoading = false) }
                 }
             }
             launch {
-                categoryRepository.getCategories(hId).collect { categories ->
-                    _uiState.update { it.copy(categories = categories) }
-                }
+                try {
+                    categoryRepository.getCategories(hId).collect { categories ->
+                        _uiState.update { it.copy(categories = categories) }
+                    }
+                } catch (_: Exception) { }
             }
         }
     }

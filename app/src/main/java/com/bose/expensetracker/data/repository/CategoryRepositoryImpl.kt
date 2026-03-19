@@ -13,7 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import java.util.UUID
+
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,7 +30,7 @@ class CategoryRepositoryImpl @Inject constructor(
 
     override fun getCategories(householdId: String): Flow<List<Category>> =
         categoryDao.getAllCategories(householdId).map { entities ->
-            entities.map { it.toDomain() }
+            entities.map { it.toDomain() }.distinctBy { it.name }
         }
 
     override suspend fun getCategoryById(id: String): Category? =
@@ -61,20 +61,34 @@ class CategoryRepositoryImpl @Inject constructor(
         } catch (_: Exception) { }
     }
 
+    private fun presetId(householdId: String, name: String): String =
+        "preset_${householdId}_${name.lowercase().replace("/", "_").replace(" ", "_")}"
+
     override suspend fun seedPresetCategories(householdId: String) {
-        // Guard: don't re-seed if presets already exist in Room
         val existing = categoryDao.getAllCategoriesOnce(householdId)
+
+        // Clean up duplicates: keep first occurrence per name, delete the rest
+        existing.groupBy { it.name }.forEach { (_, dupes) ->
+            if (dupes.size > 1) {
+                dupes.drop(1).forEach { dup ->
+                    categoryDao.deleteById(dup.id)
+                    try { firestoreDataSource.deleteCategory(householdId, dup.id) } catch (_: Exception) { }
+                }
+            }
+        }
+
+        // Guard: don't re-seed if presets already exist
         if (existing.any { it.isPreset }) return
 
         val presets = listOf(
-            Category(UUID.randomUUID().toString(), "Food", "restaurant", 0xFF4CAF50, true, householdId),
-            Category(UUID.randomUUID().toString(), "Groceries", "shopping_cart", 0xFF8BC34A, true, householdId),
-            Category(UUID.randomUUID().toString(), "Transport", "directions_car", 0xFF2196F3, true, householdId),
-            Category(UUID.randomUUID().toString(), "Rent/Home Loan", "home", 0xFFFF9800, true, householdId),
-            Category(UUID.randomUUID().toString(), "Bills", "receipt_long", 0xFFF44336, true, householdId),
-            Category(UUID.randomUUID().toString(), "Family", "family_restroom", 0xFFE91E63, true, householdId),
-            Category(UUID.randomUUID().toString(), "Entertainment", "movie", 0xFF9C27B0, true, householdId),
-            Category(UUID.randomUUID().toString(), "Misc", "more_horiz", 0xFF607D8B, true, householdId)
+            Category(presetId(householdId, "Food"), "Food", "restaurant", 0xFF4CAF50, true, householdId),
+            Category(presetId(householdId, "Groceries"), "Groceries", "shopping_cart", 0xFF8BC34A, true, householdId),
+            Category(presetId(householdId, "Transport"), "Transport", "directions_car", 0xFF2196F3, true, householdId),
+            Category(presetId(householdId, "Rent/Home Loan"), "Rent/Home Loan", "home", 0xFFFF9800, true, householdId),
+            Category(presetId(householdId, "Bills"), "Bills", "receipt_long", 0xFFF44336, true, householdId),
+            Category(presetId(householdId, "Family"), "Family", "family_restroom", 0xFFE91E63, true, householdId),
+            Category(presetId(householdId, "Entertainment"), "Entertainment", "movie", 0xFF9C27B0, true, householdId),
+            Category(presetId(householdId, "Misc"), "Misc", "more_horiz", 0xFF607D8B, true, householdId)
         )
         presets.forEach { category ->
             categoryDao.insert(category.toEntity(SyncStatus.PENDING_CREATE))
@@ -121,6 +135,7 @@ class CategoryRepositoryImpl @Inject constructor(
                 val pendingIds = categoryDao.getPendingSyncCategories().map { it.id }.toSet()
                 val safeToInsert = categories
                     .filter { it.id !in pendingIds }
+                    .distinctBy { it.name }
                     .map { it.toEntity(SyncStatus.SYNCED) }
                 if (safeToInsert.isNotEmpty()) {
                     categoryDao.insertAll(safeToInsert)

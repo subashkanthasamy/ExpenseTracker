@@ -57,7 +57,8 @@ import androidx.compose.ui.unit.dp
 fun HouseholdScreen(
     viewModel: HouseholdViewModel,
     onNavigateBack: () -> Unit,
-    onHouseholdSwitched: () -> Unit
+    onHouseholdSwitched: () -> Unit,
+    onNavigateToSetup: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val clipboardManager = LocalClipboardManager.current
@@ -68,6 +69,12 @@ fun HouseholdScreen(
     LaunchedEffect(Unit) {
         viewModel.householdSwitchedEvent.collect {
             onHouseholdSwitched()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.navigateToSetupEvent.collect {
+            onNavigateToSetup()
         }
     }
 

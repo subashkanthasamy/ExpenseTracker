@@ -149,7 +149,16 @@ class AuthViewModel @Inject constructor(
         }
 
         override fun onVerificationFailed(e: FirebaseException) {
-            _uiState.update { it.copy(isLoading = false, error = e.message, phoneAuthState = PhoneAuthState.Idle) }
+            val friendlyMessage = when {
+                e.message?.contains("BILLING_NOT_ENABLED") == true ->
+                    "Phone sign-in is temporarily unavailable. Please try signing in with Google or email."
+                e.message?.contains("Invalid format") == true ->
+                    "Please enter your phone number with country code (e.g., +91 7010373171)"
+                e.message?.contains("TOO_MANY_REQUESTS") == true ->
+                    "Too many attempts. Please try again later."
+                else -> e.message ?: "Phone verification failed"
+            }
+            _uiState.update { it.copy(isLoading = false, error = friendlyMessage, phoneAuthState = PhoneAuthState.Idle) }
         }
 
         override fun onCodeSent(verificationId: String, token: PhoneAuthProvider.ForceResendingToken) {

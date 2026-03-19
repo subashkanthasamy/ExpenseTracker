@@ -67,8 +67,12 @@ fun ExpenseTrackerTheme(
     themePreferences: ThemePreferences? = null,
     content: @Composable () -> Unit
 ) {
-    val themeMode by themePreferences?.getThemeMode()?.collectAsState(initial = ThemePreferences.THEME_SYSTEM)
-        ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(ThemePreferences.THEME_SYSTEM) }
+    val themeFlow = themePreferences?.getThemeMode()
+    val themeMode by if (themeFlow != null) {
+        themeFlow.collectAsState(initial = ThemePreferences.THEME_SYSTEM)
+    } else {
+        androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(ThemePreferences.THEME_SYSTEM) }
+    }
 
     val isDark = when (themeMode) {
         ThemePreferences.THEME_LIGHT -> false

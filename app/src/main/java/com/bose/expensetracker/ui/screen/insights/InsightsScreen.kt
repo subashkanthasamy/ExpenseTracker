@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -166,9 +167,10 @@ fun InsightsScreen(viewModel: InsightsViewModel) {
                                     containerColor = if (selected) AccentPurple else MaterialTheme.colorScheme.surfaceContainerHigh,
                                     contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                                 ),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                                 modifier = Modifier.weight(1f).height(36.dp)
                             ) {
-                                Text(period.label, style = MaterialTheme.typography.labelLarge)
+                                Text(period.label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
                         }
                     }

@@ -86,9 +86,10 @@ class NotificationHelper @Inject constructor(
             putExtra("nav_destination", "sms_report")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
+        val baseRequestCode = pendingSmsId.hashCode() and 0x7FFFFFFF
         val contentPending = PendingIntent.getActivity(
             context,
-            pendingSmsId.hashCode() * 3,
+            baseRequestCode,
             contentIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -100,7 +101,7 @@ class NotificationHelper @Inject constructor(
         }
         val confirmPending = PendingIntent.getBroadcast(
             context,
-            pendingSmsId.hashCode() * 2,
+            baseRequestCode + 1,
             confirmIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -112,7 +113,7 @@ class NotificationHelper @Inject constructor(
         }
         val dismissPending = PendingIntent.getBroadcast(
             context,
-            pendingSmsId.hashCode() * 2 + 1,
+            baseRequestCode + 2,
             dismissIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

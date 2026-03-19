@@ -76,12 +76,17 @@ class RecurringExpenseWorker @AssistedInject constructor(
             }
             RecurringExpenseEntity.FREQ_MONTHLY -> {
                 val dom = recurring.dayOfMonth ?: 1
-                today.get(Calendar.DAY_OF_MONTH) == dom
+                val todayDom = today.get(Calendar.DAY_OF_MONTH)
+                val lastDayOfMonth = today.getActualMaximum(Calendar.DAY_OF_MONTH)
+                todayDom == dom || (dom > lastDayOfMonth && todayDom == lastDayOfMonth)
             }
             RecurringExpenseEntity.FREQ_YEARLY -> {
                 val dom = recurring.dayOfMonth ?: 1
                 val moy = recurring.monthOfYear ?: 1
-                today.get(Calendar.DAY_OF_MONTH) == dom && (today.get(Calendar.MONTH) + 1) == moy
+                val todayDom = today.get(Calendar.DAY_OF_MONTH)
+                val lastDayOfMonth = today.getActualMaximum(Calendar.DAY_OF_MONTH)
+                val dayMatch = todayDom == dom || (dom > lastDayOfMonth && todayDom == lastDayOfMonth)
+                dayMatch && (today.get(Calendar.MONTH) + 1) == moy
             }
             else -> false
         }
