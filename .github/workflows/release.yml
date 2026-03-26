@@ -24,12 +24,12 @@ jobs:
       - name: Decode google-services.json
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
 
       - name: Decode keystore
         env:
           RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
-        run: echo "$RELEASE_KEYSTORE" | base64 --decode > app/release-keystore.jks
+        run: printf '%s' "$RELEASE_KEYSTORE" | base64 --decode > app/release-keystore.jks
 
       - name: Build release APK & AAB
         env:
