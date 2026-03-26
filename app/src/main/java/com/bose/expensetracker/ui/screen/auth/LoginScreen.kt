@@ -23,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -49,7 +50,8 @@ fun LoginScreen(
     onNavigateToDashboard: () -> Unit,
     onNavigateToHouseholdSetup: () -> Unit,
     onGoogleSignInClick: () -> Unit,
-    onPhoneSignInClick: () -> Unit
+    onPhoneSignInClick: () -> Unit,
+    onSandboxClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var email by remember { mutableStateOf("") }
@@ -169,6 +171,28 @@ fun LoginScreen(
 
         TextButton(onClick = onNavigateToSignUp) {
             Text("Don't have an account? Sign Up")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        HorizontalDivider(modifier = Modifier.fillMaxWidth())
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Or explore without an account",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedButton(
+            onClick = onSandboxClick,
+            enabled = !uiState.isLoading,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Try Demo")
         }
 
         uiState.error?.let { error ->

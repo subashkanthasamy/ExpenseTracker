@@ -5,6 +5,7 @@ import com.bose.expensetracker.data.local.dao.LiabilityDao
 import com.bose.expensetracker.data.local.entity.SyncStatus
 import com.bose.expensetracker.data.mapper.toDomain
 import com.bose.expensetracker.data.mapper.toEntity
+import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.Asset
 import com.bose.expensetracker.domain.model.Liability
@@ -22,7 +23,8 @@ import javax.inject.Singleton
 class NetWorthRepositoryImpl @Inject constructor(
     private val assetDao: AssetDao,
     private val liabilityDao: LiabilityDao,
-    private val firestoreDataSource: FirestoreDataSource
+    private val firestoreDataSource: FirestoreDataSource,
+    private val sandboxPreferences: SandboxPreferences
 ) : NetWorthRepository {
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -40,6 +42,10 @@ class NetWorthRepositoryImpl @Inject constructor(
     override suspend fun getLiabilityById(id: String): Liability? = liabilityDao.getLiabilityById(id)?.toDomain()
 
     override suspend fun addAsset(asset: Asset): Result<Unit> = runCatching {
+        if (sandboxPreferences.isSandboxCached) {
+            assetDao.insert(asset.toEntity(SyncStatus.SYNCED))
+            return@runCatching
+        }
         assetDao.insert(asset.toEntity(SyncStatus.PENDING_CREATE))
         try {
             firestoreDataSource.addAsset(asset.householdId, asset)
@@ -48,6 +54,10 @@ class NetWorthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateAsset(asset: Asset): Result<Unit> = runCatching {
+        if (sandboxPreferences.isSandboxCached) {
+            assetDao.update(asset.toEntity(SyncStatus.SYNCED))
+            return@runCatching
+        }
         assetDao.update(asset.toEntity(SyncStatus.PENDING_UPDATE))
         try {
             firestoreDataSource.updateAsset(asset.householdId, asset)
@@ -57,6 +67,10 @@ class NetWorthRepositoryImpl @Inject constructor(
 
     override suspend fun deleteAsset(id: String): Result<Unit> = runCatching {
         val asset = assetDao.getAssetById(id) ?: return@runCatching
+        if (sandboxPreferences.isSandboxCached) {
+            assetDao.deleteById(id)
+            return@runCatching
+        }
         assetDao.update(asset.copy(syncStatus = SyncStatus.PENDING_DELETE))
         try {
             firestoreDataSource.deleteAsset(asset.householdId, id)
@@ -65,6 +79,10 @@ class NetWorthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addLiability(liability: Liability): Result<Unit> = runCatching {
+        if (sandboxPreferences.isSandboxCached) {
+            liabilityDao.insert(liability.toEntity(SyncStatus.SYNCED))
+            return@runCatching
+        }
         liabilityDao.insert(liability.toEntity(SyncStatus.PENDING_CREATE))
         try {
             firestoreDataSource.addLiability(liability.householdId, liability)
@@ -73,6 +91,10 @@ class NetWorthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateLiability(liability: Liability): Result<Unit> = runCatching {
+        if (sandboxPreferences.isSandboxCached) {
+            liabilityDao.update(liability.toEntity(SyncStatus.SYNCED))
+            return@runCatching
+        }
         liabilityDao.update(liability.toEntity(SyncStatus.PENDING_UPDATE))
         try {
             firestoreDataSource.updateLiability(liability.householdId, liability)
@@ -82,6 +104,10 @@ class NetWorthRepositoryImpl @Inject constructor(
 
     override suspend fun deleteLiability(id: String): Result<Unit> = runCatching {
         val liability = liabilityDao.getLiabilityById(id) ?: return@runCatching
+        if (sandboxPreferences.isSandboxCached) {
+            liabilityDao.deleteById(id)
+            return@runCatching
+        }
         liabilityDao.update(liability.copy(syncStatus = SyncStatus.PENDING_DELETE))
         try {
             firestoreDataSource.deleteLiability(liability.householdId, id)
@@ -132,6 +158,7 @@ class NetWorthRepositoryImpl @Inject constructor(
     }
 
     override fun startRealtimeSync(householdId: String) {
+        if (sandboxPreferences.isSandboxCached) return
         assetSyncJob?.cancel()
         assetSyncJob = scope.launch {
             firestoreDataSource.observeAssets(householdId).collect { assets ->

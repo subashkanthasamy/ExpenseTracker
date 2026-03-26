@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.User
+import com.bose.expensetracker.data.preferences.SandboxPreferences
+import com.bose.expensetracker.data.sandbox.SandboxDataSeeder
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
@@ -46,7 +48,9 @@ sealed class AuthEvent {
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val householdRepository: HouseholdRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val sandboxPreferences: SandboxPreferences,
+    private val sandboxDataSeeder: SandboxDataSeeder
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -125,6 +129,20 @@ class AuthViewModel @Inject constructor(
                 .onFailure { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.message) }
                 }
+        }
+    }
+
+    fun enterSandbox() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            try {
+                sandboxPreferences.setSandboxActive(true)
+                sandboxDataSeeder.seedIfNeeded()
+                _uiState.update { it.copy(isLoading = false) }
+                _events.emit(AuthEvent.NavigateToDashboard)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = "Failed to enter sandbox: ${e.message}") }
+            }
         }
     }
 

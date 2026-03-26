@@ -4,6 +4,8 @@ import com.bose.expensetracker.data.local.dao.AssetDao
 import com.bose.expensetracker.data.local.dao.CategoryDao
 import com.bose.expensetracker.data.local.dao.ExpenseDao
 import com.bose.expensetracker.data.local.dao.LiabilityDao
+import com.bose.expensetracker.data.preferences.SandboxConstants
+import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.User
@@ -18,7 +20,8 @@ class HouseholdRepositoryImpl @Inject constructor(
     private val expenseDao: ExpenseDao,
     private val categoryDao: CategoryDao,
     private val assetDao: AssetDao,
-    private val liabilityDao: LiabilityDao
+    private val liabilityDao: LiabilityDao,
+    private val sandboxPreferences: SandboxPreferences
 ) : HouseholdRepository {
 
     override suspend fun createHousehold(name: String, userId: String): Result<Household> =
@@ -46,12 +49,32 @@ class HouseholdRepositoryImpl @Inject constructor(
 
     override suspend fun getHousehold(householdId: String): Result<Household> =
         runCatching {
+            if (sandboxPreferences.isSandboxCached) {
+                return@runCatching Household(
+                    id = SandboxConstants.SANDBOX_HOUSEHOLD_ID,
+                    name = "Demo Household",
+                    memberUids = listOf(SandboxConstants.SANDBOX_USER_ID),
+                    inviteCode = "DEMO00",
+                    createdAt = System.currentTimeMillis()
+                )
+            }
             firestoreDataSource.getHousehold(householdId)
                 ?: throw Exception("Household not found")
         }
 
     override suspend fun getHouseholdMembers(householdId: String): Result<List<User>> =
         runCatching {
+            if (sandboxPreferences.isSandboxCached) {
+                return@runCatching listOf(
+                    User(
+                        uid = SandboxConstants.SANDBOX_USER_ID,
+                        email = "demo@example.com",
+                        displayName = SandboxConstants.SANDBOX_DISPLAY_NAME,
+                        householdIds = listOf(SandboxConstants.SANDBOX_HOUSEHOLD_ID),
+                        activeHouseholdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
+                    )
+                )
+            }
             val household = firestoreDataSource.getHousehold(householdId)
                 ?: throw Exception("Household not found")
             household.memberUids.mapNotNull { uid ->
@@ -60,12 +83,24 @@ class HouseholdRepositoryImpl @Inject constructor(
         }
 
     override suspend fun getUserHouseholdId(userId: String): String? {
+        if (sandboxPreferences.isSandboxCached) return SandboxConstants.SANDBOX_HOUSEHOLD_ID
         return firestoreDataSource.getUserFromServer(userId)?.activeHouseholdId
             ?: firestoreDataSource.getUser(userId)?.activeHouseholdId
     }
 
     override suspend fun getUserHouseholds(userId: String): Result<List<Household>> =
         runCatching {
+            if (sandboxPreferences.isSandboxCached) {
+                return@runCatching listOf(
+                    Household(
+                        id = SandboxConstants.SANDBOX_HOUSEHOLD_ID,
+                        name = "Demo Household",
+                        memberUids = listOf(SandboxConstants.SANDBOX_USER_ID),
+                        inviteCode = "DEMO00",
+                        createdAt = System.currentTimeMillis()
+                    )
+                )
+            }
             val user = firestoreDataSource.getUserFromServer(userId)
                 ?: throw Exception("User not found")
             user.householdIds.mapNotNull { hId ->

@@ -1,6 +1,8 @@
 package com.bose.expensetracker.data.repository
 
 import android.app.Activity
+import com.bose.expensetracker.data.preferences.SandboxConstants
+import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.remote.AuthDataSource
 import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.User
@@ -15,7 +17,8 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val authDataSource: AuthDataSource,
-    private val firestoreDataSource: FirestoreDataSource
+    private val firestoreDataSource: FirestoreDataSource,
+    private val sandboxPreferences: SandboxPreferences
 ) : AuthRepository {
 
     override val currentUser: Flow<User?> = authDataSource.currentUser.map { firebaseUser ->
@@ -130,9 +133,13 @@ class AuthRepositoryImpl @Inject constructor(
         authDataSource.signOut()
     }
 
-    override fun getCurrentUserId(): String? = authDataSource.getCurrentUser()?.uid
+    override fun getCurrentUserId(): String? {
+        if (sandboxPreferences.isSandboxCached) return SandboxConstants.SANDBOX_USER_ID
+        return authDataSource.getCurrentUser()?.uid
+    }
 
     override fun getCurrentUserDisplayName(): String? {
+        if (sandboxPreferences.isSandboxCached) return SandboxConstants.SANDBOX_DISPLAY_NAME
         val user = authDataSource.getCurrentUser() ?: return null
         return user.displayName ?: user.phoneNumber ?: user.email
     }

@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteForever
@@ -456,39 +457,41 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Biometric Lock
-            SettingsToggleCard(
-                icon = Icons.Default.Fingerprint,
-                title = "Biometric Lock",
-                subtitle = "Require fingerprint/face to open app",
-                checked = uiState.biometricEnabled,
-                onCheckedChange = { viewModel.setBiometricEnabled(it) }
-            )
+            if (!uiState.isSandbox) {
+                // Biometric Lock
+                SettingsToggleCard(
+                    icon = Icons.Default.Fingerprint,
+                    title = "Biometric Lock",
+                    subtitle = "Require fingerprint/face to open app",
+                    checked = uiState.biometricEnabled,
+                    onCheckedChange = { viewModel.setBiometricEnabled(it) }
+                )
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-            // SMS Auto-Import
-            SettingsToggleCard(
-                icon = Icons.Default.Sms,
-                title = "SMS Auto-Import",
-                subtitle = "Automatically create expenses from bank SMS",
-                checked = uiState.smsImportEnabled,
-                onCheckedChange = { enabled ->
-                    if (enabled) {
-                        val permissions = buildList {
-                            add(Manifest.permission.RECEIVE_SMS)
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                add(Manifest.permission.POST_NOTIFICATIONS)
-                            }
-                        }.toTypedArray()
-                        smsPermissionLauncher.launch(permissions)
-                    } else {
-                        viewModel.setSmsImportEnabled(false)
+                // SMS Auto-Import
+                SettingsToggleCard(
+                    icon = Icons.Default.Sms,
+                    title = "SMS Auto-Import",
+                    subtitle = "Automatically create expenses from bank SMS",
+                    checked = uiState.smsImportEnabled,
+                    onCheckedChange = { enabled ->
+                        if (enabled) {
+                            val permissions = buildList {
+                                add(Manifest.permission.RECEIVE_SMS)
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    add(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            }.toTypedArray()
+                            smsPermissionLauncher.launch(permissions)
+                        } else {
+                            viewModel.setSmsImportEnabled(false)
+                        }
                     }
-                }
-            )
+                )
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             // Export Data
             SettingsActionCard(
@@ -527,30 +530,58 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Sign Out button
-            Button(
-                onClick = { viewModel.signOut() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFF44336)
-                )
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Logout,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "Sign Out",
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp
-                )
+            if (uiState.isSandbox) {
+                // Exit Demo button
+                Button(
+                    onClick = { viewModel.exitSandbox() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF44336)
+                    )
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ExitToApp,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Exit Demo",
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp
+                    )
+                }
+            } else {
+                // Sign Out button
+                Button(
+                    onClick = { viewModel.signOut() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF44336)
+                    )
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Sign Out",
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))

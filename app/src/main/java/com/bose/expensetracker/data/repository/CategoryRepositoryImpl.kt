@@ -4,6 +4,7 @@ import com.bose.expensetracker.data.local.dao.CategoryDao
 import com.bose.expensetracker.data.local.entity.SyncStatus
 import com.bose.expensetracker.data.mapper.toDomain
 import com.bose.expensetracker.data.mapper.toEntity
+import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.domain.repository.CategoryRepository
@@ -20,7 +21,8 @@ import javax.inject.Singleton
 @Singleton
 class CategoryRepositoryImpl @Inject constructor(
     private val categoryDao: CategoryDao,
-    private val firestoreDataSource: FirestoreDataSource
+    private val firestoreDataSource: FirestoreDataSource,
+    private val sandboxPreferences: SandboxPreferences
 ) : CategoryRepository {
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -37,6 +39,10 @@ class CategoryRepositoryImpl @Inject constructor(
         categoryDao.getCategoryById(id)?.toDomain()
 
     override suspend fun addCategory(category: Category): Result<Unit> = runCatching {
+        if (sandboxPreferences.isSandboxCached) {
+            categoryDao.insert(category.toEntity(SyncStatus.SYNCED))
+            return@runCatching
+        }
         categoryDao.insert(category.toEntity(SyncStatus.PENDING_CREATE))
         try {
             firestoreDataSource.addCategory(category.householdId, category)
@@ -45,6 +51,10 @@ class CategoryRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateCategory(category: Category): Result<Unit> = runCatching {
+        if (sandboxPreferences.isSandboxCached) {
+            categoryDao.update(category.toEntity(SyncStatus.SYNCED))
+            return@runCatching
+        }
         categoryDao.update(category.toEntity(SyncStatus.PENDING_UPDATE))
         try {
             firestoreDataSource.updateCategory(category.householdId, category)
@@ -54,6 +64,10 @@ class CategoryRepositoryImpl @Inject constructor(
 
     override suspend fun deleteCategory(id: String): Result<Unit> = runCatching {
         val category = categoryDao.getCategoryById(id) ?: return@runCatching
+        if (sandboxPreferences.isSandboxCached) {
+            categoryDao.deleteById(id)
+            return@runCatching
+        }
         categoryDao.update(category.copy(syncStatus = SyncStatus.PENDING_DELETE))
         try {
             firestoreDataSource.deleteCategory(category.householdId, id)
@@ -122,6 +136,7 @@ class CategoryRepositoryImpl @Inject constructor(
     }
 
     override fun startRealtimeSync(householdId: String) {
+        if (sandboxPreferences.isSandboxCached) return
         if (syncJob?.isActive == true && currentSyncHouseholdId == householdId) {
             syncRefCount++
             return

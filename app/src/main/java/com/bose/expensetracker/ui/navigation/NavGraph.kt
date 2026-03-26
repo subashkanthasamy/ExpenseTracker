@@ -125,7 +125,8 @@ fun ExpenseTrackerNavGraph(
                         }
                     }
                 },
-                onPhoneSignInClick = { navController.navigate(PhoneAuthRoute) }
+                onPhoneSignInClick = { navController.navigate(PhoneAuthRoute) },
+                onSandboxClick = { authViewModel.enterSandbox() }
             )
         }
 
