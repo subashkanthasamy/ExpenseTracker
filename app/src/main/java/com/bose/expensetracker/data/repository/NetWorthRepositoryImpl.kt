@@ -132,6 +132,7 @@ class NetWorthRepositoryImpl @Inject constructor(
     }
 
     override fun startRealtimeSync(householdId: String) {
+        if (householdId == com.bose.expensetracker.data.preferences.SandboxConstants.SANDBOX_HOUSEHOLD_ID) return
         assetSyncJob?.cancel()
         assetSyncJob = scope.launch {
             firestoreDataSource.observeAssets(householdId).collect { assets ->

@@ -4,20 +4,22 @@ import android.content.Context
 import androidx.room.Room
 import com.bose.expensetracker.data.local.ExpenseTrackerDatabase
 import com.bose.expensetracker.data.local.dao.AssetDao
+import com.bose.expensetracker.data.local.dao.BudgetDao
 import com.bose.expensetracker.data.local.dao.CategoryDao
 import com.bose.expensetracker.data.local.dao.ExpenseDao
 import com.bose.expensetracker.data.local.dao.LiabilityDao
-import com.bose.expensetracker.data.local.dao.BudgetDao
-import com.bose.expensetracker.data.local.dao.RecurringExpenseDao
-import com.bose.expensetracker.data.local.dao.SavingsGoalDao
 import com.bose.expensetracker.data.local.dao.PendingSmsDao
 import com.bose.expensetracker.data.local.dao.ProcessedSmsDao
+import com.bose.expensetracker.data.local.dao.RecurringExpenseDao
 import com.bose.expensetracker.data.local.dao.ReminderDao
-import com.bose.expensetracker.data.repository.BudgetRepositoryImpl
-import com.bose.expensetracker.domain.repository.BudgetRepository
+import com.bose.expensetracker.data.local.dao.SavingsGoalDao
 import com.bose.expensetracker.data.preferences.BiometricPreferences
+import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.preferences.SmsImportPreferences
 import com.bose.expensetracker.data.preferences.ThemePreferences
+import com.bose.expensetracker.data.repository.BudgetRepositoryImpl
+import com.bose.expensetracker.data.sandbox.SandboxDataSeeder
+import com.bose.expensetracker.domain.repository.BudgetRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
@@ -99,4 +101,14 @@ object AppModule {
     @Singleton
     fun provideThemePreferences(@ApplicationContext context: Context): ThemePreferences =
         ThemePreferences(context)
+
+    @Provides
+    @Singleton
+    fun provideSandboxPreferences(@ApplicationContext context: Context): SandboxPreferences =
+        SandboxPreferences(context)
+
+    @Provides
+    @Singleton
+    fun provideSandboxDataSeeder(categoryDao: CategoryDao, expenseDao: ExpenseDao): SandboxDataSeeder =
+        SandboxDataSeeder(categoryDao, expenseDao)
 }

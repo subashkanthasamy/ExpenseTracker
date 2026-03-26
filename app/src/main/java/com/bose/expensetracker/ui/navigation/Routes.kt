@@ -21,3 +21,7 @@ import kotlinx.serialization.Serializable
 @Serializable object BudgetRoute
 @Serializable object RecurringRoute
 @Serializable object SavingsRoute
+@Serializable object TimelineRoute
+@Serializable object SmartInsightsRoute
+@Serializable object AnalyticsRoute
+@Serializable object FinancialCoachRoute

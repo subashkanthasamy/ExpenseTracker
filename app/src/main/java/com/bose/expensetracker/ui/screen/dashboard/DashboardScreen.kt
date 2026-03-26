@@ -14,31 +14,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.FlightTakeoff
-import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.LocalGroceryStore
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Widgets
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,28 +37,36 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bose.expensetracker.ui.components.GradientCard
 import com.bose.expensetracker.ui.components.SectionHeader
-import com.bose.expensetracker.ui.components.TransactionItem
+import com.bose.expensetracker.ui.components.SmartInsightCard
 import com.bose.expensetracker.ui.components.formatCurrency
+import com.bose.expensetracker.ui.components.getCategoryEmoji
 import com.bose.expensetracker.ui.theme.AccentPurple
+import com.bose.expensetracker.ui.theme.ExpenseRed
+import com.bose.expensetracker.ui.theme.IncomeGreen
+import com.bose.expensetracker.ui.theme.OverBudgetRed
+import com.bose.expensetracker.ui.theme.SavingsGreen
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
-    onAddExpense: () -> Unit,
     onEditExpense: (String) -> Unit,
     onViewAllExpenses: () -> Unit,
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToReminders: () -> Unit = {},
-    onNavigateToHouseholdSetup: () -> Unit = {}
+    onNavigateToHouseholdSetup: () -> Unit = {},
+    onNavigateToInsights: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToCoach: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -109,12 +105,12 @@ fun DashboardScreen(
                     "You are not associated with any household. Create or join one to start tracking expenses.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                androidx.compose.material3.Button(
+                Button(
                     onClick = onNavigateToHouseholdSetup,
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = AccentPurple)
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)
                 ) {
                     Text("Create or Join Household", color = Color.White)
                 }
@@ -126,7 +122,7 @@ fun DashboardScreen(
                     .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Top bar
+                // Greeting header
                 item {
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
@@ -134,57 +130,37 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { }) {
-                            Icon(
-                                Icons.Default.Widgets,
-                                contentDescription = "Dashboard",
-                                tint = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier.size(26.dp)
+                        Column {
+                            Text(
+                                text = getGreeting().uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = IncomeGreen,
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = getCurrentMonthYear(),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         }
-                        Text(
-                            "Home",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
                         Row {
-                            IconButton(onClick = onNavigateToReminders) {
-                                Icon(
-                                    Icons.Default.Alarm,
-                                    contentDescription = "Reminders",
-                                    tint = MaterialTheme.colorScheme.onBackground,
-                                    modifier = Modifier.size(26.dp)
-                                )
-                            }
                             IconButton(onClick = onNavigateToNotifications) {
                                 Icon(
                                     Icons.Default.Notifications,
-                                    contentDescription = "SMS Report",
+                                    contentDescription = "Notifications",
                                     tint = MaterialTheme.colorScheme.onBackground,
-                                    modifier = Modifier.size(26.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
-                        }
-                    }
-                }
-
-                // Person filter chips
-                if (uiState.members.size > 1) {
-                    item {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            item {
-                                FilterChip(
-                                    selected = uiState.personFilter == null,
-                                    onClick = { viewModel.setPersonFilter(null) },
-                                    label = { Text("All") }
-                                )
-                            }
-                            items(uiState.members) { member ->
-                                FilterChip(
-                                    selected = uiState.personFilter == member.uid,
-                                    onClick = { viewModel.setPersonFilter(member.uid) },
-                                    label = { Text(member.displayName) }
+                            IconButton(onClick = onNavigateToSettings) {
+                                Icon(
+                                    Icons.Default.Settings,
+                                    contentDescription = "Settings",
+                                    tint = MaterialTheme.colorScheme.onBackground,
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                         }
@@ -196,11 +172,12 @@ fun DashboardScreen(
                     GradientCard {
                         Column {
                             Text(
-                                "Total Balance",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.85f)
+                                "TOTAL BALANCE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.7f),
+                                letterSpacing = 1.5.sp
                             )
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 formatCurrency(uiState.monthTotal),
                                 style = MaterialTheme.typography.headlineLarge.copy(
@@ -209,78 +186,242 @@ fun DashboardScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
-                            Spacer(modifier = Modifier.height(20.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // Income
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(28.dp)
-                                            .background(
-                                                Color.White.copy(alpha = 0.2f),
-                                                CircleShape
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.KeyboardArrowDown,
-                                            contentDescription = "Income",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(18.dp)
+                                // Income pill
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(
+                                            Color.White.copy(alpha = 0.15f),
+                                            RoundedCornerShape(12.dp)
                                         )
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column {
-                                        Text(
-                                            "Income",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.7f)
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(IncomeGreen, CircleShape)
                                         )
-                                        Text(
-                                            formatCurrency(0.0),
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color.White
-                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text(
+                                                "INCOME",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.White.copy(alpha = 0.6f),
+                                                fontSize = 9.sp
+                                            )
+                                            Text(
+                                                formatCurrency(0.0),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White
+                                            )
+                                        }
                                     }
                                 }
-                                // Expenses
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(28.dp)
-                                            .background(
-                                                Color.White.copy(alpha = 0.2f),
-                                                CircleShape
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.KeyboardArrowUp,
-                                            contentDescription = "Expenses",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(18.dp)
+                                // Expense pill
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(
+                                            Color.White.copy(alpha = 0.15f),
+                                            RoundedCornerShape(12.dp)
                                         )
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column {
-                                        Text(
-                                            "Expenses",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.7f)
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(ExpenseRed, CircleShape)
                                         )
-                                        Text(
-                                            formatCurrency(uiState.monthTotal),
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color.White
-                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text(
+                                                "EXPENSE",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.White.copy(alpha = 0.6f),
+                                                fontSize = 9.sp
+                                            )
+                                            Text(
+                                                formatCurrency(uiState.monthTotal),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White
+                                            )
+                                        }
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Weekly Trend
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Weekly Trend",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.TrendingUp,
+                                contentDescription = null,
+                                tint = IncomeGreen,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            val changePercent = if (uiState.lastMonthTotal > 0) {
+                                ((uiState.monthTotal - uiState.lastMonthTotal) / uiState.lastMonthTotal * 100).toInt()
+                            } else 0
+                            Text(
+                                text = "${if (changePercent >= 0) "+" else ""}${changePercent}% from last week",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // Smart Insights
+                if (uiState.categoryBreakdown.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "\uD83D\uDCA1 Smart Insights",
+                            actionText = "SEE ALL →",
+                            onAction = onNavigateToInsights
+                        )
+                    }
+
+                    // Top insight cards
+                    val topCategories = uiState.categoryBreakdown.take(2)
+                    items(topCategories) { cat ->
+                        val percentChange = (cat.percentage * 100).toInt()
+                        SmartInsightCard(
+                            emoji = getCategoryEmoji(cat.categoryName),
+                            title = "${percentChange}% on ${cat.categoryName.lowercase()}",
+                            amount = formatCurrency(cat.amount),
+                            badgeLabel = if (percentChange > 25) "OVER BUDGET" else "SAVINGS",
+                            badgeColor = if (percentChange > 25) OverBudgetRed else SavingsGreen
+                        )
+                    }
+                }
+
+                // Recent transactions
+                if (uiState.recentExpenses.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "Recent",
+                            actionText = "TIMELINE →",
+                            onAction = onViewAllExpenses
+                        )
+                    }
+
+                    items(uiState.recentExpenses.take(5)) { expense ->
+                        val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+                        val subtitle = "${expense.categoryName} • ${timeFormat.format(Date(expense.date))}"
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onEditExpense(expense.id) },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            RoundedCornerShape(12.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        getCategoryEmoji(expense.categoryName),
+                                        fontSize = 22.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        expense.notes.ifBlank { expense.categoryName },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        subtitle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Text(
+                                    text = "-${formatCurrency(expense.amount)}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ExpenseRed
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Financial Coach card
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToCoach() },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = AccentPurple.copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("\uD83E\uDD16", fontSize = 28.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Financial Coach",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "Get AI-powered spending insights",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                "Ask \u2192",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = AccentPurple,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -309,93 +450,23 @@ fun DashboardScreen(
                     }
                 }
 
-                // Transactions section
-                if (uiState.recentExpenses.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = "Transactions",
-                            actionText = "See All",
-                            onAction = onViewAllExpenses,
-                            modifier = Modifier.clickable { onViewAllExpenses() }
-                                .padding(0.dp) // reset; the clickable is only on "See All" text area
-                        )
-                    }
-
-                    items(uiState.recentExpenses.take(5)) { expense ->
-                        val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
-                        val dateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
-                        val timeString = timeFormat.format(Date(expense.date))
-                        val dateString = dateFormat.format(Date(expense.date))
-                        val subtitle = "$dateString, $timeString"
-
-                        TransactionItem(
-                            icon = getCategoryIcon(expense.categoryName),
-                            iconBackground = getCategoryColor(expense.categoryName),
-                            title = expense.categoryName,
-                            subtitle = subtitle,
-                            amount = -expense.amount, // negative for expenses
-                            modifier = Modifier.clickable { onEditExpense(expense.id) }
-                        )
-                    }
-                }
-
-                // Bottom spacer for FAB
-                item { Spacer(modifier = Modifier.height(80.dp)) }
+                // Bottom spacer
+                item { Spacer(modifier = Modifier.height(24.dp)) }
             }
         }
-
-        // Purple FAB
-        FloatingActionButton(
-            onClick = onAddExpense,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(24.dp),
-            containerColor = AccentPurple,
-            contentColor = Color.White
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Expense")
-        }
     }
 }
 
-/**
- * Maps a category name to an appropriate Material icon.
- */
-private fun getCategoryIcon(categoryName: String): ImageVector {
-    val name = categoryName.lowercase()
+private fun getGreeting(): String {
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     return when {
-        name.contains("grocery") || name.contains("groceries") -> Icons.Default.LocalGroceryStore
-        name.contains("food") || name.contains("restaurant") || name.contains("dining") -> Icons.Default.Fastfood
-        name.contains("shopping") || name.contains("shop") -> Icons.Default.ShoppingCart
-        name.contains("transport") || name.contains("fuel") || name.contains("car") || name.contains("travel") -> Icons.Default.DirectionsCar
-        name.contains("flight") || name.contains("trip") -> Icons.Default.FlightTakeoff
-        name.contains("rent") || name.contains("home") || name.contains("house") -> Icons.Default.Home
-        name.contains("health") || name.contains("medical") || name.contains("medicine") -> Icons.Default.HealthAndSafety
-        name.contains("education") || name.contains("school") || name.contains("course") -> Icons.Default.School
-        name.contains("entertainment") || name.contains("movie") -> Icons.Default.Movie
-        name.contains("phone") || name.contains("mobile") || name.contains("recharge") -> Icons.Default.PhoneAndroid
-        name.contains("bill") || name.contains("utility") || name.contains("electricity") -> Icons.Default.Payments
-        else -> Icons.Default.Receipt
+        hour < 12 -> "Good Morning \uD83C\uDF1E"
+        hour < 17 -> "Good Afternoon \u2600\uFE0F"
+        else -> "Good Evening \uD83C\uDF19"
     }
 }
 
-/**
- * Maps a category name to a color for the icon background.
- */
-private fun getCategoryColor(categoryName: String): Color {
-    val name = categoryName.lowercase()
-    return when {
-        name.contains("grocery") || name.contains("groceries") -> Color(0xFF4CAF50)
-        name.contains("food") || name.contains("restaurant") || name.contains("dining") -> Color(0xFFFF9800)
-        name.contains("shopping") || name.contains("shop") -> Color(0xFFE91E63)
-        name.contains("transport") || name.contains("fuel") || name.contains("car") -> Color(0xFF2196F3)
-        name.contains("flight") || name.contains("trip") || name.contains("travel") -> Color(0xFF00BCD4)
-        name.contains("rent") || name.contains("home") || name.contains("house") -> Color(0xFF795548)
-        name.contains("health") || name.contains("medical") -> Color(0xFFF44336)
-        name.contains("education") || name.contains("school") -> Color(0xFF3F51B5)
-        name.contains("entertainment") || name.contains("movie") -> Color(0xFF9C27B0)
-        name.contains("phone") || name.contains("mobile") -> Color(0xFF607D8B)
-        name.contains("bill") || name.contains("utility") -> Color(0xFFFF5722)
-        else -> Color(0xFF7B61FF)
-    }
+private fun getCurrentMonthYear(): String {
+    val format = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+    return format.format(Date())
 }

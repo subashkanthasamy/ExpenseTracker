@@ -1,5 +1,6 @@
 package com.bose.expensetracker.ui.navigation
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.speech.RecognizerIntent
@@ -13,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -23,8 +25,12 @@ import com.bose.expensetracker.ui.screen.auth.HouseholdSetupScreen
 import com.bose.expensetracker.ui.screen.auth.LoginScreen
 import com.bose.expensetracker.ui.screen.auth.PhoneAuthScreen
 import com.bose.expensetracker.ui.screen.auth.SignUpScreen
+import com.bose.expensetracker.ui.screen.budget.BudgetScreen
+import com.bose.expensetracker.ui.screen.budget.BudgetViewModel
 import com.bose.expensetracker.ui.screen.category.CategoryScreen
 import com.bose.expensetracker.ui.screen.category.CategoryViewModel
+import com.bose.expensetracker.ui.screen.coach.FinancialCoachScreen
+import com.bose.expensetracker.ui.screen.coach.FinancialCoachViewModel
 import com.bose.expensetracker.ui.screen.dashboard.DashboardScreen
 import com.bose.expensetracker.ui.screen.dashboard.DashboardViewModel
 import com.bose.expensetracker.ui.screen.expense.AddEditExpenseScreen
@@ -35,27 +41,25 @@ import com.bose.expensetracker.ui.screen.household.HouseholdScreen
 import com.bose.expensetracker.ui.screen.household.HouseholdViewModel
 import com.bose.expensetracker.ui.screen.insights.InsightsScreen
 import com.bose.expensetracker.ui.screen.insights.InsightsViewModel
+import com.bose.expensetracker.ui.screen.insights.SmartInsightsScreen
 import com.bose.expensetracker.ui.screen.networth.NetWorthScreen
 import com.bose.expensetracker.ui.screen.networth.NetWorthViewModel
-import com.bose.expensetracker.ui.screen.receipt.ReceiptScannerScreen
-import com.bose.expensetracker.ui.screen.receipt.ReceiptScannerViewModel
 import com.bose.expensetracker.ui.screen.notification.NotificationsScreen
 import com.bose.expensetracker.ui.screen.notification.NotificationsViewModel
-import com.bose.expensetracker.ui.screen.reminder.ReminderScreen
-import com.bose.expensetracker.ui.screen.budget.BudgetScreen
-import com.bose.expensetracker.ui.screen.budget.BudgetViewModel
+import com.bose.expensetracker.ui.screen.receipt.ReceiptScannerScreen
+import com.bose.expensetracker.ui.screen.receipt.ReceiptScannerViewModel
 import com.bose.expensetracker.ui.screen.recurring.RecurringScreen
 import com.bose.expensetracker.ui.screen.recurring.RecurringViewModel
+import com.bose.expensetracker.ui.screen.reminder.ReminderScreen
+import com.bose.expensetracker.ui.screen.reminder.ReminderViewModel
 import com.bose.expensetracker.ui.screen.savings.SavingsScreen
 import com.bose.expensetracker.ui.screen.savings.SavingsViewModel
-import com.bose.expensetracker.ui.screen.reminder.ReminderViewModel
 import com.bose.expensetracker.ui.screen.settings.SettingsScreen
 import com.bose.expensetracker.ui.screen.settings.SettingsViewModel
 import com.bose.expensetracker.ui.screen.voice.VoiceExpenseParser
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import androidx.credentials.exceptions.NoCredentialException
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -173,7 +177,6 @@ fun ExpenseTrackerNavGraph(
             val viewModel: DashboardViewModel = hiltViewModel()
             DashboardScreen(
                 viewModel = viewModel,
-                onAddExpense = { navController.navigate(AddEditExpenseRoute()) },
                 onEditExpense = { id -> navController.navigate(AddEditExpenseRoute(expenseId = id)) },
                 onViewAllExpenses = { navController.navigate(ExpenseListRoute) },
                 onNavigateToNotifications = { navController.navigate(NotificationsRoute) },
@@ -182,7 +185,10 @@ fun ExpenseTrackerNavGraph(
                     navController.navigate(HouseholdSetupRoute) {
                         popUpTo(0) { inclusive = true }
                     }
-                }
+                },
+                onNavigateToInsights = { navController.navigate(SmartInsightsRoute) },
+                onNavigateToSettings = { navController.navigate(SettingsRoute) },
+                onNavigateToCoach = { navController.navigate(FinancialCoachRoute) }
             )
         }
 
@@ -247,6 +253,28 @@ fun ExpenseTrackerNavGraph(
         composable<InsightsRoute> {
             val viewModel: InsightsViewModel = hiltViewModel()
             InsightsScreen(viewModel = viewModel)
+        }
+
+        composable<SmartInsightsRoute> {
+            val viewModel: InsightsViewModel = hiltViewModel()
+            SmartInsightsScreen(
+                viewModel = viewModel,
+                onNavigateToAnalytics = { navController.navigate(AnalyticsRoute) },
+                onNavigateToBudget = { navController.navigate(BudgetRoute) }
+            )
+        }
+
+        composable<AnalyticsRoute> {
+            val viewModel: InsightsViewModel = hiltViewModel()
+            InsightsScreen(viewModel = viewModel)
+        }
+
+        composable<FinancialCoachRoute> {
+            val viewModel: FinancialCoachViewModel = hiltViewModel()
+            FinancialCoachScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable<ReceiptScannerRoute> {

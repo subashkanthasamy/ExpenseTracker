@@ -1,6 +1,8 @@
 package com.bose.expensetracker.data.repository
 
 import android.app.Activity
+import com.bose.expensetracker.data.preferences.SandboxConstants
+import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.remote.AuthDataSource
 import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.User
@@ -15,16 +17,25 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val authDataSource: AuthDataSource,
-    private val firestoreDataSource: FirestoreDataSource
+    private val firestoreDataSource: FirestoreDataSource,
+    private val sandboxPreferences: SandboxPreferences
 ) : AuthRepository {
 
+    private val sandboxUser = User(
+        uid = SandboxConstants.SANDBOX_USER_ID,
+        email = "demo@sandbox.local",
+        displayName = SandboxConstants.SANDBOX_DISPLAY_NAME,
+        householdIds = listOf(SandboxConstants.SANDBOX_HOUSEHOLD_ID),
+        activeHouseholdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
+    )
+
     override val currentUser: Flow<User?> = authDataSource.currentUser.map { firebaseUser ->
+        if (sandboxPreferences.isSandboxCached) return@map sandboxUser
         if (firebaseUser == null) return@map null
         val existing = firestoreDataSource.getUser(firebaseUser.uid)
         if (existing != null) {
             existing
         } else {
-            // User doc missing — create it
             val user = User(
                 uid = firebaseUser.uid,
                 email = firebaseUser.email ?: "",
@@ -127,12 +138,17 @@ class AuthRepositoryImpl @Inject constructor(
         }
 
     override suspend fun signOut() {
+        sandboxPreferences.setSandboxActive(false)
         authDataSource.signOut()
     }
 
-    override fun getCurrentUserId(): String? = authDataSource.getCurrentUser()?.uid
+    override fun getCurrentUserId(): String? {
+        if (sandboxPreferences.isSandboxCached) return SandboxConstants.SANDBOX_USER_ID
+        return authDataSource.getCurrentUser()?.uid
+    }
 
     override fun getCurrentUserDisplayName(): String? {
+        if (sandboxPreferences.isSandboxCached) return SandboxConstants.SANDBOX_DISPLAY_NAME
         val user = authDataSource.getCurrentUser() ?: return null
         return user.displayName ?: user.phoneNumber ?: user.email
     }

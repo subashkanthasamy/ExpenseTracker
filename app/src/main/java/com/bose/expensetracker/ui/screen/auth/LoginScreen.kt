@@ -151,6 +151,16 @@ fun LoginScreen(
             Text("Sign in with Google")
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = { viewModel.enterSandboxMode() },
+            enabled = !uiState.isLoading,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("\uD83E\uDDEA Explore Demo")
+        }
+
         // Phone sign-in hidden until Firebase Blaze plan is enabled — flip to true to re-enable
         val showPhoneSignIn = false
         if (showPhoneSignIn) {

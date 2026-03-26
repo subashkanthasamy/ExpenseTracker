@@ -12,6 +12,7 @@ val Pink40 = Color(0xFF7D5260)
 
 // New Design System
 val GradientPurple = Color(0xFF7B61FF)
+val GradientPink = Color(0xFFE040FB)
 val GradientOrange = Color(0xFFFF8A65)
 
 // Light theme colors
@@ -21,6 +22,7 @@ val SurfaceWhite = Color(0xFFFFFFFF)
 // Dark theme colors
 val BackgroundDark = Color(0xFF121218)
 val SurfaceDark = Color(0xFF1E1E2A)
+val SurfaceDarkElevated = Color(0xFF252532)
 
 // Semantic colors (work on both light and dark)
 val IncomeGreen = Color(0xFF4CAF50)
@@ -39,3 +41,14 @@ val NavInactive = Color(0xFFBDBDBD)
 
 val CardBorder = Color(0xFFE8E8EE)
 val CardBorderDark = Color(0xFF2E2E3A)
+
+// Chat colors (Financial Coach)
+val ChatBotBubble = Color(0xFF1E1E2A)
+val ChatUserBubble = Color(0xFF7B61FF)
+
+// Insight badge colors
+val OverBudgetRed = Color(0xFFFF5252)
+val SavingsGreen = Color(0xFF66BB6A)
+
+// Score badge
+val ScoreBadgeGreen = Color(0xFF2E7D32)

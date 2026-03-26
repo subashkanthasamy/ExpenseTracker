@@ -4,6 +4,7 @@ import com.bose.expensetracker.data.local.dao.AssetDao
 import com.bose.expensetracker.data.local.dao.CategoryDao
 import com.bose.expensetracker.data.local.dao.ExpenseDao
 import com.bose.expensetracker.data.local.dao.LiabilityDao
+import com.bose.expensetracker.data.preferences.SandboxConstants
 import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.User
@@ -46,12 +47,32 @@ class HouseholdRepositoryImpl @Inject constructor(
 
     override suspend fun getHousehold(householdId: String): Result<Household> =
         runCatching {
+            if (householdId == SandboxConstants.SANDBOX_HOUSEHOLD_ID) {
+                return@runCatching Household(
+                    id = SandboxConstants.SANDBOX_HOUSEHOLD_ID,
+                    name = "Demo Household",
+                    memberUids = listOf(SandboxConstants.SANDBOX_USER_ID),
+                    inviteCode = "DEMO00",
+                    createdAt = System.currentTimeMillis()
+                )
+            }
             firestoreDataSource.getHousehold(householdId)
                 ?: throw Exception("Household not found")
         }
 
     override suspend fun getHouseholdMembers(householdId: String): Result<List<User>> =
         runCatching {
+            if (householdId == SandboxConstants.SANDBOX_HOUSEHOLD_ID) {
+                return@runCatching listOf(
+                    User(
+                        uid = SandboxConstants.SANDBOX_USER_ID,
+                        email = "demo@sandbox.local",
+                        displayName = SandboxConstants.SANDBOX_DISPLAY_NAME,
+                        householdIds = listOf(SandboxConstants.SANDBOX_HOUSEHOLD_ID),
+                        activeHouseholdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
+                    )
+                )
+            }
             val household = firestoreDataSource.getHousehold(householdId)
                 ?: throw Exception("Household not found")
             household.memberUids.mapNotNull { uid ->
@@ -60,6 +81,7 @@ class HouseholdRepositoryImpl @Inject constructor(
         }
 
     override suspend fun getUserHouseholdId(userId: String): String? {
+        if (userId == SandboxConstants.SANDBOX_USER_ID) return SandboxConstants.SANDBOX_HOUSEHOLD_ID
         return firestoreDataSource.getUserFromServer(userId)?.activeHouseholdId
             ?: firestoreDataSource.getUser(userId)?.activeHouseholdId
     }

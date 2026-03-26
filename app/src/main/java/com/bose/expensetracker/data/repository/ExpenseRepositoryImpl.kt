@@ -115,6 +115,7 @@ class ExpenseRepositoryImpl @Inject constructor(
     }
 
     override fun startRealtimeSync(householdId: String) {
+        if (householdId == com.bose.expensetracker.data.preferences.SandboxConstants.SANDBOX_HOUSEHOLD_ID) return
         // If already syncing the same household, just increment ref count
         if (syncJob?.isActive == true && currentSyncHouseholdId == householdId) {
             syncRefCount++

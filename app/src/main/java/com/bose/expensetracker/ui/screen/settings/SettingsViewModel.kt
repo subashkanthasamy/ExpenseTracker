@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.data.preferences.BiometricPreferences
 import com.bose.expensetracker.data.preferences.SmsImportPreferences
 import com.bose.expensetracker.data.preferences.ThemePreferences
+import com.bose.expensetracker.data.sandbox.SandboxDataSeeder
 import com.bose.expensetracker.domain.model.Expense
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.User
@@ -58,7 +59,8 @@ class SettingsViewModel @Inject constructor(
     private val importExpensesUseCase: ImportExpensesUseCase,
     private val biometricPreferences: BiometricPreferences,
     private val smsImportPreferences: SmsImportPreferences,
-    private val themePreferences: ThemePreferences
+    private val themePreferences: ThemePreferences,
+    private val sandboxDataSeeder: SandboxDataSeeder
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -142,6 +144,7 @@ class SettingsViewModel @Inject constructor(
 
     fun signOut() {
         viewModelScope.launch {
+            sandboxDataSeeder.clearSandboxData()
             authRepository.signOut()
             _signOutEvent.emit(Unit)
         }

@@ -122,6 +122,7 @@ class CategoryRepositoryImpl @Inject constructor(
     }
 
     override fun startRealtimeSync(householdId: String) {
+        if (householdId == com.bose.expensetracker.data.preferences.SandboxConstants.SANDBOX_HOUSEHOLD_ID) return
         if (syncJob?.isActive == true && currentSyncHouseholdId == householdId) {
             syncRefCount++
             return

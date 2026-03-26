@@ -15,8 +15,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.bose.expensetracker.data.preferences.BiometricPreferences
+import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.preferences.ThemePreferences
 import com.bose.expensetracker.domain.repository.HouseholdRepository
+import com.bose.expensetracker.ui.navigation.AddEditExpenseRoute
 import com.bose.expensetracker.ui.navigation.BottomNavBar
 import com.bose.expensetracker.ui.navigation.DashboardRoute
 import com.bose.expensetracker.ui.navigation.ExpenseTrackerNavGraph
@@ -46,6 +48,9 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var householdRepository: HouseholdRepository
 
+    @Inject
+    lateinit var sandboxPreferences: SandboxPreferences
+
     private var biometricAuthenticated = false
     private var householdChecked = false
 
@@ -58,6 +63,13 @@ class MainActivity : FragmentActivity() {
         navDestination = intent.getStringExtra("nav_destination")
 
         val currentUser = firebaseAuth.currentUser
+
+        // Skip biometric in sandbox mode
+        if (sandboxPreferences.isSandboxCached) {
+            biometricAuthenticated = true
+            setupContent()
+            return
+        }
 
         if (currentUser != null && !biometricAuthenticated) {
             // Check if biometric is enabled for this user
@@ -94,12 +106,13 @@ class MainActivity : FragmentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
+                val isSandbox = sandboxPreferences.isSandboxCached
                 val startDestination: Any = remember {
-                    if (firebaseAuth.currentUser != null) DashboardRoute else LoginRoute
+                    if (firebaseAuth.currentUser != null || isSandbox) DashboardRoute else LoginRoute
                 }
 
-                // Check if user has a household — redirect to setup if not
-                if (firebaseAuth.currentUser != null && !householdChecked) {
+                // Check if user has a household — redirect to setup if not (skip in sandbox)
+                if (firebaseAuth.currentUser != null && !householdChecked && !isSandbox) {
                     LaunchedEffect(Unit) {
                         householdChecked = true
                         val uid = firebaseAuth.currentUser?.uid ?: return@LaunchedEffect
@@ -125,7 +138,8 @@ class MainActivity : FragmentActivity() {
                     !route.contains("PhoneAuth") &&
                     !route.contains("HouseholdSetup") &&
                     !route.contains("AddEditExpense") &&
-                    !route.contains("ReceiptScanner")
+                    !route.contains("ReceiptScanner") &&
+                    !route.contains("FinancialCoach")
                 } ?: false
 
                 Scaffold(
@@ -142,6 +156,9 @@ class MainActivity : FragmentActivity() {
                                         launchSingleTop = true
                                         restoreState = true
                                     }
+                                },
+                                onFabClick = {
+                                    navController.navigate(AddEditExpenseRoute())
                                 }
                             )
                         }
