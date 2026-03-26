@@ -14,6 +14,9 @@ interface BudgetDao {
     @Query("SELECT * FROM budgets WHERE householdId = :householdId ORDER BY categoryName ASC")
     fun getBudgets(householdId: String): Flow<List<BudgetEntity>>
 
+    @Query("SELECT * FROM budgets WHERE householdId = :householdId ORDER BY categoryName ASC")
+    suspend fun getBudgetsSuspend(householdId: String): List<BudgetEntity>
+
     @Query("SELECT * FROM budgets WHERE householdId = :householdId AND categoryId = :categoryId LIMIT 1")
     suspend fun getBudgetByCategory(householdId: String, categoryId: String): BudgetEntity?
 

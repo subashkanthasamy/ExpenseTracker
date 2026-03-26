@@ -38,6 +38,7 @@ class SyncWorker @AssistedInject constructor(
 object SyncManager {
     private const val SYNC_WORK_NAME = "expense_tracker_sync"
     private const val RECURRING_WORK_NAME = "recurring_expenses"
+    private const val REMINDER_WORK_NAME = "reminder_check"
 
     fun schedulePeriodicSync(context: Context) {
         val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(
@@ -58,6 +59,16 @@ object SyncManager {
             RECURRING_WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             recurringRequest
+        )
+
+        val reminderRequest = PeriodicWorkRequestBuilder<ReminderWorker>(
+            1, TimeUnit.HOURS
+        ).build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            REMINDER_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            reminderRequest
         )
     }
 }

@@ -16,11 +16,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.bose.expensetracker.data.preferences.BiometricPreferences
 import com.bose.expensetracker.data.preferences.ThemePreferences
-import com.bose.expensetracker.domain.repository.HouseholdRepository
 import com.bose.expensetracker.ui.navigation.BottomNavBar
 import com.bose.expensetracker.ui.navigation.DashboardRoute
 import com.bose.expensetracker.ui.navigation.ExpenseTrackerNavGraph
-import com.bose.expensetracker.ui.navigation.HouseholdSetupRoute
 import com.bose.expensetracker.ui.navigation.LoginRoute
 import com.bose.expensetracker.ui.navigation.NotificationsRoute
 import com.bose.expensetracker.ui.screen.auth.BiometricHelper
@@ -43,11 +41,7 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var themePreferences: ThemePreferences
 
-    @Inject
-    lateinit var householdRepository: HouseholdRepository
-
     private var biometricAuthenticated = false
-    private var householdChecked = false
 
     private var navDestination: String? = null
 
@@ -96,20 +90,6 @@ class MainActivity : FragmentActivity() {
 
                 val startDestination: Any = remember {
                     if (firebaseAuth.currentUser != null) DashboardRoute else LoginRoute
-                }
-
-                // Check if user has a household — redirect to setup if not
-                if (firebaseAuth.currentUser != null && !householdChecked) {
-                    LaunchedEffect(Unit) {
-                        householdChecked = true
-                        val uid = firebaseAuth.currentUser?.uid ?: return@LaunchedEffect
-                        val hId = householdRepository.getUserHouseholdId(uid)
-                        if (hId == null) {
-                            navController.navigate(HouseholdSetupRoute) {
-                                popUpTo(0) { inclusive = true }
-                            }
-                        }
-                    }
                 }
 
                 val pendingDestination = remember { navDestination }
