@@ -50,6 +50,7 @@ local.properties
 # Keystore files (signing keys - NEVER commit)
 *.jks
 *.keystore
+keystore.properties
 
 # Firebase config (contains API keys)
 app/google-services.json
