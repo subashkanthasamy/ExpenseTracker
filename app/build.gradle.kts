@@ -27,10 +27,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("release-keystore.jks")
-            storePassword = "expensetracker"
-            keyAlias = "expense-tracker"
-            keyPassword = "expensetracker"
+            storeFile = file(System.getenv("KEYSTORE_FILE") ?: "release-keystore.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "expensetracker"
+            keyAlias = System.getenv("KEY_ALIAS") ?: "expense-tracker"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "expensetracker"
         }
     }
 
