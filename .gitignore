@@ -68,6 +68,13 @@ Thumbs.db
 # Kotlin
 .kotlin/
 
+# KMP / iOS
+/shared/build
+/shared/schemas
+iosApp/iosApp.xcodeproj/xcuserdata/
+iosApp/iosApp.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
+
 # Claude Code
 .claude/
 
