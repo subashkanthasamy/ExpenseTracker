@@ -31,8 +31,9 @@ struct CategoryView: View {
                         }
                     }
                     .onDelete { indexSet in
-                        for i in indexSet {
-                            Task { await viewModel.deleteCategory(viewModel.customCategories[i].id) }
+                        let ids = indexSet.map { viewModel.customCategories[$0].id }
+                        Task {
+                            for id in ids { await viewModel.deleteCategory(id) }
                         }
                     }
                 }
@@ -51,7 +52,7 @@ struct CategoryView: View {
             }
             Button("Cancel", role: .cancel) { newName = "" }
         }
-        .onAppear { viewModel.load() }
+        .task { await viewModel.load() }
         .onDisappear { viewModel.cleanup() }
     }
 }

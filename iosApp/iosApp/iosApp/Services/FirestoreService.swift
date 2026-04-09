@@ -1,7 +1,7 @@
 import Foundation
 import FirebaseFirestore
 
-class FirestoreService {
+nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
     private let db = Firestore.firestore()
 
     // MARK: - Household

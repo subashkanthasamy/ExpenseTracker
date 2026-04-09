@@ -8,32 +8,35 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if authService.isAuthenticated {
-                if authVM?.needsHouseholdSetup == true {
-                    HouseholdSetupView(viewModel: authVM!)
+            if let vm = authVM {
+                if vm.isAuthenticated || authService.isAuthenticated {
+                    if vm.needsHouseholdSetup {
+                        HouseholdSetupView(viewModel: vm)
+                    } else {
+                        MainTabView(authService: authService, firestoreService: firestoreService, authVM: vm)
+                    }
                 } else {
-                    MainTabView(authService: authService, firestoreService: firestoreService, authVM: authVM!)
+                    if showSignUp {
+                        SignUpView(viewModel: vm, onBack: { showSignUp = false })
+                    } else {
+                        LoginView(viewModel: vm, onSignUp: { showSignUp = true })
+                    }
                 }
             } else {
-                if showSignUp {
-                    SignUpView(viewModel: authVM!, onBack: { showSignUp = false })
-                } else {
-                    LoginView(viewModel: authVM!, onSignUp: { showSignUp = true })
-                }
-            }
-        }
-        .onAppear {
-            if authVM == nil {
-                authVM = AuthViewModel(authService: authService, firestoreService: firestoreService)
+                ProgressView("Loading...")
+                    .task {
+                        authVM = AuthViewModel(authService: authService, firestoreService: firestoreService)
+                    }
             }
         }
         .onChange(of: authService.isAuthenticated) { _, newValue in
-            authVM?.isAuthenticated = newValue
+            guard let vm = authVM else { return }
+            vm.isAuthenticated = newValue
             if newValue {
                 Task {
                     if let uid = authService.currentUserId {
-                        let households = try? await firestoreService.getUserHouseholds(userId: uid)
-                        await MainActor.run { authVM?.needsHouseholdSetup = households?.isEmpty ?? true }
+                        let households = (try? await firestoreService.getUserHouseholds(userId: uid)) ?? []
+                        vm.needsHouseholdSetup = households.isEmpty
                     }
                 }
             }
@@ -49,46 +52,63 @@ struct MainTabView: View {
     @State private var showAddExpense = false
     @State private var editExpenseId: String?
 
+    // Store ViewModels as @State so they persist across re-renders
+    @State private var dashboardVM: DashboardViewModel?
+    @State private var expenseListVM: ExpenseListViewModel?
+    @State private var insightsVM: InsightsViewModel?
+    @State private var netWorthVM: NetWorthViewModel?
+
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Dashboard
             NavigationStack {
-                DashboardView(
-                    viewModel: DashboardViewModel(authService: authService, firestoreService: firestoreService),
-                    onAddExpense: { showAddExpense = true },
-                    onExpenseList: { selectedTab = 1 },
-                    onSettings: { selectedTab = 4 }
-                )
+                if let vm = dashboardVM {
+                    DashboardView(
+                        viewModel: vm,
+                        onAddExpense: { showAddExpense = true },
+                        onExpenseList: { selectedTab = 1 },
+                        onSettings: { selectedTab = 4 }
+                    )
+                } else {
+                    ProgressView()
+                }
             }
             .tabItem { Label("Home", systemImage: "house.fill") }
             .tag(0)
 
-            // Expenses
             NavigationStack {
-                ExpenseListView(
-                    viewModel: ExpenseListViewModel(authService: authService, firestoreService: firestoreService),
-                    onAdd: { showAddExpense = true },
-                    onEdit: { id in editExpenseId = id; showAddExpense = true }
-                )
+                if let vm = expenseListVM {
+                    ExpenseListView(
+                        viewModel: vm,
+                        onAdd: { showAddExpense = true },
+                        onEdit: { id in editExpenseId = id; showAddExpense = true }
+                    )
+                } else {
+                    ProgressView()
+                }
             }
             .tabItem { Label("Timeline", systemImage: "list.bullet") }
             .tag(1)
 
-            // Insights
             NavigationStack {
-                InsightsView(viewModel: InsightsViewModel(authService: authService, firestoreService: firestoreService))
+                if let vm = insightsVM {
+                    InsightsView(viewModel: vm)
+                } else {
+                    ProgressView()
+                }
             }
             .tabItem { Label("Insights", systemImage: "chart.pie.fill") }
             .tag(2)
 
-            // Net Worth
             NavigationStack {
-                NetWorthView(viewModel: NetWorthViewModel(authService: authService, firestoreService: firestoreService))
+                if let vm = netWorthVM {
+                    NetWorthView(viewModel: vm)
+                } else {
+                    ProgressView()
+                }
             }
             .tabItem { Label("Wealth", systemImage: "banknote.fill") }
             .tag(3)
 
-            // More
             NavigationStack {
                 MoreView(authService: authService, firestoreService: firestoreService, authVM: authVM)
             }
@@ -96,13 +116,24 @@ struct MainTabView: View {
             .tag(4)
         }
         .tint(AppColors.accentPurple)
+        .task {
+            // Create ViewModels once
+            dashboardVM = DashboardViewModel(authService: authService, firestoreService: firestoreService)
+            expenseListVM = ExpenseListViewModel(authService: authService, firestoreService: firestoreService)
+            insightsVM = InsightsViewModel(authService: authService, firestoreService: firestoreService)
+            netWorthVM = NetWorthViewModel(authService: authService, firestoreService: firestoreService)
+        }
         .sheet(isPresented: $showAddExpense) {
             AddEditExpenseView(viewModel: AddEditExpenseViewModel(
                 authService: authService, firestoreService: firestoreService, expenseId: editExpenseId
             ))
         }
         .onChange(of: showAddExpense) { _, newValue in
-            if !newValue { editExpenseId = nil }
+            // When sheet closes after adding expense, refresh insights
+            if !newValue {
+                editExpenseId = nil
+                Task { await insightsVM?.load() }
+            }
         }
     }
 }
@@ -114,29 +145,45 @@ struct MoreView: View {
 
     var body: some View {
         List {
-            NavigationLink {
-                BudgetView(viewModel: BudgetViewModel(authService: authService, firestoreService: firestoreService))
-            } label: { Label("Budgets", systemImage: "chart.pie") }
+            Section("Account") {
+                if let user = authService.currentUser {
+                    LabeledContent("Name", value: user.displayName)
+                    LabeledContent("Email", value: user.email)
+                }
+            }
 
-            NavigationLink {
-                CategoryView(viewModel: CategoryViewModel(authService: authService, firestoreService: firestoreService))
-            } label: { Label("Categories", systemImage: "tag.fill") }
+            Section("Features") {
+                NavigationLink {
+                    BudgetView(viewModel: BudgetViewModel(authService: authService, firestoreService: firestoreService))
+                } label: { Label("Budgets", systemImage: "chart.pie") }
 
-            NavigationLink {
-                SavingsView(viewModel: SavingsViewModel(authService: authService, firestoreService: firestoreService))
-            } label: { Label("Savings Goals", systemImage: "target") }
+                NavigationLink {
+                    CategoryView(viewModel: CategoryViewModel(authService: authService, firestoreService: firestoreService))
+                } label: { Label("Categories", systemImage: "tag.fill") }
 
-            NavigationLink {
-                HouseholdView(viewModel: HouseholdViewModel(authService: authService, firestoreService: firestoreService))
-            } label: { Label("Household", systemImage: "house.fill") }
+                NavigationLink {
+                    SavingsView(viewModel: SavingsViewModel(authService: authService, firestoreService: firestoreService))
+                } label: { Label("Savings Goals", systemImage: "target") }
 
-            NavigationLink {
-                FinancialCoachView(viewModel: FinancialCoachViewModel(authService: authService, firestoreService: firestoreService))
-            } label: { Label("Financial Coach", systemImage: "brain.head.profile") }
+                NavigationLink {
+                    FinancialCoachView(viewModel: FinancialCoachViewModel(authService: authService, firestoreService: firestoreService))
+                } label: { Label("Financial Coach", systemImage: "brain.head.profile") }
+            }
+
+            Section("Household") {
+                NavigationLink {
+                    HouseholdView(viewModel: HouseholdViewModel(authService: authService, firestoreService: firestoreService))
+                } label: { Label("Manage Household", systemImage: "house.fill") }
+            }
 
             Section {
-                SettingsView(user: authService.currentUser, onSignOut: { authVM.signOut() },
-                             onHousehold: {}, onCategories: {})
+                Button("Sign Out", role: .destructive) {
+                    authVM.signOut()
+                }
+            }
+
+            Section {
+                LabeledContent("Version", value: "1.0.0")
             }
         }
         .navigationTitle("More")

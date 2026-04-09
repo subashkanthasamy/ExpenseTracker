@@ -25,7 +25,8 @@ struct LoginView: View {
                 TextField("Email", text: $email)
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
                     .textFieldStyle(.roundedBorder)
 
                 HStack {
@@ -48,15 +49,23 @@ struct LoginView: View {
                     .foregroundStyle(.red)
                     .font(.caption)
                     .padding(.horizontal)
+                    .multilineTextAlignment(.center)
             }
 
             Button {
-                Task { await viewModel.signIn(email: email, password: password) }
+                guard !email.isEmpty, !password.isEmpty else {
+                    viewModel.error = "Please enter email and password"
+                    return
+                }
+                Task {
+                    await viewModel.signIn(email: email, password: password)
+                }
             } label: {
                 if viewModel.isLoading {
                     ProgressView().tint(.white)
                 } else {
                     Text("Sign In")
+                        .fontWeight(.semibold)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -65,7 +74,7 @@ struct LoginView: View {
             .foregroundStyle(.white)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.horizontal)
-            .disabled(viewModel.isLoading)
+            .disabled(viewModel.isLoading || email.isEmpty || password.isEmpty)
 
             Button("Don't have an account? Sign Up", action: onSignUp)
                 .foregroundStyle(AppColors.accentPurple)

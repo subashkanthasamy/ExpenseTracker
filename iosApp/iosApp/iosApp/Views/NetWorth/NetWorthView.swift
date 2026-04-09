@@ -76,14 +76,22 @@ struct NetWorthView: View {
             TextField("Name", text: $newName)
             TextField("Value", text: $newAmount)
             TextField("Type (e.g. Property, Stocks)", text: $newType)
-            Button("Add") { if let v = Double(newAmount) { Task { await viewModel.addAsset(name: newName, value: v, type: newType) }; clearFields() } }
+            Button("Add") {
+                let n = newName, a = newAmount, t = newType
+                clearFields()
+                if let v = Double(a) { Task { await viewModel.addAsset(name: n, value: v, type: t) } }
+            }
             Button("Cancel", role: .cancel) { clearFields() }
         }
         .alert("Add Liability", isPresented: $showAddLiability) {
             TextField("Name", text: $newName)
             TextField("Amount", text: $newAmount)
             TextField("Type (e.g. Loan, Credit Card)", text: $newType)
-            Button("Add") { if let v = Double(newAmount) { Task { await viewModel.addLiability(name: newName, amount: v, type: newType) }; clearFields() } }
+            Button("Add") {
+                let n = newName, a = newAmount, t = newType
+                clearFields()
+                if let v = Double(a) { Task { await viewModel.addLiability(name: n, amount: v, type: t) } }
+            }
             Button("Cancel", role: .cancel) { clearFields() }
         }
         .task { await viewModel.load() }

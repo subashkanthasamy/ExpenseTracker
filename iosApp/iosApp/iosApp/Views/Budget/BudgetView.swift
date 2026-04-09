@@ -69,9 +69,13 @@ struct BudgetView: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Add") {
                             if let limit = Double(limitStr), let cat = viewModel.categories.first(where: { $0.id == selectedCatId }) {
-                                Task { await viewModel.addBudget(categoryId: cat.id, categoryName: cat.name, limit: limit) }
+                                let catId = cat.id
+                                let catName = cat.name
+                                Task {
+                                    await viewModel.addBudget(categoryId: catId, categoryName: catName, limit: limit)
+                                    showAdd = false; limitStr = ""; selectedCatId = ""
+                                }
                             }
-                            showAdd = false; limitStr = ""; selectedCatId = ""
                         }
                     }
                 }

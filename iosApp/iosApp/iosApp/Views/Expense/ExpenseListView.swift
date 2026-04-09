@@ -48,7 +48,7 @@ struct ExpenseListView: View {
                 Button(action: onAdd) { Image(systemName: "plus") }
             }
         }
-        .onAppear { viewModel.load() }
+        .task { await viewModel.load() }
         .onDisappear { viewModel.cleanup() }
     }
 }

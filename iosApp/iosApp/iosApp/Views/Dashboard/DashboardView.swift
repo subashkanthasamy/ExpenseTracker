@@ -95,7 +95,7 @@ struct DashboardView: View {
             }
             .padding(.vertical)
         }
-        .onAppear { viewModel.load() }
+        .task { await viewModel.load() }
         .onDisappear { viewModel.cleanup() }
         .overlay(alignment: .bottomTrailing) {
             Button(action: onAddExpense) {

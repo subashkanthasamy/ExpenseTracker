@@ -31,15 +31,23 @@ class ExpenseListViewModel {
         return grouped.sorted { $0.value.first!.date > $1.value.first!.date }
     }
 
-    func load() {
-        guard let hid = authService.currentUser?.activeHouseholdId else { return }
+    func load() async {
+        guard let hid = await authService.getActiveHouseholdId() else {
+            print("ExpenseList: No household ID")
+            isLoading = false
+            return
+        }
+        print("ExpenseList: Observing expenses for \(hid)")
         listener = firestoreService.observeExpenses(householdId: hid) { [weak self] expenses in
-            Task { @MainActor in self?.expenses = expenses; self?.isLoading = false }
+            Task { @MainActor in
+                self?.expenses = expenses
+                self?.isLoading = false
+            }
         }
     }
 
     func delete(_ expense: Expense) async {
-        guard let hid = authService.currentUser?.activeHouseholdId else { return }
+        guard let hid = await authService.getActiveHouseholdId() else { return }
         try? await firestoreService.deleteExpense(householdId: hid, expenseId: expense.id)
     }
 
@@ -60,6 +68,7 @@ class AddEditExpenseViewModel {
     private let authService: AuthService
     private let firestoreService: FirestoreService
     private var editingExpenseId: String?
+    private var householdId: String?
 
     init(authService: AuthService, firestoreService: FirestoreService, expenseId: String? = nil) {
         self.authService = authService
@@ -69,27 +78,51 @@ class AddEditExpenseViewModel {
     }
 
     func loadCategories() async {
-        guard let hid = authService.currentUser?.activeHouseholdId else { return }
-        categories = (try? await firestoreService.getCategories(householdId: hid)) ?? []
+        guard let hid = await authService.getActiveHouseholdId() else {
+            print("AddEditExpense: No household ID")
+            return
+        }
+        householdId = hid
+
+        var cats = (try? await firestoreService.getCategories(householdId: hid)) ?? []
+
+        // Deduplicate by name (keep first occurrence)
+        var seen = Set<String>()
+        cats = cats.filter { seen.insert($0.name).inserted }
+
+        // Only seed if no presets exist
+        if cats.filter({ $0.isPreset }).isEmpty {
+            await seedPresetCategories(householdId: hid)
+            cats = (try? await firestoreService.getCategories(householdId: hid)) ?? []
+            seen.removeAll()
+            cats = cats.filter { seen.insert($0.name).inserted }
+        }
+
+        categories = cats
+        print("AddEditExpense: Loaded \(cats.count) categories")
+
         if let eid = editingExpenseId {
             if let expenses = try? await firestoreService.getExpenses(householdId: hid),
                let expense = expenses.first(where: { $0.id == eid }) {
-                await MainActor.run {
-                    amount = String(expense.amount)
-                    selectedCategory = categories.first { $0.id == expense.categoryId }
-                    date = expense.date
-                    notes = expense.notes
-                }
+                amount = String(expense.amount)
+                selectedCategory = categories.first { $0.id == expense.categoryId }
+                date = expense.date
+                notes = expense.notes
             }
         }
     }
 
     func save() async -> Bool {
-        guard let hid = authService.currentUser?.activeHouseholdId,
+        var resolvedHid = householdId
+        if resolvedHid == nil {
+            resolvedHid = await authService.getActiveHouseholdId()
+        }
+        guard let hid = resolvedHid,
               let uid = authService.currentUserId,
               let amt = Double(amount), amt > 0,
               let cat = selectedCategory else {
-            error = "Please fill all required fields"; return false
+            error = "Please fill amount and select a category"
+            return false
         }
         isLoading = true
         let expense = Expense(
@@ -104,9 +137,30 @@ class AddEditExpenseViewModel {
             } else {
                 try await firestoreService.addExpense(householdId: hid, expense: expense)
             }
-            isLoading = false; return true
+            print("AddEditExpense: Saved expense \(expense.id) to \(hid)")
+            isLoading = false
+            return true
         } catch {
-            self.error = error.localizedDescription; isLoading = false; return false
+            print("AddEditExpense save error: \(error)")
+            self.error = error.localizedDescription
+            isLoading = false
+            return false
+        }
+    }
+
+    private func seedPresetCategories(householdId: String) async {
+        let presets: [(String, String)] = [
+            ("Food", "🍔"), ("Groceries", "🛒"), ("Transport", "🚗"),
+            ("Entertainment", "🎬"), ("Shopping", "🛍️"), ("Bills", "📱"),
+            ("Health", "🏥"), ("Education", "📚"), ("Rent", "🏠"),
+            ("Travel", "✈️"), ("Insurance", "🛡️"), ("Gifts", "🎁"),
+            ("Fitness", "💪"), ("Misc", "💳")
+        ]
+        for (name, icon) in presets {
+            let id = "preset_\(name.lowercased())"
+            let cat = Category(id: id, name: name, icon: icon,
+                             color: 0xFF7B61FF, isPreset: true, householdId: householdId)
+            try? await firestoreService.addCategory(householdId: householdId, category: cat)
         }
     }
 }

@@ -55,16 +55,18 @@ struct SavingsView: View {
             TextField("Goal name", text: $goalName)
             TextField("Target amount", text: $targetStr)
             Button("Add") {
-                if let t = Double(targetStr) { Task { await viewModel.addGoal(name: goalName, target: t, icon: icon, targetDate: nil) } }
+                let name = goalName, target = targetStr, ic = icon
                 goalName = ""; targetStr = ""
+                if let t = Double(target) { Task { await viewModel.addGoal(name: name, target: t, icon: ic, targetDate: nil) } }
             }
             Button("Cancel", role: .cancel) { goalName = ""; targetStr = "" }
         }
         .alert("Add Contribution", isPresented: $showContribute) {
             TextField("Amount", text: $contributeAmount)
             Button("Add") {
-                if let a = Double(contributeAmount) { Task { await viewModel.addContribution(goalId: contributeGoalId, amount: a) } }
+                let amt = contributeAmount, gid = contributeGoalId
                 contributeAmount = ""
+                if let a = Double(amt) { Task { await viewModel.addContribution(goalId: gid, amount: a) } }
             }
             Button("Cancel", role: .cancel) { contributeAmount = "" }
         }

@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		0FD502D02F8674790031DD44 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 0FD502CF2F8674790031DD44 /* FirebaseAuth */; };
+		0FD502D22F8674790031DD44 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0FD502D12F8674790031DD44 /* FirebaseCore */; };
+		0FD502D42F8674790031DD44 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 0FD502D32F8674790031DD44 /* FirebaseFirestore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		0F62E7FA2F8643B200D56C34 /* iosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +29,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0FD502D22F8674790031DD44 /* FirebaseCore in Frameworks */,
+				0FD502D02F8674790031DD44 /* FirebaseAuth in Frameworks */,
+				0FD502D42F8674790031DD44 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +74,9 @@
 			);
 			name = iosApp;
 			packageProductDependencies = (
+				0FD502CF2F8674790031DD44 /* FirebaseAuth */,
+				0FD502D12F8674790031DD44 /* FirebaseCore */,
+				0FD502D32F8674790031DD44 /* FirebaseFirestore */,
 			);
 			productName = iosApp;
 			productReference = 0F62E7FA2F8643B200D56C34 /* iosApp.app */;
@@ -94,6 +106,9 @@
 			);
 			mainGroup = 0F62E7F12F8643B200D56C34;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0FD502CE2F8674790031DD44 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0F62E7FB2F8643B200D56C34 /* Products */;
 			projectDirPath = "";
@@ -256,17 +271,18 @@
 				DEVELOPMENT_TEAM = 7XW3W6DUM7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is needed to scan receipts";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used for secure app access";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.bose.expensetracker.iosApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bose.expensetracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -288,17 +304,18 @@
 				DEVELOPMENT_TEAM = 7XW3W6DUM7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is needed to scan receipts";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID is used for secure app access";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.bose.expensetracker.iosApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bose.expensetracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -332,6 +349,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		0FD502CE2F8674790031DD44 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = exactVersion;
+				version = 12.12.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0FD502CF2F8674790031DD44 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0FD502CE2F8674790031DD44 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		0FD502D12F8674790031DD44 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0FD502CE2F8674790031DD44 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		0FD502D32F8674790031DD44 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0FD502CE2F8674790031DD44 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 0F62E7F22F8643B200D56C34 /* Project object */;
 }

@@ -9,6 +9,7 @@ class DashboardViewModel {
     var recentExpenses: [Expense] = []
     var categoryBreakdown: [CategoryBreakdown] = []
     var isLoading = true
+    var noHousehold = false
 
     private let authService: AuthService
     private let firestoreService: FirestoreService
@@ -24,10 +25,19 @@ class DashboardViewModel {
         self.firestoreService = firestoreService
     }
 
-    func load() {
-        guard let hid = authService.currentUser?.activeHouseholdId else { return }
+    func load() async {
+        guard let hid = await authService.getActiveHouseholdId() else {
+            print("Dashboard: No household ID found")
+            noHousehold = true
+            isLoading = false
+            return
+        }
+        print("Dashboard: Loading expenses for household \(hid)")
         listener = firestoreService.observeExpenses(householdId: hid) { [weak self] expenses in
-            Task { @MainActor in self?.processExpenses(expenses) }
+            Task { @MainActor in
+                print("Dashboard: Received \(expenses.count) expenses")
+                self?.processExpenses(expenses)
+            }
         }
     }
 
@@ -51,9 +61,8 @@ class DashboardViewModel {
 
         monthTotal = thisMonth.reduce(0) { $0 + $1.amount }
         lastMonthTotal = lastMonth.reduce(0) { $0 + $1.amount }
-        recentExpenses = Array(thisMonth.prefix(5))
+        recentExpenses = Array(thisMonth.sorted { $0.date > $1.date }.prefix(5))
 
-        // Category breakdown
         var catMap: [String: Double] = [:]
         for e in thisMonth { catMap[e.categoryName, default: 0] += e.amount }
         let total = max(monthTotal, 1)
