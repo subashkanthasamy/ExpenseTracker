@@ -38,7 +38,21 @@ service cloud.firestore {
     // ---- Users: strictly own document -------------------------------------
 
     match /users/{userId} {
-      allow read: if isSignedIn() && uid() == userId;
+      // Own document, plus any user who shares a household — the member list reads other
+      // users' documents (HouseholdRepositoryImpl.getHouseholdMembers).
+      //
+      // The previous rules allowed any signed-in user to read *every* user document, which
+      // exposed all email addresses. This narrows that to household co-members while
+      // keeping the feature working. `.get(key, default)` guards legacy documents that
+      // only had the old singular `householdId` field.
+      allow get: if isSignedIn() && (
+        uid() == userId
+        || resource.data.get('householdIds', []).hasAny(
+             get(/databases/$(database)/documents/users/$(uid())).data.get('householdIds', [])
+           )
+      );
+      // No enumerating the user collection.
+      allow list: if false;
 
       allow create: if isSignedIn() && uid() == userId
         && request.resource.data.keys().hasOnly(
@@ -149,10 +163,12 @@ service cloud.firestore {
         )
       );
 
-      // Deliberately closed: a single member being able to delete the household and all
-      // of its financial history is too destructive for a client-side rule. Do it from a
-      // Cloud Function with an explicit confirmation, or from the console.
-      allow delete: if false;
+      // Members may delete, matching the previous rules and the in-app "Delete household"
+      // action. Worth knowing: Firestore does not cascade, so the subcollections are
+      // orphaned rather than removed — a Cloud Function that deletes children first would
+      // be the correct implementation, and would also be the place to require more than one
+      // member to confirm.
+      allow delete: if isSignedIn() && uid() in resource.data.memberUids;
 
       // ---- Household data: members only ----------------------------------
       //
