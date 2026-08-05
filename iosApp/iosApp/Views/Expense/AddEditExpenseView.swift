@@ -2,6 +2,8 @@ import SwiftUI
 import Shared
 
 struct AddEditExpenseView: View {
+    @State private var showScanner = false
+    @State private var showVoice = false
     @Bindable var viewModel: AddEditExpenseViewModel
     @Environment(\.dismiss) var dismiss
     @State private var showDatePicker = false
@@ -13,6 +15,26 @@ struct AddEditExpenseView: View {
                     TextField("0.00", text: $viewModel.amount)
                         .keyboardType(.decimalPad)
                         .font(.title)
+                }
+
+                Section {
+                    HStack(spacing: 12) {
+                        Button {
+                            showScanner = true
+                        } label: {
+                            Label("Scan receipt", systemImage: "doc.text.viewfinder")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            showVoice = true
+                        } label: {
+                            Label("Speak", systemImage: "mic.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
                 }
 
                 Section("Category") {
@@ -69,6 +91,24 @@ struct AddEditExpenseView: View {
                 }
             }
             .task { await viewModel.loadCategories() }
+        }
+        .sheet(isPresented: $showScanner) {
+            ReceiptScannerView { result in
+                if let amount = result.amount { viewModel.amount = String(amount.doubleValue) }
+                if let millis = result.date { viewModel.date = Date(epochMillis: millis.int64Value) }
+                if let merchant = result.merchant, viewModel.notes.isEmpty { viewModel.notes = merchant }
+            }
+        }
+        .sheet(isPresented: $showVoice) {
+            VoiceEntryView { amount, categoryHint in
+                viewModel.amount = String(amount)
+                if let hint = categoryHint {
+                    // Match the shared parser's hint against the household's categories.
+                    viewModel.selectedCategory = viewModel.categories.first {
+                        $0.name.localizedCaseInsensitiveContains(hint)
+                    } ?? viewModel.selectedCategory
+                }
+            }
         }
     }
 }
