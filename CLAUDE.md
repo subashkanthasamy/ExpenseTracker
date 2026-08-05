@@ -56,6 +56,7 @@ a real gap, not an assumption.
 ## Build & Test Commands
 
 ```bash
+./gradlew :shared:allTests                        # Shared unit tests (ReceiptTextParser etc.)
 ./gradlew assembleDebug                           # Build debug Android APK
 ./gradlew :shared:allMetadataJar                  # Compile shared commonMain
 ./gradlew :shared:compileKotlinIosArm64           # Compile shared for iOS
@@ -172,8 +173,8 @@ Domain models are shared; the gap is features and platform plumbing.
 | Settings (theme, biometric, export, toggles) | ✅ | ✅ theme, biometric, export/import, reset |
 | Notifications / reminders | ✅ | ✅ daily + bill (local notifications) |
 | Recurring expenses | ✅ WorkManager (today-only) | ✅ launch catch-up (better) |
-| Receipt scanner (OCR) | ✅ CameraX + ML Kit | ❌ |
-| Voice expense entry | ✅ | ❌ |
+| Receipt scanner (OCR) | ✅ CameraX + ML Kit | ✅ Vision (shared heuristics) |
+| Voice expense entry | ✅ | ✅ SFSpeechRecognizer (shared parser) |
 | Export / import | ✅ | ✅ CSV + PDF export, CSV import |
 | Offline cache | ✅ Room | ❌ Firestore only |
 | Domain models | ✅ `shared/` | ✅ `shared/` via Shared.framework |
@@ -204,6 +205,12 @@ aggregator API (RBI Account Aggregator).
 - **Budget alerts are dead code on Android** — `NotificationHelper.showBudgetAlertNotification`
   has no callers. Nothing to port until it is built or specified. On iOS a spending-threshold
   check cannot run in the background; it would fire on app open, or need Cloud Functions + FCM.
+
+
+- **OCR text differs by engine.** ML Kit returns block text with rows intact; Vision returns
+  one observation per text region, so `ReceiptScanService.reconstructLines` regroups them
+  into visual rows. `ReceiptTextParser` assumes the label and amount share a line — keep that
+  invariant if you touch either side.
 
 ### Android → iOS platform mappings
 
