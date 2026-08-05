@@ -163,6 +163,11 @@ only ever *write* millis. `tools/migrate-timestamps.js` normalises legacy docume
 `firestore.rules` is the source of truth — deploy with
 `firebase deploy --only firestore:rules`. Two things to know before editing:
 
+- **Households predating the change self-heal.** A member opening the household screen
+  publishes the missing `inviteCodes/{code}` document — that is the only screen showing the
+  code, so it heals exactly when the code is about to be shared. `tools/backfill-invite-codes.js`
+  does it in bulk if you would rather not wait. Neither will repoint a code that already
+  belongs to a different household.
 - **Joining uses `inviteCodes/{code}`, not a query.** A `households` query on `inviteCode`
   would require every household to be readable by any signed-in user, which allows
   enumerating households, reading their codes and joining them. Create writes the household

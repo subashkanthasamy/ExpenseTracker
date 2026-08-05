@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.User
+import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
@@ -29,6 +30,7 @@ data class HouseholdUiState(
 
 @HiltViewModel
 class HouseholdViewModel @Inject constructor(
+    private val firestoreDataSource: FirestoreDataSource,
     private val authRepository: AuthRepository,
     private val householdRepository: HouseholdRepository,
     private val categoryRepository: CategoryRepository
@@ -66,6 +68,9 @@ class HouseholdViewModel @Inject constructor(
 
             householdRepository.getHousehold(hId).onSuccess { household ->
                 _uiState.update { it.copy(household = household) }
+                // Households created before invite codes moved to their own lookup
+                // collection have no entry yet; publish it so the code can be used.
+                firestoreDataSource.ensureInviteCodePublished(household)
             }
 
             householdRepository.getHouseholdMembers(hId).onSuccess { members ->

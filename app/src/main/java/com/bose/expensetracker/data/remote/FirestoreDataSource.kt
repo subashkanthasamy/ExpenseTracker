@@ -172,6 +172,36 @@ class FirestoreDataSource @Inject constructor(
         return household.id
     }
 
+    /**
+     * Publishes the lookup document for [household] if it is missing.
+     *
+     * Households created before the invite-code change have no `inviteCodes/{code}` entry,
+     * so they cannot be joined until one exists. Rather than requiring a one-off backfill
+     * for every household, a member self-heals it — and the natural moment is when they
+     * open the household screen, since that is the only place the code is shown to share.
+     */
+    suspend fun ensureInviteCodePublished(household: Household) {
+        if (household.inviteCode.isBlank()) return
+        try {
+            val existing = firestore.collection("inviteCodes").document(household.inviteCode).get().await()
+            val pointsHere = existing.exists() && existing.getString("householdId") == household.id
+            if (pointsHere) return
+            // Never repoint a code that already belongs to a different household.
+            if (existing.exists()) {
+                android.util.Log.w(
+                    "FirestoreDS",
+                    "inviteCode ${household.inviteCode} already maps to ${existing.getString("householdId")}"
+                )
+                return
+            }
+            publishInviteCode(household.id, household.name, household.inviteCode)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.w("FirestoreDS", "Could not publish invite code lookup", e)
+        }
+    }
+
     /** Publishes the code -> household lookup used by [resolveInviteCode]. */
     suspend fun publishInviteCode(householdId: String, householdName: String, inviteCode: String) {
         firestore.collection("inviteCodes").document(inviteCode).set(

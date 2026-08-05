@@ -76,6 +76,32 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
         return InviteTarget(householdId: householdId, householdName: data["householdName"] as? String ?? "")
     }
 
+    /// Publishes the lookup document for `household` if it is missing.
+    ///
+    /// Households created before the invite-code change have no `inviteCodes/{code}` entry,
+    /// so they cannot be joined until one exists. A member self-heals it when they open the
+    /// household screen — the only place the code is shown to share.
+    func ensureInviteCodePublished(_ household: Household) async {
+        guard !household.inviteCode.isEmpty else { return }
+        do {
+            let existing = try await db.collection("inviteCodes").document(household.inviteCode).getDocument()
+            if existing.exists {
+                // Never repoint a code that already belongs to a different household.
+                if (existing.data()?["householdId"] as? String) != household.id {
+                    print("inviteCode \(household.inviteCode) already maps elsewhere — leaving it alone")
+                }
+                return
+            }
+            try await publishInviteCode(
+                householdId: household.id,
+                householdName: household.name,
+                inviteCode: household.inviteCode
+            )
+        } catch {
+            print("Could not publish invite code lookup: \(error)")
+        }
+    }
+
     /// Adds the current user with arrayUnion, so joining needs no read access to the
     /// household — which the rules no longer grant to non-members.
     func addSelfToHousehold(_ householdId: String, uid: String) async throws {

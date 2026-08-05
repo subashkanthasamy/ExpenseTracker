@@ -318,6 +318,11 @@ class HouseholdViewModel {
                 household = first
             }
             isLoading = false
+            // Households predating the invite-code lookup have no entry yet; publish it so
+            // the code shown on this screen actually works.
+            if let household {
+                await firestoreService.ensureInviteCodePublished(household)
+            }
             print("HouseholdVM: Loaded \(allHouseholds.count) households, active: \(household?.name ?? "none")")
         } catch {
             print("HouseholdVM load error: \(error)")
