@@ -196,6 +196,90 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
         db.collection("households").document(hid).collection("savingsGoals")
     }
 
+    private func recurringCollection(_ hid: String) -> CollectionReference {
+        db.collection("households").document(hid).collection("recurring")
+    }
+
+    // MARK: - Recurring expenses
+    //
+    // NOTE: Android keeps recurring rules in Room only and never syncs them, so rules
+    // created here are not visible to the Android app (and vice versa) until Android is
+    // moved onto this collection too.
+
+    func getRecurringExpenses(householdId: String) async throws -> [RecurringExpense] {
+        let snap = try await recurringCollection(householdId).getDocuments()
+        return snap.documents.compactMap { decodeRecurring($0) }
+    }
+
+    func addRecurringExpense(householdId: String, recurring: RecurringExpense) async throws {
+        try await recurringCollection(householdId).document(recurring.id).setData(encodeRecurring(recurring))
+    }
+
+    func updateRecurringExpense(householdId: String, recurring: RecurringExpense) async throws {
+        try await recurringCollection(householdId).document(recurring.id).setData(encodeRecurring(recurring))
+    }
+
+    func deleteRecurringExpense(householdId: String, id: String) async throws {
+        try await recurringCollection(householdId).document(id).delete()
+    }
+
+    private func decodeRecurring(_ doc: DocumentSnapshot) -> RecurringExpense? {
+        guard let d = doc.data() else { return nil }
+        func intOrNil(_ key: String) -> KotlinInt? {
+            (d[key] as? NSNumber).map { KotlinInt(int: $0.int32Value) }
+        }
+        func longOrNil(_ key: String) -> KotlinLong? {
+            Self.decodeMillis(d[key]).map { KotlinLong(longLong: $0.epochMillis) }
+        }
+        return RecurringExpense(
+            id: doc.documentID,
+            householdId: d["householdId"] as? String ?? "",
+            amount: d["amount"] as? Double ?? 0,
+            categoryId: d["categoryId"] as? String ?? "",
+            categoryName: d["categoryName"] as? String ?? "",
+            notes: d["notes"] as? String ?? "",
+            addedBy: d["addedBy"] as? String ?? "",
+            addedByName: d["addedByName"] as? String ?? "",
+            frequency: Self.frequency(from: d["frequency"] as? Int ?? 0),
+            dayOfWeek: intOrNil("dayOfWeek"),
+            dayOfMonth: intOrNil("dayOfMonth"),
+            monthOfYear: intOrNil("monthOfYear"),
+            startDate: (Self.decodeMillis(d["startDate"]) ?? Date()).epochMillis,
+            endDate: longOrNil("endDate"),
+            lastGeneratedDate: longOrNil("lastGeneratedDate"),
+            isActive: d["isActive"] as? Bool ?? true,
+            createdAt: (Self.decodeMillis(d["createdAt"]) ?? Date()).epochMillis
+        )
+    }
+
+    private func encodeRecurring(_ r: RecurringExpense) -> [String: Any] {
+        var data: [String: Any] = [
+            "householdId": r.householdId,
+            "amount": r.amount,
+            "categoryId": r.categoryId,
+            "categoryName": r.categoryName,
+            "notes": r.notes,
+            "addedBy": r.addedBy,
+            "addedByName": r.addedByName,
+            "frequency": Int(r.frequency.ordinal),
+            "startDate": r.startDate,
+            "isActive": r.isActive,
+            "createdAt": r.createdAt,
+        ]
+        if let dow = r.dayOfWeek { data["dayOfWeek"] = dow.intValue }
+        if let dom = r.dayOfMonth { data["dayOfMonth"] = dom.intValue }
+        if let moy = r.monthOfYear { data["monthOfYear"] = moy.intValue }
+        if let end = r.endDate { data["endDate"] = end.int64Value }
+        if let last = r.lastGeneratedDate { data["lastGeneratedDate"] = last.int64Value }
+        return data
+    }
+
+    private static func frequency(from ordinal: Int) -> RecurringFrequency {
+        let all = RecurringFrequency.entries
+        guard ordinal >= 0, ordinal < all.count else { return RecurringFrequency.monthly }
+        return all[ordinal]
+    }
+
     // MARK: - Encoders/Decoders
 
     private func decodeHousehold(_ doc: DocumentSnapshot) -> Household? {

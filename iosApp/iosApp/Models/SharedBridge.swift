@@ -81,6 +81,7 @@ extension SavingsGoal {
 extension RecurringExpense {
     var startDateValue: Date { Date(epochMillis: startDate) }
     var endDateValue: Date? { dateOrNil(endDate) }
+    var lastGeneratedDateValue: Date? { dateOrNil(lastGeneratedDate) }
     var createdAtValue: Date { Date(epochMillis: createdAt) }
 }
 

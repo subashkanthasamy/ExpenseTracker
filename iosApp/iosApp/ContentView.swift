@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var authVM: AuthViewModel?
     @State private var showSignUp = false
     @State private var prefs = AppPreferences()
+    @State private var notifications = NotificationService()
     @State private var biometricUnlocked = false
 
     var body: some View {
@@ -27,7 +28,7 @@ struct ContentView: View {
                     if vm.needsHouseholdSetup {
                         HouseholdSetupView(viewModel: vm)
                     } else {
-                        MainTabView(authService: authService, firestoreService: firestoreService, authVM: vm, prefs: prefs)
+                        MainTabView(authService: authService, firestoreService: firestoreService, authVM: vm, prefs: prefs, notifications: notifications)
                     }
                 } else {
                     if showSignUp {
@@ -63,6 +64,7 @@ struct MainTabView: View {
     let firestoreService: FirestoreService
     @Bindable var authVM: AuthViewModel
     @Bindable var prefs: AppPreferences
+    @Bindable var notifications: NotificationService
     @State private var selectedTab = 0
     @State private var showAddExpense = false
     @State private var editExpenseId: String?
@@ -125,7 +127,7 @@ struct MainTabView: View {
             .tag(3)
 
             NavigationStack {
-                MoreView(authService: authService, firestoreService: firestoreService, authVM: authVM, prefs: prefs)
+                MoreView(authService: authService, firestoreService: firestoreService, authVM: authVM, prefs: prefs, notifications: notifications)
             }
             .tabItem { Label("More", systemImage: "ellipsis.circle.fill") }
             .tag(4)
@@ -137,6 +139,18 @@ struct MainTabView: View {
             expenseListVM = ExpenseListViewModel(authService: authService, firestoreService: firestoreService)
             insightsVM = InsightsViewModel(authService: authService, firestoreService: firestoreService)
             netWorthVM = NetWorthViewModel(authService: authService, firestoreService: firestoreService)
+
+            // Recurring rules are generated with catch-up on launch rather than from a
+            // background task — BGTaskScheduler is best-effort and may not run for days.
+            if let hid = await authService.getActiveHouseholdId() {
+                let created = try? await RecurringExpenseService(firestoreService: firestoreService)
+                    .generateDueExpenses(householdId: hid)
+                if let created, created > 0 {
+                    print("Recurring: created \(created) due expense(s)")
+                    await dashboardVM?.load()
+                }
+            }
+            await notifications.rescheduleAll()
         }
         .sheet(isPresented: $showAddExpense) {
             AddEditExpenseView(viewModel: AddEditExpenseViewModel(
@@ -158,6 +172,7 @@ struct MoreView: View {
     let firestoreService: FirestoreService
     @Bindable var authVM: AuthViewModel
     @Bindable var prefs: AppPreferences
+    @Bindable var notifications: NotificationService
 
     var body: some View {
         List {
@@ -180,6 +195,14 @@ struct MoreView: View {
                 NavigationLink {
                     SavingsView(viewModel: SavingsViewModel(authService: authService, firestoreService: firestoreService))
                 } label: { Label("Savings Goals", systemImage: "target") }
+
+                NavigationLink {
+                    RecurringView(viewModel: RecurringViewModel(authService: authService, firestoreService: firestoreService))
+                } label: { Label("Recurring Expenses", systemImage: "arrow.clockwise.circle") }
+
+                NavigationLink {
+                    ReminderView(notifications: notifications)
+                } label: { Label("Reminders", systemImage: "bell.badge") }
 
                 NavigationLink {
                     FinancialCoachView(viewModel: FinancialCoachViewModel(authService: authService, firestoreService: firestoreService))
