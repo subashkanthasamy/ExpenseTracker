@@ -18,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import com.bose.expensetracker.data.preferences.BiometricPreferences
 import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.preferences.ThemePreferences
+import com.bose.expensetracker.data.sync.LocalToFirestoreMigration
 import com.bose.expensetracker.domain.repository.HouseholdRepository
 import com.bose.expensetracker.ui.navigation.AddEditExpenseRoute
 import com.bose.expensetracker.ui.navigation.BottomNavBar
@@ -52,6 +53,9 @@ class MainActivity : FragmentActivity() {
 
     @Inject
     lateinit var sandboxPreferences: SandboxPreferences
+
+    @Inject
+    lateinit var localToFirestoreMigration: LocalToFirestoreMigration
 
     private var biometricAuthenticated = false
     private var householdChecked = false
@@ -139,6 +143,11 @@ class MainActivity : FragmentActivity() {
                                     return@LaunchedEffect
                                 }
                                 householdChecked = true
+                                if (hId != null) {
+                                    // Budgets/goals/recurring moved from Room to Firestore;
+                                    // lift any pre-existing local rows up once.
+                                    localToFirestoreMigration.runIfNeeded(hId)
+                                }
                                 if (hId == null) {
                                     navController.navigate(HouseholdSetupRoute) {
                                         popUpTo(0) { inclusive = true }

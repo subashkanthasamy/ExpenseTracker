@@ -1,6 +1,10 @@
 package com.bose.expensetracker.data.remote
 
 import com.bose.expensetracker.domain.model.Asset
+import com.bose.expensetracker.domain.model.Budget
+import com.bose.expensetracker.domain.model.RecurringExpense
+import com.bose.expensetracker.domain.model.RecurringFrequency
+import com.bose.expensetracker.domain.model.SavingsGoal
 import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.domain.model.Expense
 import com.bose.expensetracker.domain.model.Household
@@ -350,6 +354,164 @@ class FirestoreDataSource @Inject constructor(
                 trySend(expenses)
             }
         awaitClose { listener.remove() }
+    }
+
+    // --- Budgets / Savings goals / Recurring expenses ---
+    //
+    // These three were Room-only, so they never synced between devices or household members
+    // and were lost on reinstall. Document shapes match what the iOS app already reads and
+    // writes, so the two platforms interoperate.
+
+    private fun budgetsCollection(householdId: String) =
+        firestore.collection("households").document(householdId).collection("budgets")
+
+    private fun savingsCollection(householdId: String) =
+        firestore.collection("households").document(householdId).collection("savingsGoals")
+
+    private fun recurringCollection(householdId: String) =
+        firestore.collection("households").document(householdId).collection("recurring")
+
+    fun observeBudgets(householdId: String): Flow<List<Budget>> = callbackFlow {
+        val listener = budgetsCollection(householdId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                trySend(
+                    snapshot?.documents?.map { doc ->
+                        Budget(
+                            id = doc.id,
+                            householdId = householdId,
+                            categoryId = doc.getString("categoryId") ?: "",
+                            categoryName = doc.getString("categoryName") ?: "",
+                            monthlyLimit = doc.getDouble("monthlyLimit") ?: 0.0
+                        )
+                    } ?: emptyList()
+                )
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun upsertBudget(budget: Budget) {
+        budgetsCollection(budget.householdId).document(budget.id).set(
+            mapOf(
+                "householdId" to budget.householdId,
+                "categoryId" to budget.categoryId,
+                "categoryName" to budget.categoryName,
+                "monthlyLimit" to budget.monthlyLimit
+            )
+        ).await()
+    }
+
+    suspend fun deleteBudget(householdId: String, id: String) {
+        budgetsCollection(householdId).document(id).delete().await()
+    }
+
+    fun observeSavingsGoals(householdId: String): Flow<List<SavingsGoal>> = callbackFlow {
+        val listener = savingsCollection(householdId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                trySend(
+                    snapshot?.documents?.map { doc ->
+                        SavingsGoal(
+                            id = doc.id,
+                            householdId = householdId,
+                            name = doc.getString("name") ?: "",
+                            targetAmount = doc.getDouble("targetAmount") ?: 0.0,
+                            currentAmount = doc.getDouble("currentAmount") ?: 0.0,
+                            icon = doc.getString("icon") ?: "🎯",
+                            targetDate = doc.getEpochMillis("targetDate"),
+                            createdAt = doc.getEpochMillis("createdAt") ?: 0L
+                        )
+                    } ?: emptyList()
+                )
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun upsertSavingsGoal(goal: SavingsGoal) {
+        val data = mutableMapOf<String, Any>(
+            "householdId" to goal.householdId,
+            "name" to goal.name,
+            "targetAmount" to goal.targetAmount,
+            "currentAmount" to goal.currentAmount,
+            "icon" to goal.icon,
+            "createdAt" to goal.createdAt
+        )
+        goal.targetDate?.let { data["targetDate"] = it }
+        savingsCollection(goal.householdId).document(goal.id).set(data).await()
+    }
+
+    suspend fun deleteSavingsGoal(householdId: String, id: String) {
+        savingsCollection(householdId).document(id).delete().await()
+    }
+
+    fun observeRecurringExpenses(householdId: String): Flow<List<RecurringExpense>> = callbackFlow {
+        val listener = recurringCollection(householdId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                trySend(snapshot?.documents?.map { it.toRecurringExpense(householdId) } ?: emptyList())
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun getActiveRecurringExpenses(householdId: String): List<RecurringExpense> =
+        recurringCollection(householdId).get().await()
+            .documents.map { it.toRecurringExpense(householdId) }
+            .filter { it.isActive }
+
+    private fun DocumentSnapshot.toRecurringExpense(householdId: String) = RecurringExpense(
+        id = id,
+        householdId = householdId,
+        amount = getDouble("amount") ?: 0.0,
+        categoryId = getString("categoryId") ?: "",
+        categoryName = getString("categoryName") ?: "",
+        notes = getString("notes") ?: "",
+        addedBy = getString("addedBy") ?: "",
+        addedByName = getString("addedByName") ?: "",
+        frequency = frequencyFromOrdinal((getLong("frequency") ?: 2L).toInt()),
+        dayOfWeek = getLong("dayOfWeek")?.toInt(),
+        dayOfMonth = getLong("dayOfMonth")?.toInt(),
+        monthOfYear = getLong("monthOfYear")?.toInt(),
+        startDate = getEpochMillis("startDate") ?: 0L,
+        endDate = getEpochMillis("endDate"),
+        lastGeneratedDate = getEpochMillis("lastGeneratedDate"),
+        isActive = getBoolean("isActive") ?: true,
+        createdAt = getEpochMillis("createdAt") ?: 0L
+    )
+
+    private fun frequencyFromOrdinal(ordinal: Int): RecurringFrequency =
+        RecurringFrequency.entries.getOrElse(ordinal) { RecurringFrequency.MONTHLY }
+
+    suspend fun upsertRecurringExpense(recurring: RecurringExpense) {
+        val data = mutableMapOf<String, Any>(
+            "householdId" to recurring.householdId,
+            "amount" to recurring.amount,
+            "categoryId" to recurring.categoryId,
+            "categoryName" to recurring.categoryName,
+            "notes" to recurring.notes,
+            "addedBy" to recurring.addedBy,
+            "addedByName" to recurring.addedByName,
+            // Stored as the enum ordinal, which is what iOS reads and what Room used.
+            "frequency" to recurring.frequency.ordinal,
+            "startDate" to recurring.startDate,
+            "isActive" to recurring.isActive,
+            "createdAt" to recurring.createdAt
+        )
+        recurring.dayOfWeek?.let { data["dayOfWeek"] = it }
+        recurring.dayOfMonth?.let { data["dayOfMonth"] = it }
+        recurring.monthOfYear?.let { data["monthOfYear"] = it }
+        recurring.endDate?.let { data["endDate"] = it }
+        recurring.lastGeneratedDate?.let { data["lastGeneratedDate"] = it }
+        recurringCollection(recurring.householdId).document(recurring.id).set(data).await()
+    }
+
+    suspend fun updateRecurringLastGenerated(householdId: String, id: String, timestamp: Long) {
+        recurringCollection(householdId).document(id)
+            .set(mapOf("lastGeneratedDate" to timestamp), com.google.firebase.firestore.SetOptions.merge())
+            .await()
+    }
+
+    suspend fun deleteRecurringExpense(householdId: String, id: String) {
+        recurringCollection(householdId).document(id).delete().await()
     }
 
     // --- Categories ---

@@ -51,9 +51,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.bose.expensetracker.data.local.entity.RecurringExpenseEntity
-import com.bose.expensetracker.domain.model.Category
+import com.bose.expensetracker.domain.model.RecurringExpense
 import com.bose.expensetracker.domain.model.RecurringFrequency
+import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.ui.theme.AccentPurple
 import com.bose.expensetracker.ui.theme.ExpenseRed
 
@@ -143,16 +143,15 @@ fun RecurringScreen(
 
 @Composable
 private fun RecurringCard(
-    item: RecurringExpenseEntity,
+    item: RecurringExpense,
     onToggle: () -> Unit,
     onDelete: () -> Unit
 ) {
     val freqLabel = when (item.frequency) {
-        RecurringExpenseEntity.FREQ_DAILY -> "Daily"
-        RecurringExpenseEntity.FREQ_WEEKLY -> "Weekly"
-        RecurringExpenseEntity.FREQ_MONTHLY -> "Monthly"
-        RecurringExpenseEntity.FREQ_YEARLY -> "Yearly"
-        else -> "Custom"
+        RecurringFrequency.DAILY -> "Daily"
+        RecurringFrequency.WEEKLY -> "Weekly"
+        RecurringFrequency.MONTHLY -> "Monthly"
+        RecurringFrequency.YEARLY -> "Yearly"
     }
 
     Card(

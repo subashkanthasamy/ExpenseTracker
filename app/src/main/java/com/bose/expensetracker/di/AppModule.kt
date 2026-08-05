@@ -13,6 +13,7 @@ import com.bose.expensetracker.data.local.dao.ProcessedSmsDao
 import com.bose.expensetracker.data.local.dao.RecurringExpenseDao
 import com.bose.expensetracker.data.local.dao.ReminderDao
 import com.bose.expensetracker.data.local.dao.SavingsGoalDao
+import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.data.preferences.BiometricPreferences
 import com.bose.expensetracker.data.preferences.BiometricPreferencesImpl
 import com.bose.expensetracker.data.preferences.SandboxPreferences
@@ -22,6 +23,7 @@ import com.bose.expensetracker.data.preferences.ThemePreferences
 import com.bose.expensetracker.data.preferences.ThemePreferencesImpl
 import com.bose.expensetracker.data.repository.BudgetRepositoryImpl
 import com.bose.expensetracker.data.sandbox.SandboxDataSeeder
+import com.bose.expensetracker.data.sync.LocalToFirestoreMigration
 import com.bose.expensetracker.domain.repository.BudgetRepository
 import com.bose.expensetracker.domain.usecase.smsimport.SmsCategoryMatcher
 import com.bose.expensetracker.domain.usecase.smsimport.SmsTransactionParser
@@ -91,8 +93,11 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideBudgetRepository(budgetDao: BudgetDao, expenseDao: ExpenseDao): BudgetRepository =
-        BudgetRepositoryImpl(budgetDao, expenseDao)
+    fun provideBudgetRepository(
+        firestoreDataSource: FirestoreDataSource,
+        expenseDao: ExpenseDao
+    ): BudgetRepository =
+        BudgetRepositoryImpl(firestoreDataSource, expenseDao)
 
     @Provides
     fun provideRecurringExpenseDao(db: ExpenseTrackerDatabase): RecurringExpenseDao =
@@ -111,6 +116,17 @@ object AppModule {
     @Singleton
     fun provideSandboxPreferences(@ApplicationContext context: Context): SandboxPreferences =
         SandboxPreferences(context)
+
+    @Provides
+    @Singleton
+    fun provideLocalToFirestoreMigration(
+        @ApplicationContext context: Context,
+        budgetDao: BudgetDao,
+        savingsGoalDao: SavingsGoalDao,
+        recurringExpenseDao: RecurringExpenseDao,
+        firestoreDataSource: FirestoreDataSource
+    ): LocalToFirestoreMigration =
+        LocalToFirestoreMigration(context, budgetDao, savingsGoalDao, recurringExpenseDao, firestoreDataSource)
 
     @Provides
     @Singleton
