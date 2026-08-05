@@ -1,5 +1,6 @@
 package com.bose.expensetracker.data.sandbox
 
+import com.bose.expensetracker.data.preferences.SandboxConstants
 import com.bose.expensetracker.data.local.dao.CategoryDao
 import com.bose.expensetracker.data.local.dao.ExpenseDao
 import com.bose.expensetracker.data.local.entity.CategoryEntity
@@ -25,9 +26,17 @@ class SandboxDataSeeder(
         }
     }
 
+    /**
+     * Seeds only when the sandbox household has no expenses yet. Previously this always
+     * seeded, so every entry into demo mode duplicated the whole data set.
+     */
     fun seedIfNeeded() {
-        // This would check if data already exists and only seed if needed
-        seedData()
+        scope.launch {
+            if (expenseDao.countExpenses(SandboxConstants.SANDBOX_HOUSEHOLD_ID) == 0) {
+                seedCategories()
+                seedExpenses()
+            }
+        }
     }
 
     fun clearSandboxData() {
@@ -47,7 +56,7 @@ class SandboxDataSeeder(
                 icon = "🛒",
                 color = 0xFF4CAF50,
                 isPreset = true,
-                householdId = "sandbox_household_id"
+                householdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
             ),
             CategoryEntity(
                 id = "2",
@@ -55,7 +64,7 @@ class SandboxDataSeeder(
                 icon = "💡",
                 color = 0xFF2196F3,
                 isPreset = true,
-                householdId = "sandbox_household_id"
+                householdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
             ),
             CategoryEntity(
                 id = "3",
@@ -63,7 +72,7 @@ class SandboxDataSeeder(
                 icon = "🚗",
                 color = 0xFFFF9800,
                 isPreset = true,
-                householdId = "sandbox_household_id"
+                householdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
             ),
             CategoryEntity(
                 id = "4",
@@ -71,7 +80,7 @@ class SandboxDataSeeder(
                 icon = "🎬",
                 color = 0xFF9C27B0,
                 isPreset = true,
-                householdId = "sandbox_household_id"
+                householdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
             ),
             CategoryEntity(
                 id = "5",
@@ -79,7 +88,7 @@ class SandboxDataSeeder(
                 icon = "🏥",
                 color = 0xFFF44336,
                 isPreset = true,
-                householdId = "sandbox_household_id"
+                householdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
             ),
             CategoryEntity(
                 id = "6",
@@ -87,7 +96,7 @@ class SandboxDataSeeder(
                 icon = "🍽️",
                 color = 0xFFFF5722,
                 isPreset = true,
-                householdId = "sandbox_household_id"
+                householdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
             ),
             CategoryEntity(
                 id = "7",
@@ -95,7 +104,7 @@ class SandboxDataSeeder(
                 icon = "🛍️",
                 color = 0xFF607D8B,
                 isPreset = true,
-                householdId = "sandbox_household_id"
+                householdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
             ),
             CategoryEntity(
                 id = "8",
@@ -103,37 +112,73 @@ class SandboxDataSeeder(
                 icon = "💰",
                 color = 0xFF4CAF50,
                 isPreset = true,
-                householdId = "sandbox_household_id"
+                householdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
             )
         )
         categoryDao.insertAll(categories)
     }
 
     private suspend fun seedExpenses() {
-        val expenseCount = 100
-        val expenses = mutableListOf<ExpenseEntity>()
-        val categories = listOf(
-            "Groceries", "Utilities", "Transportation", "Entertainment", "Healthcare", "Dining Out", "Shopping", "Salary"
+        // Categories 1..7 are spending categories; 8 is Salary, which is income and must
+        // never be used for an expense (it previously was, so demo data showed a negative
+        // "Salary" entry).
+        val spendingCategories = listOf(
+            1 to "Groceries",
+            2 to "Utilities",
+            3 to "Transportation",
+            4 to "Entertainment",
+            5 to "Healthcare",
+            6 to "Dining Out",
+            7 to "Shopping"
         )
 
-        for (i in 1..expenseCount) {
-            val categoryId = Random.nextInt(1, 9).toString()
-            val categoryName = categories[categoryId.toInt() - 1]
-            
-            val expense = ExpenseEntity(
-                id = i.toString(),
-                householdId = "sandbox_household_id",
-                amount = Random.nextInt(10, 500).toDouble(),
-                categoryId = categoryId,
+        // Plausible notes per category, so demo data reads like real spending rather than
+        // "Sandbox expense 42".
+        val notesByCategory = mapOf(
+            "Groceries" to listOf("Big Bazaar", "Weekly vegetables", "More Supermarket", "Milk and eggs"),
+            "Utilities" to listOf("Electricity bill", "Broadband", "Water bill", "Gas cylinder"),
+            "Transportation" to listOf("Petrol", "Uber to office", "Metro card top-up", "Car service"),
+            "Entertainment" to listOf("Netflix", "Cinema tickets", "Spotify", "Weekend outing"),
+            "Healthcare" to listOf("Pharmacy", "Doctor consultation", "Lab test", "Dental checkup"),
+            "Dining Out" to listOf("Swiggy order", "Cafe Coffee Day", "Team lunch", "Dinner out"),
+            "Shopping" to listOf("Amazon order", "Clothes", "Footwear", "Home supplies")
+        )
+
+        // Typical spend bands, so totals look sensible instead of uniformly random.
+        val amountRanges = mapOf(
+            "Groceries" to (400..2500),
+            "Utilities" to (500..3000),
+            "Transportation" to (100..1200),
+            "Entertainment" to (200..1500),
+            "Healthcare" to (250..2000),
+            "Dining Out" to (150..1800),
+            "Shopping" to (500..4000)
+        )
+
+        val now = System.currentTimeMillis()
+        val day = 24L * 60 * 60 * 1000
+        val expenses = mutableListOf<ExpenseEntity>()
+
+        // Weighted towards the last month so the dashboard, weekly trend and insights all
+        // have something to show; the rest spread over the past year for history.
+        repeat(120) { index ->
+            val (categoryId, categoryName) = spendingCategories.random()
+            val range = amountRanges.getValue(categoryName)
+            val daysAgo = if (index < 45) Random.nextInt(0, 30) else Random.nextInt(30, 365)
+
+            expenses += ExpenseEntity(
+                id = "sandbox_expense_${index + 1}",
+                householdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID,
+                amount = Random.nextInt(range.first, range.last).toDouble(),
+                categoryId = categoryId.toString(),
                 categoryName = categoryName,
-                date = System.currentTimeMillis() - Random.nextInt(0, 365) * 24L * 60 * 60 * 1000,
-                notes = "Sandbox expense $i",
-                addedBy = "sandbox_user_id",
-                addedByName = "Demo User",
-                createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
+                date = now - daysAgo * day,
+                notes = notesByCategory.getValue(categoryName).random(),
+                addedBy = SandboxConstants.SANDBOX_USER_ID,
+                addedByName = SandboxConstants.SANDBOX_DISPLAY_NAME,
+                createdAt = now,
+                updatedAt = now
             )
-            expenses.add(expense)
         }
 
         expenseDao.insertAll(expenses)

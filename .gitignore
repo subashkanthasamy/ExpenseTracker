@@ -97,3 +97,8 @@ iosApp/Podfile.lock
 iosApp/*.xcworkspace
 
 .DS_Store
+
+# Node deps for tools/ scripts
+tools/node_modules/
+tools/package-lock.json
+tools/package.json
