@@ -38,11 +38,21 @@ class HouseholdRepositoryImpl @Inject constructor(
 
     override suspend fun joinHousehold(inviteCode: String, userId: String): Result<Household> =
         runCatching {
-            val household = firestoreDataSource.getHouseholdByInviteCode(inviteCode)
+            val target = firestoreDataSource.resolveInviteCode(inviteCode)
                 ?: throw Exception("No household found with this invite code")
-            firestoreDataSource.addMemberToHousehold(household.id, userId)
-            firestoreDataSource.updateUserHouseholdId(userId, household.id)
-            household.copy(memberUids = household.memberUids + userId)
+            // arrayUnion, so joining needs no read access to the household — which the
+            // security rules no longer grant to non-members.
+            firestoreDataSource.addMemberToHousehold(target.householdId, userId)
+            firestoreDataSource.updateUserHouseholdId(userId, target.householdId)
+            // Readable now that we are a member.
+            firestoreDataSource.getHousehold(target.householdId)
+                ?: Household(
+                    id = target.householdId,
+                    name = target.householdName,
+                    memberUids = listOf(userId),
+                    inviteCode = inviteCode,
+                    createdAt = System.currentTimeMillis()
+                )
         }
 
     override suspend fun getHousehold(householdId: String): Result<Household> =

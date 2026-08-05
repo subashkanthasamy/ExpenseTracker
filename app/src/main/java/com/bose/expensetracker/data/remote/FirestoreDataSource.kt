@@ -167,7 +167,19 @@ class FirestoreDataSource @Inject constructor(
                 "createdAt" to household.createdAt
             )
         ).await()
+        // Written second: the rules require the author to already be a member.
+        publishInviteCode(household.id, household.name, household.inviteCode)
         return household.id
+    }
+
+    /** Publishes the code -> household lookup used by [resolveInviteCode]. */
+    suspend fun publishInviteCode(householdId: String, householdName: String, inviteCode: String) {
+        firestore.collection("inviteCodes").document(inviteCode).set(
+            mapOf(
+                "householdId" to householdId,
+                "householdName" to householdName
+            )
+        ).await()
     }
 
     suspend fun getHousehold(householdId: String): Household? {
@@ -197,33 +209,28 @@ class FirestoreDataSource @Inject constructor(
         )
     }
 
-    suspend fun getHouseholdByInviteCode(inviteCode: String): Household? {
-        val snapshot = try {
-            firestore.collection("households")
-                .whereEqualTo("inviteCode", inviteCode)
-                .get(Source.SERVER).await()
+    /** What an invite code resolves to, without needing read access to the household. */
+    data class InviteTarget(val householdId: String, val householdName: String)
+
+    /**
+     * Resolves an invite code via `inviteCodes/{code}`.
+     *
+     * The old implementation queried `households` by inviteCode, which required every
+     * household to be readable by any signed-in user — that let anyone enumerate
+     * households, read their codes and join them. This lookup document only discloses
+     * anything to someone who already knows the code.
+     */
+    suspend fun resolveInviteCode(inviteCode: String): InviteTarget? {
+        val doc = try {
+            firestore.collection("inviteCodes").document(inviteCode).get().await()
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            try {
-                firestore.collection("households")
-                    .whereEqualTo("inviteCode", inviteCode)
-                    .get(Source.CACHE).await()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                return null
-            }
+            return null
         }
-        val doc = snapshot.documents.firstOrNull() ?: return null
-        @Suppress("UNCHECKED_CAST")
-        return Household(
-            id = doc.id,
-            name = doc.getString("name") ?: "",
-            memberUids = (doc.get("memberUids") as? List<String>) ?: emptyList(),
-            inviteCode = doc.getString("inviteCode") ?: "",
-            createdAt = doc.getEpochMillis("createdAt") ?: 0L
-        )
+        if (!doc.exists()) return null
+        val householdId = doc.getString("householdId") ?: return null
+        return InviteTarget(householdId, doc.getString("householdName") ?: "")
     }
 
     suspend fun addMemberToHousehold(householdId: String, userId: String) {

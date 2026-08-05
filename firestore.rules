@@ -11,8 +11,10 @@ rules_version = '2';
 // previously Room-only on Android and, on iOS, every write was wrapped in `try?` so
 // permission failures were silent.
 //
-// IMPORTANT: read the "Deployment notes" at the bottom — this file is not deployable
-// until the invite-code client change lands, or joining will break.
+// The invite-code client change these rules require is implemented on both platforms
+// (FirestoreDataSource.resolveInviteCode / FirestoreService.resolveInviteCode), so this
+// file is deployable. Read the "Deployment notes" at the bottom for what is intentionally
+// left closed and the residual risks.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -93,10 +95,15 @@ service cloud.firestore {
     }
 
     match /households/{hid} {
-      // Members only. Non-members resolve a code via /inviteCodes and then add
-      // themselves with the join branch of `update` below, which does not require read.
-      allow get: if isMember(hid);
-      allow list: if false;
+      // Members only. Non-members resolve a code via /inviteCodes and then add themselves
+      // with the join branch of `update` below, which does not require read access.
+      //
+      // Using resource.data rather than the isMember() helper avoids an extra document
+      // read, and crucially it also permits the "my households" query
+      // (whereField memberUids arrayContains uid): for list operations Firestore evaluates
+      // this per candidate document and accepts the query because it is provably
+      // constrained to documents that satisfy the rule.
+      allow read: if isSignedIn() && uid() in resource.data.memberUids;
 
       allow create: if isSignedIn()
         && request.resource.data.keys().hasOnly(['name', 'memberUids', 'inviteCode', 'createdAt'])
@@ -170,18 +177,16 @@ service cloud.firestore {
 
 // ---- Deployment notes -------------------------------------------------------
 //
-// NOT yet deployable as-is: the invite-code lookup above requires a client change on
-// both platforms. Today both apps join by querying `households` for a matching
-// inviteCode, which these rules no longer permit (deliberately — that query required
-// every household to be world-readable to signed-in users).
+// Client support (already implemented on both platforms):
+//   1. On create: the household is written first, then `inviteCodes/{code}` =
+//      { householdId, householdName } — that order matters, because the rules require the
+//      author of the lookup document to already be a member.
+//   2. On join: resolve `inviteCodes/{code}`, then add yourself to
+//      `households/{id}.memberUids` with arrayUnion. No household read is involved, so
+//      the join works without read access.
+//   3. Rotating a code means writing a new lookup document and deleting the old one.
 //
-// Required client change:
-//   1. On create: also write `inviteCodes/{code}` = { householdId, householdName }.
-//   2. On join:  read `inviteCodes/{code}` to resolve the id and name, then update
-//      `households/{id}.memberUids` to add yourself. No household read is needed —
-//      Firestore evaluates the update against server state, so the join branch works
-//      without read access.
-//   3. Optionally delete the `inviteCodes/{code}` document when rotating a code.
+// Deploy with:  firebase deploy --only firestore:rules
 //
 // Remaining accepted risk: anyone who learns an invite code can join that household.
 // That is what an invite code is for. If you need stronger control, move the join into

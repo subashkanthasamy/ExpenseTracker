@@ -157,6 +157,26 @@ only ever *write* millis. `tools/migrate-timestamps.js` normalises legacy docume
 - Hilt, Room, Firebase (Auth + Firestore)
 - CameraX, ML Kit, WorkManager, Biometric, DataStore, Coil
 
+
+## Firestore security rules
+
+`firestore.rules` is the source of truth — deploy with
+`firebase deploy --only firestore:rules`. Two things to know before editing:
+
+- **Joining uses `inviteCodes/{code}`, not a query.** A `households` query on `inviteCode`
+  would require every household to be readable by any signed-in user, which allows
+  enumerating households, reading their codes and joining them. Create writes the household
+  first and the lookup document second (the rules require the author to already be a
+  member); join resolves the code then adds the user with `arrayUnion`, so no household read
+  is needed.
+- **`households` read is `uid() in resource.data.memberUids`.** That deliberately also
+  permits the "my households" query (`memberUids arrayContains uid`) — Firestore accepts it
+  because the query is provably constrained to documents satisfying the rule. Changing this
+  to a helper that does a `get()` would break that query.
+
+Household deletion and member ejection are intentionally closed off; do those from a Cloud
+Function if needed.
+
 ## Platform parity (Android = reference)
 
 Rough scale: ~11.7k lines of Android UI vs ~2.8k lines of Swift, so even the shipped iOS
@@ -178,6 +198,7 @@ Domain models are shared; the gap is features and platform plumbing.
 | Export / import | ✅ | ✅ CSV + PDF export, CSV import |
 | Offline cache | ✅ Room | ❌ Firestore only |
 | Domain models | ✅ `shared/` | ✅ `shared/` via Shared.framework |
+| Budgets / goals / recurring storage | ✅ Firestore | ✅ Firestore (same collections) |
 | Sandbox / demo mode | ✅ | ❌ |
 | **SMS transaction import** | ✅ | **impossible — see below** |
 
@@ -194,14 +215,14 @@ aggregator API (RBI Account Aggregator).
 
 ### Divergences to be aware of
 
-- **Recurring rules do not sync across platforms.** Android stores them in Room only; iOS
-  stores them in `households/{id}/recurring`. Moving Android onto that collection would fix
-  it.
+- **Budgets, goals and recurring now share Firestore collections** across both platforms.
+  Room remains only as the offline cache for expenses/categories, plus the one-time
+  `LocalToFirestoreMigration` that lifts pre-existing local rows up.
 - **Reminders are device-local on both platforms** by design — a notification schedule
   belongs to the device showing it.
-- **Recurring generation differs deliberately.** Android's worker checks only "due today", so
-  a missed day is lost permanently. iOS catches up from the last generated date on launch.
-  Prefer the iOS behaviour if unifying.
+- **Recurring generation is shared.** `RecurringScheduleCalculator` in `shared/` decides
+  which days are due and both platforms call it — required for correctness now that they
+  read and write the same `lastGeneratedDate`. Both catch up on missed days.
 - **Budget alerts are dead code on Android** — `NotificationHelper.showBudgetAlertNotification`
   has no callers. Nothing to port until it is built or specified. On iOS a spending-threshold
   check cannot run in the background; it would fire on app open, or need Cloud Functions + FCM.

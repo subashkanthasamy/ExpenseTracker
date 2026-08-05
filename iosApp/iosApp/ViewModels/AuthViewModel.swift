@@ -95,16 +95,16 @@ class AuthViewModel {
         guard let uid = authService.currentUserId else { return }
         isLoading = true
         do {
-            guard let household = try await firestoreService.getHouseholdByInviteCode(inviteCode) else {
+            guard let target = try await firestoreService.resolveInviteCode(inviteCode) else {
                 self.error = "Invalid invite code"
                 isLoading = false
                 return
             }
-            var members = household.memberUids
-            if !members.contains(uid) { members.append(uid) }
-            try await firestoreService.updateHouseholdMembers(household.id, members: members)
+            // arrayUnion — no read of the household required, which is what the security
+            // rules now expect from a non-member.
+            try await firestoreService.addSelfToHousehold(target.householdId, uid: uid)
             if let current = authService.currentUser {
-                let user = current.addingHousehold(household.id)
+                let user = current.addingHousehold(target.householdId)
                 try await authService.saveUser(user)
                 authService.currentUser = user
             }

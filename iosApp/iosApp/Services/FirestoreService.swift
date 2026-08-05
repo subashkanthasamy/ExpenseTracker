@@ -40,6 +40,47 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
             "inviteCode": household.inviteCode,
             "createdAt": household.createdAt
         ])
+        // Written second: the rules require the author to already be a member.
+        try await publishInviteCode(
+            householdId: household.id,
+            householdName: household.name,
+            inviteCode: household.inviteCode
+        )
+    }
+
+    /// What an invite code resolves to, without needing read access to the household.
+    struct InviteTarget {
+        let householdId: String
+        let householdName: String
+    }
+
+    /// Publishes the code -> household lookup read by `resolveInviteCode`.
+    func publishInviteCode(householdId: String, householdName: String, inviteCode: String) async throws {
+        try await db.collection("inviteCodes").document(inviteCode).setData([
+            "householdId": householdId,
+            "householdName": householdName
+        ])
+    }
+
+    /// Resolves an invite code.
+    ///
+    /// Replaces the old `households` query on inviteCode, which required every household to
+    /// be readable by any signed-in user — that allowed enumerating households, reading
+    /// their codes and joining them. This lookup only discloses anything to someone who
+    /// already knows the code.
+    func resolveInviteCode(_ code: String) async throws -> InviteTarget? {
+        let doc = try await db.collection("inviteCodes").document(code).getDocument()
+        guard doc.exists, let data = doc.data(), let householdId = data["householdId"] as? String else {
+            return nil
+        }
+        return InviteTarget(householdId: householdId, householdName: data["householdName"] as? String ?? "")
+    }
+
+    /// Adds the current user with arrayUnion, so joining needs no read access to the
+    /// household — which the rules no longer grant to non-members.
+    func addSelfToHousehold(_ householdId: String, uid: String) async throws {
+        try await db.collection("households").document(householdId)
+            .updateData(["memberUids": FieldValue.arrayUnion([uid])])
     }
 
     func getHousehold(_ id: String) async throws -> Household? {
@@ -47,10 +88,6 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
         return doc.exists ? decodeHousehold(doc) : nil
     }
 
-    func getHouseholdByInviteCode(_ code: String) async throws -> Household? {
-        let snap = try await db.collection("households").whereField("inviteCode", isEqualTo: code).limit(to: 1).getDocuments()
-        return snap.documents.first.flatMap { decodeHousehold($0) }
-    }
 
     func updateHouseholdMembers(_ id: String, members: [String]) async throws {
         try await db.collection("households").document(id).updateData(["memberUids": members])
