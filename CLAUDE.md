@@ -205,7 +205,7 @@ Domain models are shared; the gap is features and platform plumbing.
 | Domain models | ✅ `shared/` | ✅ `shared/` via Shared.framework |
 | Budgets / goals / recurring storage | ✅ Firestore | ✅ Firestore (same collections) |
 | Sandbox / demo mode | ✅ | ❌ |
-| **SMS transaction import** | ✅ | **impossible — see below** |
+| **SMS transaction import** | ✅ automatic | ⚠️ manual paste only — automatic is impossible |
 
 ### SMS import cannot be ported
 

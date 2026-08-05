@@ -4,6 +4,7 @@ import Shared
 struct AddEditExpenseView: View {
     @State private var showScanner = false
     @State private var showVoice = false
+    @State private var showSmsImport = false
     @Bindable var viewModel: AddEditExpenseViewModel
     @Environment(\.dismiss) var dismiss
     @State private var showDatePicker = false
@@ -35,6 +36,14 @@ struct AddEditExpenseView: View {
                         }
                         .buttonStyle(.bordered)
                     }
+
+                    Button {
+                        showSmsImport = true
+                    } label: {
+                        Label("Import from bank SMS", systemImage: "text.bubble")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                 }
 
                 Section("Category") {
@@ -97,6 +106,17 @@ struct AddEditExpenseView: View {
                 if let amount = result.amount { viewModel.amount = String(amount.doubleValue) }
                 if let millis = result.date { viewModel.date = Date(epochMillis: millis.int64Value) }
                 if let merchant = result.merchant, viewModel.notes.isEmpty { viewModel.notes = merchant }
+            }
+        }
+        .sheet(isPresented: $showSmsImport) {
+            SmsImportView { amount, merchant, categoryHint in
+                viewModel.amount = String(amount)
+                if let merchant, viewModel.notes.isEmpty { viewModel.notes = merchant }
+                if let hint = categoryHint {
+                    viewModel.selectedCategory = viewModel.categories.first {
+                        $0.name.localizedCaseInsensitiveContains(hint)
+                    } ?? viewModel.selectedCategory
+                }
             }
         }
         .sheet(isPresented: $showVoice) {
