@@ -85,3 +85,15 @@ iosApp/iosApp.xcodeproj/project.xcworkspace/xcuserdata/
 *.swp
 *~
 /.idea/
+/.serena/
+
+# Firebase config — obtain per-developer from the Firebase console, never commit
+app/google-services.json
+iosApp/iosApp/GoogleService-Info.plist
+
+# CocoaPods (project uses SPM; do not re-introduce)
+iosApp/Pods/
+iosApp/Podfile.lock
+iosApp/*.xcworkspace
+
+.DS_Store
