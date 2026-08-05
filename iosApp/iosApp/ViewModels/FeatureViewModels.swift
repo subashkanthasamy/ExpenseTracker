@@ -6,6 +6,8 @@ import Shared
 
 @Observable
 class CategoryViewModel {
+    /// Surfaced to the user — a failed write must not look like "nothing here yet".
+    var error: String?
     var presetCategories: [Shared.Category] = []
     var customCategories: [Shared.Category] = []
     var isLoading = true
@@ -40,7 +42,11 @@ class CategoryViewModel {
     func addCategory(name: String, icon: String) async {
         guard let hid = householdId else { return }
         let cat = Shared.Category(id: UUID().uuidString, name: name, icon: icon, color: 0xFF7B61FF, isPreset: false, householdId: hid)
-        try? await firestoreService.addCategory(householdId: hid, category: cat)
+        do {
+            try await firestoreService.addCategory(householdId: hid, category: cat)
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 
     func deleteCategory(_ id: String) async {
@@ -55,6 +61,8 @@ class CategoryViewModel {
 
 @Observable
 class BudgetViewModel {
+    /// Surfaced to the user — a failed write must not look like "nothing here yet".
+    var error: String?
     var budgets: [Budget] = []
     var categories: [Shared.Category] = []
     var isLoading = true
@@ -97,6 +105,7 @@ class BudgetViewModel {
             isLoading = false
         } catch {
             print("BudgetVM error: \(error)")
+            self.error = error.localizedDescription
             isLoading = false
         }
     }
@@ -104,7 +113,11 @@ class BudgetViewModel {
     func addBudget(categoryId: String, categoryName: String, limit: Double) async {
         guard let hid = householdId else { return }
         let budget = Budget(id: UUID().uuidString, householdId: hid, categoryId: categoryId, categoryName: categoryName, monthlyLimit: limit)
-        try? await firestoreService.addBudget(householdId: hid, budget: budget)
+        do {
+            try await firestoreService.addBudget(householdId: hid, budget: budget)
+        } catch {
+            self.error = error.localizedDescription
+        }
         await load()
     }
 
@@ -119,6 +132,8 @@ class BudgetViewModel {
 
 @Observable
 class NetWorthViewModel {
+    /// Surfaced to the user — a failed write must not look like "nothing here yet".
+    var error: String?
     var assets: [Asset] = []
     var liabilities: [Liability] = []
     var totalAssets: Double = 0
@@ -185,6 +200,8 @@ class NetWorthViewModel {
 
 @Observable
 class SavingsViewModel {
+    /// Surfaced to the user — a failed write must not look like "nothing here yet".
+    var error: String?
     var goals: [SavingsGoal] = []
     var isLoading = true
 
@@ -210,7 +227,11 @@ class SavingsViewModel {
         guard let hid = householdId else { return }
         let goal = SavingsGoal(id: UUID().uuidString, householdId: hid, name: name, targetAmount: target,
                                icon: icon, targetDate: targetDate, createdAt: Date())
-        try? await firestoreService.addSavingsGoal(householdId: hid, goal: goal)
+        do {
+            try await firestoreService.addSavingsGoal(householdId: hid, goal: goal)
+        } catch {
+            self.error = error.localizedDescription
+        }
         await load()
     }
 
