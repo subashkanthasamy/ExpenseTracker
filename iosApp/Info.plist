@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Google Sign-In OAuth callback. The scheme must equal REVERSED_CLIENT_ID from
+	  GoogleService-Info.plist; if that file is ever regenerated for a different
+	  iOS OAuth client, this value has to be updated to match or sign-in will fail.
+
+	  Everything else in the built Info.plist still comes from the INFOPLIST_KEY_*
+	  build settings (GENERATE_INFOPLIST_FILE = YES merges them into this file).
+	-->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.236284003759-55te42m2osae721lndv67c0fkhdh7r9d</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
