@@ -169,12 +169,12 @@ Domain models are shared; the gap is features and platform plumbing.
 | Email/password auth | ✅ | ✅ |
 | Google Sign-In | ✅ | ✅ |
 | Phone (OTP) auth | ✅ | ❌ |
-| Settings (theme, biometric, export, toggles) | ✅ (~1.5k lines) | ❌ no screen at all |
-| Notifications / reminders | ✅ (~1.1k lines) | ❌ |
-| Recurring expenses | ✅ + WorkManager worker | ❌ |
+| Settings (theme, biometric, export, toggles) | ✅ | ✅ theme, biometric, export/import, reset |
+| Notifications / reminders | ✅ | ✅ daily + bill (local notifications) |
+| Recurring expenses | ✅ WorkManager (today-only) | ✅ launch catch-up (better) |
 | Receipt scanner (OCR) | ✅ CameraX + ML Kit | ❌ |
 | Voice expense entry | ✅ | ❌ |
-| Export / import | ✅ | ❌ |
+| Export / import | ✅ | ✅ CSV + PDF export, CSV import |
 | Offline cache | ✅ Room | ❌ Firestore only |
 | Domain models | ✅ `shared/` | ✅ `shared/` via Shared.framework |
 | Sandbox / demo mode | ✅ | ❌ |
@@ -189,6 +189,21 @@ Note the parsing logic itself (`SmsTransactionParser`, `SmsCategoryMatcher`) liv
 `SmsTransactionParser().parse(sender:body:receivedTimestamp:)` — only the input is
 unavailable. Viable iOS substitutes: a Share Extension, a paste-to-parse field, or a bank
 aggregator API (RBI Account Aggregator).
+
+
+### Divergences to be aware of
+
+- **Recurring rules do not sync across platforms.** Android stores them in Room only; iOS
+  stores them in `households/{id}/recurring`. Moving Android onto that collection would fix
+  it.
+- **Reminders are device-local on both platforms** by design — a notification schedule
+  belongs to the device showing it.
+- **Recurring generation differs deliberately.** Android's worker checks only "due today", so
+  a missed day is lost permanently. iOS catches up from the last generated date on launch.
+  Prefer the iOS behaviour if unifying.
+- **Budget alerts are dead code on Android** — `NotificationHelper.showBudgetAlertNotification`
+  has no callers. Nothing to port until it is built or specified. On iOS a spending-threshold
+  check cannot run in the background; it would fire on app open, or need Cloud Functions + FCM.
 
 ### Android → iOS platform mappings
 
