@@ -10,6 +10,7 @@ import com.bose.expensetracker.domain.model.User
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
+import com.bose.expensetracker.domain.repository.PhoneAuthRepository
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthProvider
@@ -47,6 +48,7 @@ sealed class AuthEvent {
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val phoneAuthRepository: PhoneAuthRepository,
     private val householdRepository: HouseholdRepository,
     private val categoryRepository: CategoryRepository,
     private val sandboxPreferences: SandboxPreferences,
@@ -186,14 +188,14 @@ class AuthViewModel @Inject constructor(
     fun sendPhoneVerificationCode(phoneNumber: String, activity: Activity) {
         currentPhoneNumber = phoneNumber
         _uiState.update { it.copy(isLoading = true, error = null) }
-        authRepository.sendPhoneVerificationCode(phoneNumber, activity, phoneAuthCallbacks)
+        phoneAuthRepository.sendPhoneVerificationCode(phoneNumber, activity, phoneAuthCallbacks)
     }
 
     fun resendVerificationCode(activity: Activity) {
         val phone = currentPhoneNumber ?: return
         val token = resendToken ?: return
         _uiState.update { it.copy(isLoading = true, error = null) }
-        authRepository.resendPhoneVerificationCode(phone, activity, token, phoneAuthCallbacks)
+        phoneAuthRepository.resendPhoneVerificationCode(phone, activity, token, phoneAuthCallbacks)
     }
 
     fun verifyPhoneCode(code: String) {
@@ -209,7 +211,7 @@ class AuthViewModel @Inject constructor(
     private fun signInWithPhoneCredential(credential: PhoneAuthCredential) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            authRepository.signInWithPhoneCredential(credential)
+            phoneAuthRepository.signInWithPhoneCredential(credential)
                 .onSuccess { user ->
                     _uiState.update { it.copy(isLoading = false, user = user, phoneAuthState = PhoneAuthState.Idle) }
                     storedVerificationId = null

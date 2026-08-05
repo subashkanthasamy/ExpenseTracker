@@ -110,6 +110,10 @@ fun ExpenseTrackerNavGraph(
                                     .build()
                                 credentialManager.getCredential(context as Activity, request)
                             } catch (e: NoCredentialException) {
+                                // No account matched One Tap — fall back to the explicit
+                                // "Sign in with Google" flow. Keep the original exception:
+                                // if the fallback also fails, One Tap's reason is the useful one.
+                                Log.d("GoogleSignIn", "One Tap found no credential, falling back", e)
                                 val signInOption = GetSignInWithGoogleOption.Builder(
                                     context.getString(R.string.default_web_client_id)
                                 ).build()
@@ -122,9 +126,21 @@ fun ExpenseTrackerNavGraph(
                             val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(result.credential.data)
                             authViewModel.signInWithGoogle(googleIdTokenCredential.idToken)
                         } catch (e: GetCredentialCancellationException) {
-                            Log.d("GoogleSignIn", "User cancelled Google Sign-In")
+                            // Credential Manager also reports a provider-side refusal as a
+                            // cancellation, so log the detail rather than assuming the user
+                            // dismissed the sheet — a signing cert missing from the Firebase
+                            // project shows up here and is otherwise invisible.
+                            Log.i("GoogleSignIn", "Google Sign-In cancelled or refused by provider: ${e.type} ${e.errorMessage}", e)
+                        } catch (e: NoCredentialException) {
+                            // Fallback path failed too — usually no Google account on the
+                            // device, or this build's signing certificate is not registered
+                            // for the Firebase project's Android OAuth client.
+                            Log.e("GoogleSignIn", "No Google credential available: ${e.type} ${e.errorMessage}", e)
+                            authViewModel.handleGoogleSignInError(
+                                "No Google account available for this app. Check that a Google account is added to the device and that this build's signing certificate is registered in Firebase."
+                            )
                         } catch (e: Exception) {
-                            Log.e("GoogleSignIn", "Google Sign-In failed", e)
+                            Log.e("GoogleSignIn", "Google Sign-In failed (${e.javaClass.simpleName})", e)
                             authViewModel.handleGoogleSignInError(e.message ?: "Google Sign-In failed")
                         }
                     }

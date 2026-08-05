@@ -1,6 +1,7 @@
 package com.bose.expensetracker
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +30,7 @@ import com.bose.expensetracker.ui.screen.auth.BiometricHelper
 import com.bose.expensetracker.ui.theme.ExpenseTrackerTheme
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -111,15 +113,37 @@ class MainActivity : FragmentActivity() {
                     if (firebaseAuth.currentUser != null || isSandbox) DashboardRoute else LoginRoute
                 }
 
-                // Check if user has a household — redirect to setup if not (skip in sandbox)
-                if (firebaseAuth.currentUser != null && !householdChecked && !isSandbox) {
+                // Check if user has a household — redirect to setup if not (skip in sandbox).
+                //
+                // The `householdChecked` guard must NOT be part of this condition: it is a
+                // plain var, but `navBackStackEntry` above is observable state, so the first
+                // navigation recomposes, the condition flips, the LaunchedEffect leaves the
+                // composition and its in-flight Firestore read is cancelled. That surfaced as
+                // "The coroutine scope left the composition" and was then misread as "no
+                // household", bouncing signed-in users to setup. Keep the once-only guard
+                // inside the effect so the effect itself is never conditionally disposed.
+                if (firebaseAuth.currentUser != null && !isSandbox) {
                     LaunchedEffect(Unit) {
-                        householdChecked = true
-                        val uid = firebaseAuth.currentUser?.uid ?: return@LaunchedEffect
-                        val hId = householdRepository.getUserHouseholdId(uid)
-                        if (hId == null) {
-                            navController.navigate(HouseholdSetupRoute) {
-                                popUpTo(0) { inclusive = true }
+                        if (!householdChecked) {
+                            val uid = firebaseAuth.currentUser?.uid
+                            if (uid != null) {
+                                val hId = try {
+                                    householdRepository.getUserHouseholdId(uid)
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    // A failed lookup is not the same as "has no household" —
+                                    // don't redirect on it.
+                                    Log.w("MainActivity", "Household check failed; staying put", e)
+                                    householdChecked = true
+                                    return@LaunchedEffect
+                                }
+                                householdChecked = true
+                                if (hId == null) {
+                                    navController.navigate(HouseholdSetupRoute) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
                             }
                         }
                     }
@@ -139,7 +163,8 @@ class MainActivity : FragmentActivity() {
                     !route.contains("HouseholdSetup") &&
                     !route.contains("AddEditExpense") &&
                     !route.contains("ReceiptScanner") &&
-                    !route.contains("FinancialCoach")
+                    !route.contains("FinancialCoach") &&
+                    !route.contains("SandboxSetup")
                 } ?: false
 
                 Scaffold(

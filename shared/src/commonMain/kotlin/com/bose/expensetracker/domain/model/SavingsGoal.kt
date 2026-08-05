@@ -8,7 +8,7 @@ data class SavingsGoal(
     val name: String,
     val targetAmount: Double,
     val currentAmount: Double = 0.0,
-    val icon: String = "🏯",
+    val icon: String = "🎯",
     val targetDate: Long? = null,
     val createdAt: Long = Clock.System.now().toEpochMilliseconds()
 ) {

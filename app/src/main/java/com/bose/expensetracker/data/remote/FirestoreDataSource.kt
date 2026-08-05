@@ -6,8 +6,11 @@ import com.bose.expensetracker.domain.model.Expense
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.Liability
 import com.bose.expensetracker.domain.model.User
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -19,6 +22,23 @@ import javax.inject.Singleton
 class FirestoreDataSource @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
+
+    /**
+     * Reads a time field as epoch millis.
+     *
+     * Epoch millis is the wire contract (it's what the shared domain model declares),
+     * but the iOS app wrote these fields as Firestore [Timestamp]s, so documents
+     * created there hold a Timestamp instead of a number. Reading those with
+     * `getLong` throws "Field 'x' is not a java.lang.Number" and killed the app.
+     * Accept either representation so mixed data already in Firestore still loads.
+     */
+    private fun DocumentSnapshot.getEpochMillis(field: String): Long? =
+        when (val value = get(field)) {
+            is Number -> value.toLong()
+            is Timestamp -> value.toDate().time
+            is java.util.Date -> value.time
+            else -> null
+        }
 
     // --- Users ---
 
@@ -38,14 +58,20 @@ class FirestoreDataSource @Inject constructor(
         val doc = try {
             // Try default source first (uses cache if available, server otherwise)
             firestore.collection("users").document(uid).get().await()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e1: Exception) {
             android.util.Log.w("FirestoreDS", "getUser default failed for $uid: ${e1.message}")
             try {
                 firestore.collection("users").document(uid).get(Source.CACHE).await()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e2: Exception) {
                 android.util.Log.w("FirestoreDS", "getUser cache failed for $uid: ${e2.message}")
                 try {
                     firestore.collection("users").document(uid).get(Source.SERVER).await()
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e3: Exception) {
                     android.util.Log.e("FirestoreDS", "getUser all sources failed for $uid: ${e3.message}")
                     return null
@@ -106,6 +132,8 @@ class FirestoreDataSource @Inject constructor(
     suspend fun getUserFromServer(uid: String): User? {
         val doc = try {
             firestore.collection("users").document(uid).get(Source.SERVER).await()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             android.util.Log.e("FirestoreDS", "getUserFromServer failed for $uid: ${e.message}")
             return null
@@ -143,9 +171,13 @@ class FirestoreDataSource @Inject constructor(
             val cached = firestore.collection("households").document(householdId).get(Source.CACHE).await()
             if (cached.exists()) cached
             else firestore.collection("households").document(householdId).get(Source.SERVER).await()
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             try {
                 firestore.collection("households").document(householdId).get(Source.SERVER).await()
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 return null
             }
@@ -157,7 +189,7 @@ class FirestoreDataSource @Inject constructor(
             name = doc.getString("name") ?: "",
             memberUids = (doc.get("memberUids") as? List<String>) ?: emptyList(),
             inviteCode = doc.getString("inviteCode") ?: "",
-            createdAt = doc.getLong("createdAt") ?: 0L
+            createdAt = doc.getEpochMillis("createdAt") ?: 0L
         )
     }
 
@@ -166,11 +198,15 @@ class FirestoreDataSource @Inject constructor(
             firestore.collection("households")
                 .whereEqualTo("inviteCode", inviteCode)
                 .get(Source.SERVER).await()
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             try {
                 firestore.collection("households")
                     .whereEqualTo("inviteCode", inviteCode)
                     .get(Source.CACHE).await()
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 return null
             }
@@ -182,7 +218,7 @@ class FirestoreDataSource @Inject constructor(
             name = doc.getString("name") ?: "",
             memberUids = (doc.get("memberUids") as? List<String>) ?: emptyList(),
             inviteCode = doc.getString("inviteCode") ?: "",
-            createdAt = doc.getLong("createdAt") ?: 0L
+            createdAt = doc.getEpochMillis("createdAt") ?: 0L
         )
     }
 
@@ -302,12 +338,12 @@ class FirestoreDataSource @Inject constructor(
                         amount = doc.getDouble("amount") ?: 0.0,
                         categoryId = doc.getString("categoryId") ?: "",
                         categoryName = doc.getString("categoryName") ?: "",
-                        date = doc.getLong("date") ?: 0L,
+                        date = doc.getEpochMillis("date") ?: 0L,
                         notes = doc.getString("notes") ?: "",
                         addedBy = doc.getString("addedBy") ?: "",
                         addedByName = doc.getString("addedByName") ?: "",
-                        createdAt = doc.getLong("createdAt") ?: 0L,
-                        updatedAt = doc.getLong("updatedAt") ?: 0L,
+                        createdAt = doc.getEpochMillis("createdAt") ?: 0L,
+                        updatedAt = doc.getEpochMillis("updatedAt") ?: 0L,
                         isSynced = true
                     )
                 } ?: emptyList()
@@ -419,7 +455,7 @@ class FirestoreDataSource @Inject constructor(
                         name = doc.getString("name") ?: "",
                         value = doc.getDouble("value") ?: 0.0,
                         type = doc.getString("type") ?: "",
-                        date = doc.getLong("date") ?: 0L,
+                        date = doc.getEpochMillis("date") ?: 0L,
                         addedBy = doc.getString("addedBy") ?: ""
                     )
                 } ?: emptyList()
@@ -476,7 +512,7 @@ class FirestoreDataSource @Inject constructor(
                         name = doc.getString("name") ?: "",
                         amount = doc.getDouble("amount") ?: 0.0,
                         type = doc.getString("type") ?: "",
-                        date = doc.getLong("date") ?: 0L,
+                        date = doc.getEpochMillis("date") ?: 0L,
                         addedBy = doc.getString("addedBy") ?: ""
                     )
                 } ?: emptyList()

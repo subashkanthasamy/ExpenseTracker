@@ -7,6 +7,7 @@ import com.bose.expensetracker.data.remote.AuthDataSource
 import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.User
 import com.bose.expensetracker.domain.repository.AuthRepository
+import com.bose.expensetracker.domain.repository.PhoneAuthRepository
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthProvider
 import kotlinx.coroutines.flow.Flow
@@ -19,7 +20,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val authDataSource: AuthDataSource,
     private val firestoreDataSource: FirestoreDataSource,
     private val sandboxPreferences: SandboxPreferences
-) : AuthRepository {
+) : AuthRepository, PhoneAuthRepository {
 
     private val sandboxUser = User(
         uid = SandboxConstants.SANDBOX_USER_ID,

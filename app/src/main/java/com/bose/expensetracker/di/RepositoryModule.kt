@@ -10,6 +10,7 @@ import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
 import com.bose.expensetracker.domain.repository.NetWorthRepository
+import com.bose.expensetracker.domain.repository.PhoneAuthRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -23,6 +24,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPhoneAuthRepository(impl: AuthRepositoryImpl): PhoneAuthRepository
 
     @Binds
     @Singleton
