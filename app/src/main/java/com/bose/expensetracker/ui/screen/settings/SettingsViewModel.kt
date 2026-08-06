@@ -3,8 +3,6 @@ package com.bose.expensetracker.ui.screen.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.data.preferences.BiometricPreferences
-import com.bose.expensetracker.data.preferences.SandboxConstants
-import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.preferences.SmsImportPreferences
 import com.bose.expensetracker.data.preferences.ThemePreferences
 import com.bose.expensetracker.data.sandbox.SandboxDataSeeder
@@ -48,8 +46,7 @@ data class SettingsUiState(
     val resetMessage: String? = null,
     val smsImportEnabled: Boolean = false,
     val themeMode: Int = ThemePreferences.THEME_SYSTEM,
-    val errorMessage: String? = null,
-    val isSandbox: Boolean = false
+    val errorMessage: String? = null
 )
 
 @HiltViewModel
@@ -63,7 +60,6 @@ class SettingsViewModel @Inject constructor(
     private val biometricPreferences: BiometricPreferences,
     private val smsImportPreferences: SmsImportPreferences,
     private val themePreferences: ThemePreferences,
-    private val sandboxPreferences: SandboxPreferences,
     private val sandboxDataSeeder: SandboxDataSeeder
 ) : ViewModel() {
 
@@ -81,49 +77,32 @@ class SettingsViewModel @Inject constructor(
     }
 
     private fun loadSettings() {
-        val isSandbox = sandboxPreferences.isSandboxCached
-        _uiState.update { it.copy(isSandbox = isSandbox) }
-
-        if (isSandbox) {
-            viewModelScope.launch {
-                val sandboxUser = User(
-                    uid = SandboxConstants.SANDBOX_USER_ID,
-                    email = "demo@example.com",
-                    displayName = SandboxConstants.SANDBOX_DISPLAY_NAME,
-                    householdIds = listOf(SandboxConstants.SANDBOX_HOUSEHOLD_ID),
-                    activeHouseholdId = SandboxConstants.SANDBOX_HOUSEHOLD_ID
-                )
-                _uiState.update { it.copy(user = sandboxUser) }
-                loadHouseholdData(SandboxConstants.SANDBOX_USER_ID)
-            }
-        } else {
-            viewModelScope.launch {
-                authRepository.currentUser.collect { user ->
-                    if (user == null) {
-                        _uiState.update { it.copy(isLoading = false) }
-                        return@collect
-                    }
-                    _uiState.update { it.copy(user = user) }
-                    try {
-                        loadHouseholdData(user.uid)
-                    } catch (e: Exception) {
-                        android.util.Log.e("SettingsVM", "loadHouseholdData failed: ${e.message}", e)
-                        _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to load household data") }
-                    }
+        viewModelScope.launch {
+            authRepository.currentUser.collect { user ->
+                if (user == null) {
+                    _uiState.update { it.copy(isLoading = false) }
+                    return@collect
+                }
+                _uiState.update { it.copy(user = user) }
+                try {
+                    loadHouseholdData(user.uid)
+                } catch (e: Exception) {
+                    android.util.Log.e("SettingsVM", "loadHouseholdData failed: ${e.message}", e)
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to load household data") }
                 }
             }
-            // Load biometric preference in a separate coroutine to avoid blocking the outer collect
-            viewModelScope.launch {
-                val uid = authRepository.getCurrentUserId() ?: return@launch
-                biometricPreferences.isBiometricEnabled(uid).collect { enabled ->
-                    _uiState.update { it.copy(biometricEnabled = enabled) }
-                }
+        }
+        // Load biometric preference in a separate coroutine to avoid blocking the outer collect
+        viewModelScope.launch {
+            val uid = authRepository.getCurrentUserId() ?: return@launch
+            biometricPreferences.isBiometricEnabled(uid).collect { enabled ->
+                _uiState.update { it.copy(biometricEnabled = enabled) }
             }
-            viewModelScope.launch {
-                val uid = authRepository.getCurrentUserId() ?: return@launch
-                smsImportPreferences.isSmsImportEnabled(uid).collect { enabled ->
-                    _uiState.update { it.copy(smsImportEnabled = enabled) }
-                }
+        }
+        viewModelScope.launch {
+            val uid = authRepository.getCurrentUserId() ?: return@launch
+            smsImportPreferences.isSmsImportEnabled(uid).collect { enabled ->
+                _uiState.update { it.copy(smsImportEnabled = enabled) }
             }
         }
         viewModelScope.launch {
@@ -165,15 +144,8 @@ class SettingsViewModel @Inject constructor(
 
     fun signOut() {
         viewModelScope.launch {
-            authRepository.signOut()
-            _signOutEvent.emit(Unit)
-        }
-    }
-
-    fun exitSandbox() {
-        viewModelScope.launch {
             sandboxDataSeeder.clearSandboxData()
-            sandboxPreferences.setSandboxActive(false)
+            authRepository.signOut()
             _signOutEvent.emit(Unit)
         }
     }

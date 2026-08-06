@@ -80,8 +80,9 @@ class BudgetViewModel @Inject constructor(
     }
 
     fun deleteBudget(id: String) {
+        val hId = householdId ?: return
         viewModelScope.launch {
-            budgetRepository.deleteBudget(id)
+            budgetRepository.deleteBudget(hId, id)
         }
     }
 }

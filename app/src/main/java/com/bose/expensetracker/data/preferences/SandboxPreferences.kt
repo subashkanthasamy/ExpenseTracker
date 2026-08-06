@@ -1,48 +1,48 @@
 package com.bose.expensetracker.data.preferences
 
 import android.content.Context
-import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.coroutines.flow.onEach
 
-object SandboxConstants {
-    const val SANDBOX_USER_ID = "sandbox_user"
-    const val SANDBOX_HOUSEHOLD_ID = "sandbox_household"
-    const val SANDBOX_DISPLAY_NAME = "Demo User"
-}
+private val Context.sandboxPreferences: DataStore<Preferences> by preferencesDataStore(
+    name = "sandbox_preferences"
+)
 
-@Singleton
-class SandboxPreferences @Inject constructor(
-    private val context: Context
-) {
-    private val key = booleanPreferencesKey("is_sandbox_active")
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+class SandboxPreferences(private val context: Context) {
 
+    companion object {
+        private val IS_SANDBOX_ACTIVE = booleanPreferencesKey("is_sandbox_active")
+    }
+
+    // Synchronous snapshot — several call sites (Activity.onCreate, composables,
+    // AuthRepository's non-suspend getters) can't await a Flow.
     @Volatile
-    var isSandboxCached: Boolean = false
-        private set
+    private var cachedSandboxActive = false
 
-    init {
-        scope.launch {
-            context.dataStore.data.collect { prefs ->
-                isSandboxCached = prefs[key] ?: false
-            }
-        }
-    }
+    val isSandboxCached: Boolean
+        get() = cachedSandboxActive
 
-    fun isSandboxActive(): Flow<Boolean> {
-        return context.dataStore.data.map { it[key] ?: false }
-    }
+    val isSandboxActive: Flow<Boolean>
+        get() = context.sandboxPreferences.data
+            .map { preferences -> preferences[IS_SANDBOX_ACTIVE] ?: false }
+            .onEach { cachedSandboxActive = it }
 
     suspend fun setSandboxActive(active: Boolean) {
-        isSandboxCached = active
-        context.dataStore.edit { it[key] = active }
+        context.sandboxPreferences.edit { preferences ->
+            preferences[IS_SANDBOX_ACTIVE] = active
+        }
+        cachedSandboxActive = active
+    }
+
+    /** Primes [isSandboxCached] from disk. Call once at app startup. */
+    suspend fun hydrate() {
+        cachedSandboxActive = context.sandboxPreferences.data.first()[IS_SANDBOX_ACTIVE] ?: false
     }
 }

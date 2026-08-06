@@ -20,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -133,10 +132,11 @@ fun BarChart(
             val y = chartHeight - barHeight
 
             // Draw bar with rounded top
-            drawRect(
+            drawRoundRect(
                 color = barColor,
                 topLeft = Offset(x, y),
-                size = Size(barWidth, barHeight)
+                size = Size(barWidth, barHeight),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx(), 6.dp.toPx())
             )
 
             // Draw label centered under bar

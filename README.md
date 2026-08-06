@@ -2,6 +2,22 @@
 
 A feature-rich Android expense tracking app built with Kotlin and Jetpack Compose (Material 3). Designed for household-level collaborative budgeting with smart automation features like SMS parsing, receipt scanning, and voice input.
 
+## Screenshots
+
+Captured from the Android debug build in **demo mode** — tap *Explore Demo* on the sign-in screen to get the same seeded data with no account required.
+
+| Dashboard | Timeline | Insights | Net Worth |
+|---|---|---|---|
+| ![Dashboard](docs/screenshots/01-dashboard.png) | ![Timeline](docs/screenshots/02-timeline.png) | ![Insights](docs/screenshots/03-insights.png) | ![Net Worth](docs/screenshots/04-wealth.png) |
+
+| Add Expense | Budgets | Savings Goals | Recurring |
+|---|---|---|---|
+| ![Add Expense](docs/screenshots/11-add-expense.png) | ![Budgets](docs/screenshots/08-budgets.png) | ![Savings Goals](docs/screenshots/10-savings.png) | ![Recurring](docs/screenshots/09-recurring.png) |
+
+| Settings | Household | Reminders | SMS Report |
+|---|---|---|---|
+| ![Settings](docs/screenshots/05-settings.png) | ![Household](docs/screenshots/06-household.png) | ![Reminders](docs/screenshots/07-reminders.png) | ![SMS Report](docs/screenshots/12-notifications.png) |
+
 ## Features
 
 ### Expense Management

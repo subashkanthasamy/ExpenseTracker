@@ -1,0 +1,215 @@
+rules_version = '2';
+
+// Firestore security rules for Expense Tracker.
+//
+// Data model:
+//   users/{uid}                                  — profile + household membership
+//   households/{hid}                             — name, memberUids[], inviteCode
+//   households/{hid}/expenses|categories|assets|liabilities|budgets|savingsGoals|recurring
+//
+// The subcollection rule is what unblocks budgets, savingsGoals and recurring: those were
+// previously Room-only on Android and, on iOS, every write was wrapped in `try?` so
+// permission failures were silent.
+//
+// The invite-code client change these rules require is implemented on both platforms
+// (FirestoreDataSource.resolveInviteCode / FirestoreService.resolveInviteCode), so this
+// file is deployable. Read the "Deployment notes" at the bottom for what is intentionally
+// left closed and the residual risks.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function householdMembers(hid) {
+      return get(/databases/$(database)/documents/households/$(hid)).data.memberUids;
+    }
+
+    function isMember(hid) {
+      return isSignedIn() && uid() in householdMembers(hid);
+    }
+
+    // ---- Users: strictly own document -------------------------------------
+
+    match /users/{userId} {
+      // Own document, plus any user who shares a household — the member list reads other
+      // users' documents (HouseholdRepositoryImpl.getHouseholdMembers).
+      //
+      // The previous rules allowed any signed-in user to read *every* user document, which
+      // exposed all email addresses. This narrows that to household co-members while
+      // keeping the feature working. `.get(key, default)` guards legacy documents that
+      // only had the old singular `householdId` field.
+      allow get: if isSignedIn() && (
+        uid() == userId
+        || resource.data.get('householdIds', []).hasAny(
+             get(/databases/$(database)/documents/users/$(uid())).data.get('householdIds', [])
+           )
+      );
+      // No enumerating the user collection.
+      allow list: if false;
+
+      allow create: if isSignedIn() && uid() == userId
+        && request.resource.data.keys().hasOnly(
+             ['email', 'displayName', 'householdIds', 'activeHouseholdId', 'createdAt', 'householdId'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 320
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100
+        && request.resource.data.householdIds is list
+        && request.resource.data.householdIds.size() <= 50;
+
+      allow update: if isSignedIn() && uid() == userId
+        && request.resource.data.keys().hasOnly(
+             ['email', 'displayName', 'householdIds', 'activeHouseholdId', 'createdAt', 'householdId'])
+        && (!('displayName' in request.resource.data)
+            || (request.resource.data.displayName is string
+                && request.resource.data.displayName.size() <= 100))
+        && (!('householdIds' in request.resource.data)
+            || (request.resource.data.householdIds is list
+                && request.resource.data.householdIds.size() <= 50))
+        && (!('activeHouseholdId' in request.resource.data)
+            || request.resource.data.activeHouseholdId == null
+            || (request.resource.data.activeHouseholdId is string
+                && request.resource.data.activeHouseholdId.size() <= 128));
+
+      allow delete: if false;
+    }
+
+    // ---- Households -------------------------------------------------------
+
+    // ---- Invite code lookup ----------------------------------------------
+    //
+    // Joining needs to resolve a code to a household *before* membership exists. Doing
+    // that by querying `households` would require making every household readable to
+    // every signed-in user — which leaks all household names and invite codes, and lets
+    // anyone add themselves to any household. So the lookup lives in its own tiny
+    // collection instead, and only leaks to someone who already knows the code.
+    //
+    // REQUIRES the client change described in the note at the bottom of this file.
+    match /inviteCodes/{code} {
+      allow get: if isSignedIn();
+      allow list: if false;  // no enumerating codes
+
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['householdId', 'householdName'])
+        && request.resource.data.householdId is string
+        && request.resource.data.householdId.size() <= 128
+        && request.resource.data.householdName is string
+        && request.resource.data.householdName.size() <= 100
+        && isMember(request.resource.data.householdId);
+
+      allow update, delete: if isSignedIn()
+        && isMember(resource.data.householdId);
+    }
+
+    match /households/{hid} {
+      // Members only. Non-members resolve a code via /inviteCodes and then add themselves
+      // with the join branch of `update` below, which does not require read access.
+      //
+      // Using resource.data rather than the isMember() helper avoids an extra document
+      // read, and crucially it also permits the "my households" query
+      // (whereField memberUids arrayContains uid): for list operations Firestore evaluates
+      // this per candidate document and accepts the query because it is provably
+      // constrained to documents that satisfy the rule.
+      allow read: if isSignedIn() && uid() in resource.data.memberUids;
+
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['name', 'memberUids', 'inviteCode', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.inviteCode is string
+        && request.resource.data.inviteCode.size() >= 4
+        && request.resource.data.inviteCode.size() <= 16
+        && request.resource.data.createdAt is int
+        && request.resource.data.memberUids is list
+        // The creator must be the only initial member — no pre-loading other people.
+        && request.resource.data.memberUids.size() == 1
+        && request.resource.data.memberUids[0] == uid();
+
+      allow update: if isSignedIn() && (
+        // A member may edit the household, but never rewrite its identity fields.
+        (
+          uid() in resource.data.memberUids
+          && request.resource.data.inviteCode == resource.data.inviteCode
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 100
+          && request.resource.data.memberUids is list
+          && request.resource.data.memberUids.size() <= 20
+          // A member may leave, or rename the household — but not eject others and not
+          // add strangers. Without this, any one member could rewrite the whole member
+          // list, which is privilege escalation inside the household.
+          && request.resource.data.memberUids.toSet().difference(resource.data.memberUids.toSet()).size() == 0
+        )
+        ||
+        // Joining: a non-member may add only themselves and change nothing else.
+        (
+          !(uid() in resource.data.memberUids)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids'])
+          && request.resource.data.memberUids is list
+          && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
+          && request.resource.data.memberUids.size() <= 20
+          && uid() in request.resource.data.memberUids
+          // No existing member may be dropped in the process.
+          && resource.data.memberUids.toSet().difference(request.resource.data.memberUids.toSet()).size() == 0
+        )
+      );
+
+      // Members may delete, matching the previous rules and the in-app "Delete household"
+      // action. Worth knowing: Firestore does not cascade, so the subcollections are
+      // orphaned rather than removed — a Cloud Function that deletes children first would
+      // be the correct implementation, and would also be the place to require more than one
+      // member to confirm.
+      allow delete: if isSignedIn() && uid() in resource.data.memberUids;
+
+      // ---- Household data: members only ----------------------------------
+      //
+      // Covers expenses, categories, assets, liabilities, budgets, savingsGoals and
+      // recurring with one rule, since they share the same access requirement.
+
+      match /{collection}/{docId} {
+        allow read: if isMember(hid);
+
+        allow create, update: if isMember(hid)
+          // Keep documents attributable to their household.
+          && (!('householdId' in request.resource.data)
+              || request.resource.data.householdId == hid)
+          // Coarse anti-abuse bound; the largest legitimate document here is small.
+          && request.resource.data.keys().size() <= 40;
+
+        allow delete: if isMember(hid);
+      }
+    }
+  }
+}
+
+// ---- Deployment notes -------------------------------------------------------
+//
+// Client support (already implemented on both platforms):
+//   1. On create: the household is written first, then `inviteCodes/{code}` =
+//      { householdId, householdName } — that order matters, because the rules require the
+//      author of the lookup document to already be a member.
+//   2. On join: resolve `inviteCodes/{code}`, then add yourself to
+//      `households/{id}.memberUids` with arrayUnion. No household read is involved, so
+//      the join works without read access.
+//   3. Rotating a code means writing a new lookup document and deleting the old one.
+//
+// Deploy with:  firebase deploy --only firestore:rules
+//
+// Remaining accepted risk: anyone who learns an invite code can join that household.
+// That is what an invite code is for. If you need stronger control, move the join into
+// a Cloud Function that verifies the code and is the only writer of `memberUids`, then
+// tighten the join branch of `households/{hid}` update to `if false`.
+//
+// Not validated by these rules: field types inside household subcollections (amount,
+// date, and so on). A member can still write a wrongly-typed field, which is the exact
+// shape of the crash fixed earlier (`Field 'date' is not a java.lang.Number`). Adding
+// per-collection type checks would harden this further.

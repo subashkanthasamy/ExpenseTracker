@@ -1,6 +1,7 @@
 package com.bose.expensetracker.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,14 +31,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bose.expensetracker.ui.theme.AccentPurple
 import com.bose.expensetracker.ui.theme.ExpenseRed
-import com.bose.expensetracker.ui.theme.GradientOrange
+import com.bose.expensetracker.ui.theme.GradientPink
 import com.bose.expensetracker.ui.theme.GradientPurple
 import com.bose.expensetracker.ui.theme.IncomeGreen
 import java.text.NumberFormat
 import java.util.Locale
 
 val GradientBrush = Brush.horizontalGradient(
-    colors = listOf(GradientPurple, GradientOrange)
+    colors = listOf(GradientPurple, GradientPink)
 )
 
 @Composable
@@ -131,11 +132,9 @@ fun SectionHeader(
                 actionText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = AccentPurple,
-                modifier = Modifier.let { mod ->
-                    if (onAction != null) {
-                        mod.padding(4.dp)
-                    } else mod
-                }
+                modifier = Modifier
+                    .clickable(enabled = onAction != null) { onAction?.invoke() }
+                    .padding(4.dp)
             )
         }
     }

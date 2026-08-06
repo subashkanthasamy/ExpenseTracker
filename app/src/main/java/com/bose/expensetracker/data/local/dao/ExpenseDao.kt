@@ -27,6 +27,10 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE householdId = :householdId AND date BETWEEN :startDate AND :endDate AND syncStatus != ${SyncStatus.PENDING_DELETE} ORDER BY date DESC")
     fun getExpensesByDateRange(householdId: String, startDate: Long, endDate: Long): Flow<List<ExpenseEntity>>
 
+    /** One-shot count, used by the sandbox seeder to avoid re-seeding demo data. */
+    @Query("SELECT COUNT(*) FROM expenses WHERE householdId = :householdId")
+    suspend fun countExpenses(householdId: String): Int
+
     @Query("SELECT * FROM expenses WHERE syncStatus != ${SyncStatus.SYNCED}")
     suspend fun getPendingSyncExpenses(): List<ExpenseEntity>
 

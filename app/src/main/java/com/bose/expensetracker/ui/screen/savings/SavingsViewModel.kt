@@ -2,12 +2,12 @@ package com.bose.expensetracker.ui.screen.savings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bose.expensetracker.data.local.dao.SavingsGoalDao
-import com.bose.expensetracker.data.local.entity.SavingsGoalEntity
+import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.SavingsGoal
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +23,7 @@ data class SavingsUiState(
 
 @HiltViewModel
 class SavingsViewModel @Inject constructor(
-    private val savingsGoalDao: SavingsGoalDao,
+    private val firestoreDataSource: FirestoreDataSource,
     private val authRepository: AuthRepository,
     private val householdRepository: HouseholdRepository
 ) : ViewModel() {
@@ -41,21 +41,12 @@ class SavingsViewModel @Inject constructor(
             val hId = householdRepository.getUserHouseholdId(uid) ?: return@launch
             householdId = hId
 
-            try { savingsGoalDao.getGoals(hId).collect { entities ->
-                val goals = entities.map { e ->
-                    SavingsGoal(
-                        id = e.id,
-                        householdId = e.householdId,
-                        name = e.name,
-                        targetAmount = e.targetAmount,
-                        currentAmount = e.currentAmount,
-                        icon = e.icon,
-                        targetDate = e.targetDate,
-                        createdAt = e.createdAt
-                    )
+            try {
+                firestoreDataSource.observeSavingsGoals(hId).collect { goals ->
+                    _uiState.update { it.copy(goals = goals, isLoading = false) }
                 }
-                _uiState.update { it.copy(goals = goals, isLoading = false) }
-            }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
             }
@@ -65,14 +56,15 @@ class SavingsViewModel @Inject constructor(
     fun addGoal(name: String, targetAmount: Double, icon: String, targetDate: Long?) {
         val hId = householdId ?: return
         viewModelScope.launch {
-            savingsGoalDao.insert(
-                SavingsGoalEntity(
+            firestoreDataSource.upsertSavingsGoal(
+                SavingsGoal(
                     id = UUID.randomUUID().toString(),
                     householdId = hId,
                     name = name,
                     targetAmount = targetAmount,
                     icon = icon,
-                    targetDate = targetDate
+                    targetDate = targetDate,
+                    createdAt = System.currentTimeMillis()
                 )
             )
         }
@@ -80,13 +72,19 @@ class SavingsViewModel @Inject constructor(
 
     fun addContribution(goalId: String, amount: Double) {
         viewModelScope.launch {
-            savingsGoalDao.addContribution(goalId, amount)
+            // Firestore has no in-place increment through this data source, so apply the
+            // delta to the goal we already have in state.
+            val goal = _uiState.value.goals.firstOrNull { it.id == goalId } ?: return@launch
+            firestoreDataSource.upsertSavingsGoal(
+                goal.copy(currentAmount = goal.currentAmount + amount)
+            )
         }
     }
 
     fun deleteGoal(id: String) {
+        val hId = householdId ?: return
         viewModelScope.launch {
-            savingsGoalDao.deleteById(id)
+            firestoreDataSource.deleteSavingsGoal(hId, id)
         }
     }
 }

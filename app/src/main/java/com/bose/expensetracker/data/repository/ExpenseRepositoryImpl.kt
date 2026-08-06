@@ -4,7 +4,6 @@ import com.bose.expensetracker.data.local.dao.ExpenseDao
 import com.bose.expensetracker.data.local.entity.SyncStatus
 import com.bose.expensetracker.data.mapper.toDomain
 import com.bose.expensetracker.data.mapper.toEntity
-import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.Expense
 import com.bose.expensetracker.domain.repository.ExpenseRepository
@@ -20,8 +19,7 @@ import javax.inject.Singleton
 @Singleton
 class ExpenseRepositoryImpl @Inject constructor(
     private val expenseDao: ExpenseDao,
-    private val firestoreDataSource: FirestoreDataSource,
-    private val sandboxPreferences: SandboxPreferences
+    private val firestoreDataSource: FirestoreDataSource
 ) : ExpenseRepository {
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -53,10 +51,6 @@ class ExpenseRepositoryImpl @Inject constructor(
         expenseDao.getExpenseById(id)?.toDomain()
 
     override suspend fun addExpense(expense: Expense): Result<Unit> = runCatching {
-        if (sandboxPreferences.isSandboxCached) {
-            expenseDao.insert(expense.toEntity(SyncStatus.SYNCED))
-            return@runCatching
-        }
         expenseDao.insert(expense.toEntity(SyncStatus.PENDING_CREATE))
         try {
             firestoreDataSource.addExpense(expense.householdId, expense)
@@ -67,10 +61,6 @@ class ExpenseRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateExpense(expense: Expense): Result<Unit> = runCatching {
-        if (sandboxPreferences.isSandboxCached) {
-            expenseDao.update(expense.toEntity(SyncStatus.SYNCED))
-            return@runCatching
-        }
         expenseDao.update(expense.toEntity(SyncStatus.PENDING_UPDATE))
         try {
             firestoreDataSource.updateExpense(expense.householdId, expense)
@@ -82,10 +72,6 @@ class ExpenseRepositoryImpl @Inject constructor(
 
     override suspend fun deleteExpense(id: String): Result<Unit> = runCatching {
         val expense = expenseDao.getExpenseById(id) ?: return@runCatching
-        if (sandboxPreferences.isSandboxCached) {
-            expenseDao.deleteById(id)
-            return@runCatching
-        }
         expenseDao.update(expense.copy(syncStatus = SyncStatus.PENDING_DELETE))
         try {
             firestoreDataSource.deleteExpense(expense.householdId, id)
@@ -129,7 +115,7 @@ class ExpenseRepositoryImpl @Inject constructor(
     }
 
     override fun startRealtimeSync(householdId: String) {
-        if (sandboxPreferences.isSandboxCached) return
+        if (householdId == com.bose.expensetracker.data.preferences.SandboxConstants.SANDBOX_HOUSEHOLD_ID) return
         // If already syncing the same household, just increment ref count
         if (syncJob?.isActive == true && currentSyncHouseholdId == householdId) {
             syncRefCount++

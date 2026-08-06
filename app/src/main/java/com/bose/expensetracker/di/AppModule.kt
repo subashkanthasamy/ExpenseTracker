@@ -4,21 +4,29 @@ import android.content.Context
 import androidx.room.Room
 import com.bose.expensetracker.data.local.ExpenseTrackerDatabase
 import com.bose.expensetracker.data.local.dao.AssetDao
+import com.bose.expensetracker.data.local.dao.BudgetDao
 import com.bose.expensetracker.data.local.dao.CategoryDao
 import com.bose.expensetracker.data.local.dao.ExpenseDao
 import com.bose.expensetracker.data.local.dao.LiabilityDao
-import com.bose.expensetracker.data.local.dao.BudgetDao
-import com.bose.expensetracker.data.local.dao.RecurringExpenseDao
-import com.bose.expensetracker.data.local.dao.SavingsGoalDao
 import com.bose.expensetracker.data.local.dao.PendingSmsDao
 import com.bose.expensetracker.data.local.dao.ProcessedSmsDao
+import com.bose.expensetracker.data.local.dao.RecurringExpenseDao
 import com.bose.expensetracker.data.local.dao.ReminderDao
-import com.bose.expensetracker.data.repository.BudgetRepositoryImpl
-import com.bose.expensetracker.domain.repository.BudgetRepository
+import com.bose.expensetracker.data.local.dao.SavingsGoalDao
+import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.data.preferences.BiometricPreferences
+import com.bose.expensetracker.data.preferences.BiometricPreferencesImpl
 import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.preferences.SmsImportPreferences
+import com.bose.expensetracker.data.preferences.SmsImportPreferencesImpl
 import com.bose.expensetracker.data.preferences.ThemePreferences
+import com.bose.expensetracker.data.preferences.ThemePreferencesImpl
+import com.bose.expensetracker.data.repository.BudgetRepositoryImpl
+import com.bose.expensetracker.data.sandbox.SandboxDataSeeder
+import com.bose.expensetracker.data.sync.LocalToFirestoreMigration
+import com.bose.expensetracker.domain.repository.BudgetRepository
+import com.bose.expensetracker.domain.usecase.smsimport.SmsCategoryMatcher
+import com.bose.expensetracker.domain.usecase.smsimport.SmsTransactionParser
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
@@ -64,12 +72,12 @@ object AppModule {
     @Provides
     @Singleton
     fun provideBiometricPreferences(@ApplicationContext context: Context): BiometricPreferences =
-        BiometricPreferences(context)
+        BiometricPreferencesImpl(context)
 
     @Provides
     @Singleton
     fun provideSmsImportPreferences(@ApplicationContext context: Context): SmsImportPreferences =
-        SmsImportPreferences(context)
+        SmsImportPreferencesImpl(context)
 
     @Provides
     fun provideProcessedSmsDao(db: ExpenseTrackerDatabase): ProcessedSmsDao = db.processedSmsDao()
@@ -85,8 +93,11 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideBudgetRepository(budgetDao: BudgetDao, expenseDao: ExpenseDao): BudgetRepository =
-        BudgetRepositoryImpl(budgetDao, expenseDao)
+    fun provideBudgetRepository(
+        firestoreDataSource: FirestoreDataSource,
+        expenseDao: ExpenseDao
+    ): BudgetRepository =
+        BudgetRepositoryImpl(firestoreDataSource, expenseDao)
 
     @Provides
     fun provideRecurringExpenseDao(db: ExpenseTrackerDatabase): RecurringExpenseDao =
@@ -99,10 +110,35 @@ object AppModule {
     @Provides
     @Singleton
     fun provideThemePreferences(@ApplicationContext context: Context): ThemePreferences =
-        ThemePreferences(context)
+        ThemePreferencesImpl(context)
 
     @Provides
     @Singleton
     fun provideSandboxPreferences(@ApplicationContext context: Context): SandboxPreferences =
         SandboxPreferences(context)
+
+    @Provides
+    @Singleton
+    fun provideLocalToFirestoreMigration(
+        @ApplicationContext context: Context,
+        budgetDao: BudgetDao,
+        savingsGoalDao: SavingsGoalDao,
+        recurringExpenseDao: RecurringExpenseDao,
+        firestoreDataSource: FirestoreDataSource
+    ): LocalToFirestoreMigration =
+        LocalToFirestoreMigration(context, budgetDao, savingsGoalDao, recurringExpenseDao, firestoreDataSource)
+
+    @Provides
+    @Singleton
+    fun provideSandboxDataSeeder(categoryDao: CategoryDao, expenseDao: ExpenseDao): SandboxDataSeeder =
+        SandboxDataSeeder(categoryDao, expenseDao)
+
+    // These live in :shared (pure Kotlin, so no @Inject constructor) — bind explicitly.
+    @Provides
+    @Singleton
+    fun provideSmsTransactionParser(): SmsTransactionParser = SmsTransactionParser()
+
+    @Provides
+    @Singleton
+    fun provideSmsCategoryMatcher(): SmsCategoryMatcher = SmsCategoryMatcher()
 }

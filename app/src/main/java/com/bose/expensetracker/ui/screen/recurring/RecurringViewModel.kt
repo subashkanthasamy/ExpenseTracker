@@ -2,9 +2,11 @@ package com.bose.expensetracker.ui.screen.recurring
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bose.expensetracker.data.local.dao.RecurringExpenseDao
-import com.bose.expensetracker.data.local.entity.RecurringExpenseEntity
+import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.Category
+import com.bose.expensetracker.domain.model.RecurringExpense
+import com.bose.expensetracker.ui.state.RecurringUiState
+import kotlinx.coroutines.CancellationException
 import com.bose.expensetracker.domain.model.RecurringFrequency
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
@@ -18,15 +20,9 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
-data class RecurringUiState(
-    val items: List<RecurringExpenseEntity> = emptyList(),
-    val categories: List<Category> = emptyList(),
-    val isLoading: Boolean = true
-)
-
 @HiltViewModel
 class RecurringViewModel @Inject constructor(
-    private val recurringExpenseDao: RecurringExpenseDao,
+    private val firestoreDataSource: FirestoreDataSource,
     private val categoryRepository: CategoryRepository,
     private val authRepository: AuthRepository,
     private val householdRepository: HouseholdRepository
@@ -51,9 +47,11 @@ class RecurringViewModel @Inject constructor(
 
             launch {
                 try {
-                    recurringExpenseDao.getAll(hId).collect { items ->
+                    firestoreDataSource.observeRecurringExpenses(hId).collect { items ->
                         _uiState.update { it.copy(items = items, isLoading = false) }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     _uiState.update { it.copy(isLoading = false) }
                 }
@@ -81,8 +79,8 @@ class RecurringViewModel @Inject constructor(
         val uid = userId ?: return
         val uName = userName ?: return
         viewModelScope.launch {
-            recurringExpenseDao.insert(
-                RecurringExpenseEntity(
+            firestoreDataSource.upsertRecurringExpense(
+                RecurringExpense(
                     id = UUID.randomUUID().toString(),
                     householdId = hId,
                     amount = amount,
@@ -91,25 +89,27 @@ class RecurringViewModel @Inject constructor(
                     notes = notes,
                     addedBy = uid,
                     addedByName = uName,
-                    frequency = frequency.value,
+                    frequency = frequency,
                     dayOfWeek = dayOfWeek,
                     dayOfMonth = dayOfMonth,
                     monthOfYear = monthOfYear,
-                    startDate = System.currentTimeMillis()
+                    startDate = System.currentTimeMillis(),
+                    createdAt = System.currentTimeMillis()
                 )
             )
         }
     }
 
-    fun toggleActive(item: RecurringExpenseEntity) {
+    fun toggleActive(item: RecurringExpense) {
         viewModelScope.launch {
-            recurringExpenseDao.setActive(item.id, !item.isActive)
+            firestoreDataSource.upsertRecurringExpense(item.copy(isActive = !item.isActive))
         }
     }
 
     fun delete(id: String) {
+        val hId = householdId ?: return
         viewModelScope.launch {
-            recurringExpenseDao.deleteById(id)
+            firestoreDataSource.deleteRecurringExpense(hId, id)
         }
     }
 }

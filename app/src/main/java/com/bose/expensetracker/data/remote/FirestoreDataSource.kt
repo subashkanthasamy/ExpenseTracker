@@ -1,13 +1,20 @@
 package com.bose.expensetracker.data.remote
 
 import com.bose.expensetracker.domain.model.Asset
+import com.bose.expensetracker.domain.model.Budget
+import com.bose.expensetracker.domain.model.RecurringExpense
+import com.bose.expensetracker.domain.model.RecurringFrequency
+import com.bose.expensetracker.domain.model.SavingsGoal
 import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.domain.model.Expense
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.Liability
 import com.bose.expensetracker.domain.model.User
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -19,6 +26,23 @@ import javax.inject.Singleton
 class FirestoreDataSource @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
+
+    /**
+     * Reads a time field as epoch millis.
+     *
+     * Epoch millis is the wire contract (it's what the shared domain model declares),
+     * but the iOS app wrote these fields as Firestore [Timestamp]s, so documents
+     * created there hold a Timestamp instead of a number. Reading those with
+     * `getLong` throws "Field 'x' is not a java.lang.Number" and killed the app.
+     * Accept either representation so mixed data already in Firestore still loads.
+     */
+    private fun DocumentSnapshot.getEpochMillis(field: String): Long? =
+        when (val value = get(field)) {
+            is Number -> value.toLong()
+            is Timestamp -> value.toDate().time
+            is java.util.Date -> value.time
+            else -> null
+        }
 
     // --- Users ---
 
@@ -38,14 +62,20 @@ class FirestoreDataSource @Inject constructor(
         val doc = try {
             // Try default source first (uses cache if available, server otherwise)
             firestore.collection("users").document(uid).get().await()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e1: Exception) {
             android.util.Log.w("FirestoreDS", "getUser default failed for $uid: ${e1.message}")
             try {
                 firestore.collection("users").document(uid).get(Source.CACHE).await()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e2: Exception) {
                 android.util.Log.w("FirestoreDS", "getUser cache failed for $uid: ${e2.message}")
                 try {
                     firestore.collection("users").document(uid).get(Source.SERVER).await()
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e3: Exception) {
                     android.util.Log.e("FirestoreDS", "getUser all sources failed for $uid: ${e3.message}")
                     return null
@@ -106,6 +136,8 @@ class FirestoreDataSource @Inject constructor(
     suspend fun getUserFromServer(uid: String): User? {
         val doc = try {
             firestore.collection("users").document(uid).get(Source.SERVER).await()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             android.util.Log.e("FirestoreDS", "getUserFromServer failed for $uid: ${e.message}")
             return null
@@ -135,7 +167,49 @@ class FirestoreDataSource @Inject constructor(
                 "createdAt" to household.createdAt
             )
         ).await()
+        // Written second: the rules require the author to already be a member.
+        publishInviteCode(household.id, household.name, household.inviteCode)
         return household.id
+    }
+
+    /**
+     * Publishes the lookup document for [household] if it is missing.
+     *
+     * Households created before the invite-code change have no `inviteCodes/{code}` entry,
+     * so they cannot be joined until one exists. Rather than requiring a one-off backfill
+     * for every household, a member self-heals it — and the natural moment is when they
+     * open the household screen, since that is the only place the code is shown to share.
+     */
+    suspend fun ensureInviteCodePublished(household: Household) {
+        if (household.inviteCode.isBlank()) return
+        try {
+            val existing = firestore.collection("inviteCodes").document(household.inviteCode).get().await()
+            val pointsHere = existing.exists() && existing.getString("householdId") == household.id
+            if (pointsHere) return
+            // Never repoint a code that already belongs to a different household.
+            if (existing.exists()) {
+                android.util.Log.w(
+                    "FirestoreDS",
+                    "inviteCode ${household.inviteCode} already maps to ${existing.getString("householdId")}"
+                )
+                return
+            }
+            publishInviteCode(household.id, household.name, household.inviteCode)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.w("FirestoreDS", "Could not publish invite code lookup", e)
+        }
+    }
+
+    /** Publishes the code -> household lookup used by [resolveInviteCode]. */
+    suspend fun publishInviteCode(householdId: String, householdName: String, inviteCode: String) {
+        firestore.collection("inviteCodes").document(inviteCode).set(
+            mapOf(
+                "householdId" to householdId,
+                "householdName" to householdName
+            )
+        ).await()
     }
 
     suspend fun getHousehold(householdId: String): Household? {
@@ -143,9 +217,13 @@ class FirestoreDataSource @Inject constructor(
             val cached = firestore.collection("households").document(householdId).get(Source.CACHE).await()
             if (cached.exists()) cached
             else firestore.collection("households").document(householdId).get(Source.SERVER).await()
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             try {
                 firestore.collection("households").document(householdId).get(Source.SERVER).await()
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 return null
             }
@@ -157,33 +235,32 @@ class FirestoreDataSource @Inject constructor(
             name = doc.getString("name") ?: "",
             memberUids = (doc.get("memberUids") as? List<String>) ?: emptyList(),
             inviteCode = doc.getString("inviteCode") ?: "",
-            createdAt = doc.getLong("createdAt") ?: 0L
+            createdAt = doc.getEpochMillis("createdAt") ?: 0L
         )
     }
 
-    suspend fun getHouseholdByInviteCode(inviteCode: String): Household? {
-        val snapshot = try {
-            firestore.collection("households")
-                .whereEqualTo("inviteCode", inviteCode)
-                .get(Source.SERVER).await()
+    /** What an invite code resolves to, without needing read access to the household. */
+    data class InviteTarget(val householdId: String, val householdName: String)
+
+    /**
+     * Resolves an invite code via `inviteCodes/{code}`.
+     *
+     * The old implementation queried `households` by inviteCode, which required every
+     * household to be readable by any signed-in user — that let anyone enumerate
+     * households, read their codes and join them. This lookup document only discloses
+     * anything to someone who already knows the code.
+     */
+    suspend fun resolveInviteCode(inviteCode: String): InviteTarget? {
+        val doc = try {
+            firestore.collection("inviteCodes").document(inviteCode).get().await()
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
-            try {
-                firestore.collection("households")
-                    .whereEqualTo("inviteCode", inviteCode)
-                    .get(Source.CACHE).await()
-            } catch (_: Exception) {
-                return null
-            }
+            return null
         }
-        val doc = snapshot.documents.firstOrNull() ?: return null
-        @Suppress("UNCHECKED_CAST")
-        return Household(
-            id = doc.id,
-            name = doc.getString("name") ?: "",
-            memberUids = (doc.get("memberUids") as? List<String>) ?: emptyList(),
-            inviteCode = doc.getString("inviteCode") ?: "",
-            createdAt = doc.getLong("createdAt") ?: 0L
-        )
+        if (!doc.exists()) return null
+        val householdId = doc.getString("householdId") ?: return null
+        return InviteTarget(householdId, doc.getString("householdName") ?: "")
     }
 
     suspend fun addMemberToHousehold(householdId: String, userId: String) {
@@ -302,18 +379,176 @@ class FirestoreDataSource @Inject constructor(
                         amount = doc.getDouble("amount") ?: 0.0,
                         categoryId = doc.getString("categoryId") ?: "",
                         categoryName = doc.getString("categoryName") ?: "",
-                        date = doc.getLong("date") ?: 0L,
+                        date = doc.getEpochMillis("date") ?: 0L,
                         notes = doc.getString("notes") ?: "",
                         addedBy = doc.getString("addedBy") ?: "",
                         addedByName = doc.getString("addedByName") ?: "",
-                        createdAt = doc.getLong("createdAt") ?: 0L,
-                        updatedAt = doc.getLong("updatedAt") ?: 0L,
+                        createdAt = doc.getEpochMillis("createdAt") ?: 0L,
+                        updatedAt = doc.getEpochMillis("updatedAt") ?: 0L,
                         isSynced = true
                     )
                 } ?: emptyList()
                 trySend(expenses)
             }
         awaitClose { listener.remove() }
+    }
+
+    // --- Budgets / Savings goals / Recurring expenses ---
+    //
+    // These three were Room-only, so they never synced between devices or household members
+    // and were lost on reinstall. Document shapes match what the iOS app already reads and
+    // writes, so the two platforms interoperate.
+
+    private fun budgetsCollection(householdId: String) =
+        firestore.collection("households").document(householdId).collection("budgets")
+
+    private fun savingsCollection(householdId: String) =
+        firestore.collection("households").document(householdId).collection("savingsGoals")
+
+    private fun recurringCollection(householdId: String) =
+        firestore.collection("households").document(householdId).collection("recurring")
+
+    fun observeBudgets(householdId: String): Flow<List<Budget>> = callbackFlow {
+        val listener = budgetsCollection(householdId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                trySend(
+                    snapshot?.documents?.map { doc ->
+                        Budget(
+                            id = doc.id,
+                            householdId = householdId,
+                            categoryId = doc.getString("categoryId") ?: "",
+                            categoryName = doc.getString("categoryName") ?: "",
+                            monthlyLimit = doc.getDouble("monthlyLimit") ?: 0.0
+                        )
+                    } ?: emptyList()
+                )
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun upsertBudget(budget: Budget) {
+        budgetsCollection(budget.householdId).document(budget.id).set(
+            mapOf(
+                "householdId" to budget.householdId,
+                "categoryId" to budget.categoryId,
+                "categoryName" to budget.categoryName,
+                "monthlyLimit" to budget.monthlyLimit
+            )
+        ).await()
+    }
+
+    suspend fun deleteBudget(householdId: String, id: String) {
+        budgetsCollection(householdId).document(id).delete().await()
+    }
+
+    fun observeSavingsGoals(householdId: String): Flow<List<SavingsGoal>> = callbackFlow {
+        val listener = savingsCollection(householdId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                trySend(
+                    snapshot?.documents?.map { doc ->
+                        SavingsGoal(
+                            id = doc.id,
+                            householdId = householdId,
+                            name = doc.getString("name") ?: "",
+                            targetAmount = doc.getDouble("targetAmount") ?: 0.0,
+                            currentAmount = doc.getDouble("currentAmount") ?: 0.0,
+                            icon = doc.getString("icon") ?: "🎯",
+                            targetDate = doc.getEpochMillis("targetDate"),
+                            createdAt = doc.getEpochMillis("createdAt") ?: 0L
+                        )
+                    } ?: emptyList()
+                )
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun upsertSavingsGoal(goal: SavingsGoal) {
+        val data = mutableMapOf<String, Any>(
+            "householdId" to goal.householdId,
+            "name" to goal.name,
+            "targetAmount" to goal.targetAmount,
+            "currentAmount" to goal.currentAmount,
+            "icon" to goal.icon,
+            "createdAt" to goal.createdAt
+        )
+        goal.targetDate?.let { data["targetDate"] = it }
+        savingsCollection(goal.householdId).document(goal.id).set(data).await()
+    }
+
+    suspend fun deleteSavingsGoal(householdId: String, id: String) {
+        savingsCollection(householdId).document(id).delete().await()
+    }
+
+    fun observeRecurringExpenses(householdId: String): Flow<List<RecurringExpense>> = callbackFlow {
+        val listener = recurringCollection(householdId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                trySend(snapshot?.documents?.map { it.toRecurringExpense(householdId) } ?: emptyList())
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun getActiveRecurringExpenses(householdId: String): List<RecurringExpense> =
+        recurringCollection(householdId).get().await()
+            .documents.map { it.toRecurringExpense(householdId) }
+            .filter { it.isActive }
+
+    private fun DocumentSnapshot.toRecurringExpense(householdId: String) = RecurringExpense(
+        id = id,
+        householdId = householdId,
+        amount = getDouble("amount") ?: 0.0,
+        categoryId = getString("categoryId") ?: "",
+        categoryName = getString("categoryName") ?: "",
+        notes = getString("notes") ?: "",
+        addedBy = getString("addedBy") ?: "",
+        addedByName = getString("addedByName") ?: "",
+        frequency = frequencyFromOrdinal((getLong("frequency") ?: 2L).toInt()),
+        dayOfWeek = getLong("dayOfWeek")?.toInt(),
+        dayOfMonth = getLong("dayOfMonth")?.toInt(),
+        monthOfYear = getLong("monthOfYear")?.toInt(),
+        startDate = getEpochMillis("startDate") ?: 0L,
+        endDate = getEpochMillis("endDate"),
+        lastGeneratedDate = getEpochMillis("lastGeneratedDate"),
+        isActive = getBoolean("isActive") ?: true,
+        createdAt = getEpochMillis("createdAt") ?: 0L
+    )
+
+    private fun frequencyFromOrdinal(ordinal: Int): RecurringFrequency =
+        RecurringFrequency.entries.getOrElse(ordinal) { RecurringFrequency.MONTHLY }
+
+    suspend fun upsertRecurringExpense(recurring: RecurringExpense) {
+        val data = mutableMapOf<String, Any>(
+            "householdId" to recurring.householdId,
+            "amount" to recurring.amount,
+            "categoryId" to recurring.categoryId,
+            "categoryName" to recurring.categoryName,
+            "notes" to recurring.notes,
+            "addedBy" to recurring.addedBy,
+            "addedByName" to recurring.addedByName,
+            // Stored as the enum ordinal, which is what iOS reads and what Room used.
+            "frequency" to recurring.frequency.ordinal,
+            "startDate" to recurring.startDate,
+            "isActive" to recurring.isActive,
+            "createdAt" to recurring.createdAt
+        )
+        recurring.dayOfWeek?.let { data["dayOfWeek"] = it }
+        recurring.dayOfMonth?.let { data["dayOfMonth"] = it }
+        recurring.monthOfYear?.let { data["monthOfYear"] = it }
+        recurring.endDate?.let { data["endDate"] = it }
+        recurring.lastGeneratedDate?.let { data["lastGeneratedDate"] = it }
+        recurringCollection(recurring.householdId).document(recurring.id).set(data).await()
+    }
+
+    suspend fun updateRecurringLastGenerated(householdId: String, id: String, timestamp: Long) {
+        recurringCollection(householdId).document(id)
+            .set(mapOf("lastGeneratedDate" to timestamp), com.google.firebase.firestore.SetOptions.merge())
+            .await()
+    }
+
+    suspend fun deleteRecurringExpense(householdId: String, id: String) {
+        recurringCollection(householdId).document(id).delete().await()
     }
 
     // --- Categories ---
@@ -419,7 +654,7 @@ class FirestoreDataSource @Inject constructor(
                         name = doc.getString("name") ?: "",
                         value = doc.getDouble("value") ?: 0.0,
                         type = doc.getString("type") ?: "",
-                        date = doc.getLong("date") ?: 0L,
+                        date = doc.getEpochMillis("date") ?: 0L,
                         addedBy = doc.getString("addedBy") ?: ""
                     )
                 } ?: emptyList()
@@ -476,7 +711,7 @@ class FirestoreDataSource @Inject constructor(
                         name = doc.getString("name") ?: "",
                         amount = doc.getDouble("amount") ?: 0.0,
                         type = doc.getString("type") ?: "",
-                        date = doc.getLong("date") ?: 0L,
+                        date = doc.getEpochMillis("date") ?: 0L,
                         addedBy = doc.getString("addedBy") ?: ""
                     )
                 } ?: emptyList()

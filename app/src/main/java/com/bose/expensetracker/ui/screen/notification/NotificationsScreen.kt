@@ -1,6 +1,7 @@
 package com.bose.expensetracker.ui.screen.notification
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,7 +44,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.clickable
 import com.bose.expensetracker.data.local.entity.PendingSmsEntity
 import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.ui.components.SectionHeader
