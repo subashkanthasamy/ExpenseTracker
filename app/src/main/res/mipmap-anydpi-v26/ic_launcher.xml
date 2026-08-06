@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Foreground must be the drawable-*dpi PNGs: those are the white rupee glyph keyed out of
+    docs/Expense.png onto transparency, sized to the 66dp safe zone. The mipmap
+    ic_launcher_foreground.webp files were a different logo entirely (an opaque green wallet
+    on a black rounded square) — being opaque they hid the gradient background completely,
+    and their baked-in rounded square nested inside the launcher's own mask.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
-    <monochrome android:drawable="@mipmap/ic_launcher_foreground"/>
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+    <monochrome android:drawable="@drawable/ic_launcher_foreground"/>
 </adaptive-icon>
