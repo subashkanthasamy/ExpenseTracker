@@ -10,6 +10,16 @@
 	  Everything else in the built Info.plist still comes from the INFOPLIST_KEY_*
 	  build settings (GENERATE_INFOPLIST_FILE = YES merges them into this file).
 	-->
+	<!--
+	  Launch screen background. Without this the generated launch screen is an empty dict,
+	  which renders stark white before SwiftUI draws anything — a visible flash on every cold
+	  start. The colour asset adapts, matching the app background in both appearances.
+	-->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

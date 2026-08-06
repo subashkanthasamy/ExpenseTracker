@@ -32,6 +32,12 @@ enum GoogleSignInError: LocalizedError {
 class AuthService {
     var currentUser: AppUser?
     var isAuthenticated = false
+    /// False until Firebase's first auth-state callback arrives.
+    ///
+    /// Firebase restores a persisted session asynchronously, so `isAuthenticated` is
+    /// momentarily false at launch even for a signed-in user. Rendering the sign-in screen
+    /// off that initial false is what made Login flash before the app appeared.
+    var hasResolvedInitialState = false
 
     private nonisolated let auth = Auth.auth()
     private nonisolated let db = Firestore.firestore()
@@ -46,6 +52,7 @@ class AuthService {
     }
 
     private func handleAuthStateChange(_ firebaseUser: FirebaseAuth.User?) async {
+        defer { hasResolvedInitialState = true }
         guard let fu = firebaseUser else {
             currentUser = nil
             isAuthenticated = false

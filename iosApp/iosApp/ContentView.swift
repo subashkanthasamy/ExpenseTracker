@@ -9,6 +9,8 @@ struct ContentView: View {
     @State private var prefs = AppPreferences()
     @State private var notifications = NotificationService()
     @State private var biometricUnlocked = false
+    /// Safety net: never let the splash hang if Firebase's auth callback never arrives.
+    @State private var authResolveTimedOut = false
 
     var body: some View {
         Group {
@@ -24,7 +26,16 @@ struct ContentView: View {
     private var content: some View {
         Group {
             if let vm = authVM {
-                if vm.isAuthenticated || authService.isAuthenticated {
+                if !authService.hasResolvedInitialState && !vm.isAuthenticated && !authResolveTimedOut {
+                    // Firebase restores a persisted session asynchronously. Showing the
+                    // sign-in screen during that window made Login flash on every launch
+                    // for an already-signed-in user.
+                    LaunchSplashView()
+                        .task {
+                            try? await Task.sleep(for: .seconds(5))
+                            authResolveTimedOut = true
+                        }
+                } else if vm.isAuthenticated || authService.isAuthenticated {
                     if vm.needsHouseholdSetup {
                         HouseholdSetupView(viewModel: vm)
                     } else {
@@ -38,7 +49,7 @@ struct ContentView: View {
                     }
                 }
             } else {
-                ProgressView("Loading...")
+                LaunchSplashView()
                     .task {
                         authVM = AuthViewModel(authService: authService, firestoreService: firestoreService)
                     }

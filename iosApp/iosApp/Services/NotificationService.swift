@@ -89,9 +89,19 @@ final class NotificationService {
     }
 
     /// Re-registers everything; safe to call on launch since identifiers are stable.
+    ///
+    /// Deliberately does **not** request authorization: doing so made the system
+    /// notification prompt appear on every launch, which is both startling and against
+    /// Apple's guidance to ask in context. Permission is requested when the user actually
+    /// adds a reminder; here we only reschedule if it has already been granted.
     func rescheduleAll() async {
         guard !reminders.isEmpty else { return }
-        guard await requestAuthorization() else { return }
+        let settings = await center.notificationSettings()
+        guard settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional else {
+            authorizationDenied = settings.authorizationStatus == .denied
+            return
+        }
         for reminder in reminders where reminder.isEnabled {
             await schedule(reminder)
         }
