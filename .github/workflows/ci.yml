@@ -32,12 +32,16 @@ jobs:
       - name: Decode google-services.json
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
+        run: |
+          printf '%s' "$GOOGLE_SERVICES_JSON" |
+            tools/ci-decode-secret.sh app/google-services.json json
 
       - name: Decode keystore
         env:
           RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
-        run: printf '%s' "$RELEASE_KEYSTORE" | base64 --decode > app/release-keystore.jks
+        run: |
+          printf '%s' "$RELEASE_KEYSTORE" |
+            tools/ci-decode-secret.sh app/release-keystore.jks binary
 
       # Compile explicitly and first, so a compilation break is reported as such instead of
       # surfacing partway through a longer assemble.
@@ -102,7 +106,9 @@ jobs:
       - name: Decode google-services.json
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
+        run: |
+          printf '%s' "$GOOGLE_SERVICES_JSON" |
+            tools/ci-decode-secret.sh app/google-services.json json
 
       # Optional: the iOS app compiles without it — a missing plist is a runtime failure, not
       # a build one — so a fork without the secret still gets a useful signal.
@@ -111,8 +117,8 @@ jobs:
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
         run: |
           if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
-            printf '%s' "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > iosApp/iosApp/GoogleService-Info.plist
-            echo "plist written"
+            printf '%s' "$GOOGLE_SERVICE_INFO_PLIST" |
+              tools/ci-decode-secret.sh iosApp/iosApp/GoogleService-Info.plist xml
           else
             echo "secret not set — skipping (the build does not require it)"
           fi

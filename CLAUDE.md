@@ -282,7 +282,12 @@ aggregator API (RBI Account Aggregator).
 ## Notes
 - Firebase is on **both** platforms now (Auth + Firestore). iOS uses firebase-ios-sdk via SPM.
 - Config files are **untracked**: `app/google-services.json`, `iosApp/iosApp/GoogleService-Info.plist`.
-  A fresh clone cannot run either platform without obtaining both.
+  A fresh clone cannot run either platform without obtaining both. CI materialises them from
+  Actions secrets through `tools/ci-decode-secret.sh`, which accepts the secret **either**
+  base64-encoded or as the verbatim file contents. That is deliberate: `base64 --decode` fails
+  with a bare "invalid input" on a raw-pasted file or on base64 carrying CRLF/line wrapping,
+  and because Actions masks the value the log cannot tell you which. `RELEASE_KEYSTORE` is the
+  exception — binary, so it must be base64, and the script checks the JKS/PKCS#12 magic.
 - Android debug builds must have the debug keystore SHA-1 registered in Firebase or Google
   Sign-In fails with a misleading "cancelled".
 - Room stays in `app/` due to AGP 9.x KSP compatibility issues with KMP plugin.
