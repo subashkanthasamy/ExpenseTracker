@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct AppColors {
     static let gradientPurple = Color(hex: 0xFF7B61FF)
@@ -26,6 +27,13 @@ struct AppColors {
 }
 
 extension Color {
+    /// Resolves per appearance, so a single token works in both light and dark mode.
+    init(light: UInt, dark: UInt) {
+        self = Color(UIColor { traits in
+            UIColor(Color(hex: traits.userInterfaceStyle == .dark ? dark : light))
+        })
+    }
+
     init(hex: UInt) {
         let a = Double((hex >> 24) & 0xFF) / 255.0
         let r = Double((hex >> 16) & 0xFF) / 255.0

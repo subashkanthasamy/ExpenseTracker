@@ -3,10 +3,9 @@ import SwiftUI
 
 /// Add / edit a transaction, styled to `docs/Expense Tracker/Add Transaction.pdf`.
 ///
-/// The design is dark-only — the source files contain no light variant — so this screen pins
-/// itself to `.dark` instead of following the app's theme setting. If the rest of the app
-/// moves onto this design system, that pin should move to the app root and the Light option
-/// in Settings needs a designed light palette.
+/// The mockups only specify a dark palette, so the `DS` tokens this screen uses are adaptive:
+/// dark values come from the design, light values are derived. The screen therefore follows
+/// the app's theme setting (Settings → Appearance) instead of forcing one appearance.
 struct AddEditExpenseView: View {
     @Bindable var viewModel: AddEditExpenseViewModel
     @Environment(\.dismiss) var dismiss
@@ -76,8 +75,6 @@ struct AddEditExpenseView: View {
                 .padding(.bottom, 32)
             }
         }
-        // The mockups are dark-only; don't let a Light theme setting break the layout.
-        .preferredColorScheme(.dark)
         .task { await viewModel.loadCategories() }
         .sheet(isPresented: $showScanner) {
             ReceiptScannerView { result in

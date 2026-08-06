@@ -192,10 +192,12 @@ same frames (metadata-only differences) and are gitignored.
 Tokens and shared components live in `iosApp/iosApp/Theme/DesignSystem.swift` (`DS.*`).
 `AddEditExpenseView` is the first screen built against them.
 
-**The designs are dark-only.** There is no light variant in the source files, so screens
-built on `DS` pin `.preferredColorScheme(.dark)` rather than following the app's theme
-setting. Settings still offers System/Light/Dark, so either the remaining screens keep the
-current light styling, or a light palette needs designing and the pin moves to the app root.
+**The designs are dark-only**, but `DS` surface and text tokens are **adaptive** — the dark
+values come from the mockups, the light values are derived with the same hierarchy — so
+screens follow the app's theme setting instead of forcing an appearance. Use `DS.*` for
+surfaces and text rather than literal colours, or a screen will look wrong in one appearance.
+Accents (`DS.accent`, `expense`, `income`, `ctaGradient`) are deliberately shared, except
+`accentSoft`, which is darkened in light mode to stay readable on white.
 
 ## Platform parity (Android = reference)
 

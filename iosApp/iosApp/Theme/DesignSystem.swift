@@ -1,36 +1,39 @@
 import SwiftUI
 
-/// Tokens and components for the dark design in `docs/Expense Tracker/*.pdf`.
+/// Tokens and components for the design in `docs/Expense Tracker/*.pdf`.
 ///
-/// The designs are dark-only — there is no light variant in the source files — so screens
-/// built against these tokens pin themselves to `.dark` rather than following the app theme.
-/// See the note in AddEditExpenseView.
+/// The mockups only specify a dark palette. Rather than force screens dark — which looked
+/// broken against the app's Light theme setting — the surface and text tokens are
+/// **adaptive**: dark values are taken straight from the mockups, and light values are
+/// derived from them, keeping the same hierarchy and contrast steps. Accents are shared, so
+/// the design's structure holds in either appearance and the Settings theme is honoured.
 enum DS {
 
     // MARK: - Surfaces
 
-    /// Screen canvas. Darker than AppColors.backgroundDark, matching the mockups.
-    static let canvas = Color(hex: 0xFF0B0B12)
+    /// Screen canvas. The dark value is taken from the mockups.
+    static let canvas = Color(light: 0xFFF5F5FA, dark: 0xFF0B0B12)
     /// Default card / field background.
-    static let card = Color(hex: 0xFF16161E)
+    static let card = Color(light: 0xFFFFFFFF, dark: 0xFF16161E)
     /// Chips, category tiles, anything sitting on top of a card.
-    static let elevated = Color(hex: 0xFF1E1E28)
+    static let elevated = Color(light: 0xFFEFEFF6, dark: 0xFF1E1E28)
     /// Header bar behind the title row.
-    static let header = Color(hex: 0xFF12121A)
+    static let header = Color(light: 0xFFFFFFFF, dark: 0xFF12121A)
     /// Hairline borders and dashed outlines.
-    static let stroke = Color(hex: 0xFF2A2A36)
+    static let stroke = Color(light: 0xFFE3E3EE, dark: 0xFF2A2A36)
 
     // MARK: - Text
 
-    static let textPrimary = Color.white
-    static let textSecondary = Color(hex: 0xFF9A9AAC)
+    static let textPrimary = Color(light: 0xFF14141C, dark: 0xFFFFFFFF)
+    static let textSecondary = Color(light: 0xFF6A6A7B, dark: 0xFF9A9AAC)
     /// Small-caps section labels ("CATEGORY", "AMOUNT ₹").
-    static let textLabel = Color(hex: 0xFF7A7A8C)
+    static let textLabel = Color(light: 0xFF8A8A9B, dark: 0xFF7A7A8C)
 
     // MARK: - Accents
 
     static let accent = AppColors.accentPurple            // #7B61FF, already the brand purple
-    static let accentSoft = Color(hex: 0xFF9C8BFF)
+    /// Darkened for light mode so it stays readable on white.
+    static let accentSoft = Color(light: 0xFF6B55E0, dark: 0xFF9C8BFF)
     static let expense = Color(hex: 0xFFE5484D)
     static let income = Color(hex: 0xFF4ADE80)
 
