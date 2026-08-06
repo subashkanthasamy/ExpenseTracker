@@ -182,6 +182,21 @@ only ever *write* millis. `tools/migrate-timestamps.js` normalises legacy docume
 Household deletion and member ejection are intentionally closed off; do those from a Cloud
 Function if needed.
 
+
+## Design source
+
+`docs/Expense Tracker/*.pdf` holds six screen designs: Home Dashboard, Timeline, Add
+Transaction, Smart Insights, Analytics and AI Coach. The `-1` copies are re-exports of the
+same frames (metadata-only differences) and are gitignored.
+
+Tokens and shared components live in `iosApp/iosApp/Theme/DesignSystem.swift` (`DS.*`).
+`AddEditExpenseView` is the first screen built against them.
+
+**The designs are dark-only.** There is no light variant in the source files, so screens
+built on `DS` pin `.preferredColorScheme(.dark)` rather than following the app's theme
+setting. Settings still offers System/Light/Dark, so either the remaining screens keep the
+current light styling, or a light palette needs designing and the pin moves to the app root.
+
 ## Platform parity (Android = reference)
 
 Rough scale: ~11.7k lines of Android UI vs ~2.8k lines of Swift, so even the shipped iOS

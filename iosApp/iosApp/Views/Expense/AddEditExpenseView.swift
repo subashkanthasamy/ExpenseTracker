@@ -1,106 +1,84 @@
-import SwiftUI
 import Shared
+import SwiftUI
 
+/// Add / edit a transaction, styled to `docs/Expense Tracker/Add Transaction.pdf`.
+///
+/// The design is dark-only — the source files contain no light variant — so this screen pins
+/// itself to `.dark` instead of following the app's theme setting. If the rest of the app
+/// moves onto this design system, that pin should move to the app root and the Light option
+/// in Settings needs a designed light palette.
 struct AddEditExpenseView: View {
+    @Bindable var viewModel: AddEditExpenseViewModel
+    @Environment(\.dismiss) var dismiss
+
     @State private var showScanner = false
     @State private var showVoice = false
     @State private var showSmsImport = false
-    @Bindable var viewModel: AddEditExpenseViewModel
-    @Environment(\.dismiss) var dismiss
-    @State private var showDatePicker = false
+    /// The design shows an Expense/Income selector. Only expenses are persisted today, so
+    /// selecting Income explains itself rather than silently saving an expense.
+    @State private var isExpense = true
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Amount") {
-                    TextField("0.00", text: $viewModel.amount)
-                        .keyboardType(.decimalPad)
-                        .font(.title)
-                }
+        ZStack {
+            DS.canvas.ignoresSafeArea()
 
-                Section {
-                    HStack(spacing: 12) {
-                        Button {
-                            showScanner = true
-                        } label: {
-                            Label("Scan receipt", systemImage: "doc.text.viewfinder")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    header
 
-                        Button {
-                            showVoice = true
-                        } label: {
-                            Label("Speak", systemImage: "mic.fill")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
+                    DSTypeToggle(isExpense: $isExpense)
+
+                    if !isExpense {
+                        Label(
+                            "Income isn't stored yet — this screen currently records expenses only.",
+                            systemImage: "info.circle"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(DS.textSecondary)
                     }
 
-                    Button {
+                    DSCaptureRow(icon: "mic.fill", title: "Add by Voice") { showVoice = true }
+
+                    DSCaptureRow(
+                        icon: "doc.text.viewfinder",
+                        title: "Scan Receipt (OCR)",
+                        dashed: true,
+                        centered: true
+                    ) { showScanner = true }
+
+                    DSCaptureRow(icon: "text.bubble", title: "Import from bank SMS") {
                         showSmsImport = true
-                    } label: {
-                        Label("Import from bank SMS", systemImage: "text.bubble")
-                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
-                }
 
-                Section("Category") {
-                    if viewModel.categories.isEmpty {
-                        ProgressView("Loading categories...")
-                    } else {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 70))], spacing: 12) {
-                            ForEach(viewModel.categories) { cat in
-                                VStack(spacing: 4) {
-                                    Text(categoryEmoji(cat.name))
-                                        .font(.title2)
-                                        .frame(width: 48, height: 48)
-                                        .background(viewModel.selectedCategory?.id == cat.id ? AppColors.accentPurple.opacity(0.2) : Color.gray.opacity(0.1))
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .stroke(viewModel.selectedCategory?.id == cat.id ? AppColors.accentPurple : .clear, lineWidth: 2)
-                                        )
-                                    Text(cat.name)
-                                        .font(.caption2)
-                                        .lineLimit(1)
-                                }
-                                .onTapGesture { viewModel.selectedCategory = cat }
-                            }
-                        }
+                    amountField
+                    categoryGrid
+                    noteField
+                    dateField
+
+                    if let error = viewModel.error {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(DS.expense)
                     }
-                }
 
-                Section("Date") {
-                    DatePicker("Date", selection: $viewModel.date, displayedComponents: .date)
+                    DSPrimaryButton(
+                        title: viewModel.isEditing ? "Update Transaction" : "Add Transaction",
+                        isBusy: viewModel.isLoading,
+                        isEnabled: canSave
+                    ) {
+                        Task { if await viewModel.save() { dismiss() } }
+                    }
+                    .padding(.top, 4)
                 }
-
-                Section("Notes") {
-                    TextField("Optional notes", text: $viewModel.notes)
-                }
-
-                if let error = viewModel.error {
-                    Section { Text(error).foregroundStyle(.red) }
-                }
+                .padding(.horizontal, DS.screenPadding)
+                .padding(.bottom, 32)
             }
-            .navigationTitle(viewModel.isEditing ? "Edit Expense" : "Add Expense")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(viewModel.isEditing ? "Update" : "Add") {
-                        Task {
-                            if await viewModel.save() { dismiss() }
-                        }
-                    }
-                    .disabled(viewModel.isLoading)
-                }
-            }
-            .task { await viewModel.loadCategories() }
         }
+        // The mockups are dark-only; don't let a Light theme setting break the layout.
+        .preferredColorScheme(.dark)
+        .task { await viewModel.loadCategories() }
         .sheet(isPresented: $showScanner) {
             ReceiptScannerView { result in
                 if let amount = result.amount { viewModel.amount = String(amount.doubleValue) }
@@ -112,23 +90,124 @@ struct AddEditExpenseView: View {
             SmsImportView { amount, merchant, categoryHint in
                 viewModel.amount = String(amount)
                 if let merchant, viewModel.notes.isEmpty { viewModel.notes = merchant }
-                if let hint = categoryHint {
-                    viewModel.selectedCategory = viewModel.categories.first {
-                        $0.name.localizedCaseInsensitiveContains(hint)
-                    } ?? viewModel.selectedCategory
-                }
+                applyCategoryHint(categoryHint)
             }
         }
         .sheet(isPresented: $showVoice) {
             VoiceEntryView { amount, categoryHint in
                 viewModel.amount = String(amount)
-                if let hint = categoryHint {
-                    // Match the shared parser's hint against the household's categories.
-                    viewModel.selectedCategory = viewModel.categories.first {
-                        $0.name.localizedCaseInsensitiveContains(hint)
-                    } ?? viewModel.selectedCategory
+                applyCategoryHint(categoryHint)
+            }
+        }
+    }
+
+    // MARK: - Sections
+
+    private var header: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 6) {
+                DSSectionLabel(text: "Add Entry")
+                Text(viewModel.isEditing ? "Edit Transaction" : "New Transaction")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(DS.textPrimary)
+            }
+            Spacer()
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(DS.textSecondary)
+                    .frame(width: 36, height: 36)
+                    .background(DS.card)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Cancel")
+        }
+        .padding(.top, 12)
+    }
+
+    private var amountField: some View {
+        DSCard {
+            VStack(alignment: .leading, spacing: 8) {
+                DSSectionLabel(text: "Amount ₹")
+                TextField("0", text: $viewModel.amount)
+                    .keyboardType(.decimalPad)
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(DS.textPrimary)
+                    .tint(DS.accent)
+            }
+        }
+    }
+
+    private var categoryGrid: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            DSSectionLabel(text: "Category")
+
+            if viewModel.categories.isEmpty {
+                DSCard {
+                    HStack(spacing: 10) {
+                        ProgressView().tint(DS.accent)
+                        Text("Loading categories…")
+                            .font(.subheadline)
+                            .foregroundStyle(DS.textSecondary)
+                    }
+                }
+            } else {
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(viewModel.categories) { category in
+                        DSCategoryTile(
+                            emoji: categoryEmoji(category.name),
+                            name: category.name,
+                            isSelected: viewModel.selectedCategory?.id == category.id
+                        ) {
+                            viewModel.selectedCategory = category
+                        }
+                    }
                 }
             }
         }
+    }
+
+    private var noteField: some View {
+        DSCard(padding: 14) {
+            HStack(spacing: 12) {
+                Image(systemName: "text.alignleft")
+                    .font(.system(size: 15))
+                    .foregroundStyle(DS.textLabel)
+                TextField("Add a note…", text: $viewModel.notes)
+                    .font(.system(size: 15))
+                    .foregroundStyle(DS.textPrimary)
+                    .tint(DS.accent)
+            }
+        }
+    }
+
+    private var dateField: some View {
+        DSCard(padding: 14) {
+            HStack(spacing: 12) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 15))
+                    .foregroundStyle(DS.accentSoft)
+                DatePicker("", selection: $viewModel.date, displayedComponents: .date)
+                    .labelsHidden()
+                    .tint(DS.accent)
+                Spacer()
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private var canSave: Bool {
+        Double(viewModel.amount) != nil && viewModel.selectedCategory != nil && isExpense
+    }
+
+    private func applyCategoryHint(_ hint: String?) {
+        guard let hint else { return }
+        viewModel.selectedCategory = viewModel.categories.first {
+            $0.name.localizedCaseInsensitiveContains(hint)
+        } ?? viewModel.selectedCategory
     }
 }
