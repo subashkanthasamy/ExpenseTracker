@@ -4,7 +4,14 @@
 
     Replaces the Android Studio template background (#3DDC84 plus a grid of guide lines).
     Colours and direction are sampled from the supplied logo (docs/Expense.png): violet
-    #6B45F9 at bottom-left through magenta #B738ED to orange #FD7750 at top-right. The white
+    #6B45F9 at bottom-left through magenta #B738ED to orange #FD7750 at top-right.
+
+    The gradient spans (26,82)->(82,26) rather than corner to corner. A launcher masks the
+    108dp canvas down to a 72dp circle, which reaches only +/-36 along the diagonal from the
+    centre — corner-to-corner stops meant just t=0.26..0.74 survived (#933EF3 to #D856A3) and
+    the orange end was cropped away entirely. Spanning +/-40 instead puts t=0.05..0.95 inside
+    the circle, so the whole gradient reads, while a square mask (which reaches +/-51) only
+    clamps the extreme corners. The white
     rupee glyph is keyed out of that same artwork into the foreground layer, so the adaptive
     icon reproduces the logo while keeping the two elements on separate layers as Android
     requires. The foreground layer is
@@ -22,10 +29,10 @@
         <aapt:attr name="android:fillColor">
             <gradient
                 android:type="linear"
-                android:startX="0"
-                android:startY="108"
-                android:endX="108"
-                android:endY="0">
+                android:startX="26"
+                android:startY="82"
+                android:endX="82"
+                android:endY="26">
                 <item android:color="#FF6B45F9" android:offset="0.0" />
                 <item android:color="#FFB738ED" android:offset="0.5" />
                 <item android:color="#FFFD7750" android:offset="1.0" />
