@@ -56,15 +56,28 @@ a real gap, not an assumption.
 ## Build & Test Commands
 
 ```bash
-./gradlew :shared:allTests                        # Shared unit tests (ReceiptTextParser etc.)
+./gradlew :shared:allTests                        # The 37 shared tests — macOS only, see below
 ./gradlew assembleDebug                           # Build debug Android APK
 ./gradlew :shared:allMetadataJar                  # Compile shared commonMain
 ./gradlew :shared:compileKotlinIosArm64           # Compile shared for iOS
 ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64  # Build iOS framework
-./gradlew test                                    # Run unit tests
+./gradlew :app:testDebugUnitTest                  # Android unit tests
 ./gradlew connectedAndroidTest                    # Run instrumented tests
 ./gradlew clean                                   # Clean build outputs
 ```
+
+
+### Two traps when verifying a change
+
+- **`./gradlew test` does not run the shared tests.** It resolves to `:app` only. The shared
+  tests are Kotlin/Native (`iosSimulatorArm64`, `iosX64`), so `:shared:allTests` is the task —
+  and it is a **no-op on Linux**, where those targets are disabled. CI therefore runs them in a
+  separate macOS job.
+- **A green incremental build can hide a broken file.** Gradle skips compiling sources your
+  change did not touch, so pre-existing errors elsewhere stay invisible until a clean build.
+  Before claiming a build passes, use `--rerun-tasks` (or `clean`) if the change might have
+  exposed something outside the files you edited. A CI failure that you cannot reproduce
+  locally is usually this.
 
 ## Architecture
 

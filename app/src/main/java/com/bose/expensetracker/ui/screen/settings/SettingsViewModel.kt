@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.data.preferences.BiometricPreferences
 import com.bose.expensetracker.data.preferences.SmsImportPreferences
 import com.bose.expensetracker.data.preferences.ThemePreferences
+import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.sandbox.SandboxDataSeeder
 import com.bose.expensetracker.domain.model.Expense
 import com.bose.expensetracker.domain.model.Household
@@ -17,6 +18,7 @@ import com.bose.expensetracker.domain.usecase.export.ExportExpensesUseCase
 import com.bose.expensetracker.domain.usecase.importdata.ImportExpensesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,7 +48,10 @@ data class SettingsUiState(
     val resetMessage: String? = null,
     val smsImportEnabled: Boolean = false,
     val themeMode: Int = ThemePreferences.THEME_SYSTEM,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /// True while the app is in sandbox/demo mode. SettingsScreen hides account-bound
+    /// options and offers "Exit Demo" when this is set.
+    val isSandbox: Boolean = false
 )
 
 @HiltViewModel
@@ -60,7 +65,8 @@ class SettingsViewModel @Inject constructor(
     private val biometricPreferences: BiometricPreferences,
     private val smsImportPreferences: SmsImportPreferences,
     private val themePreferences: ThemePreferences,
-    private val sandboxDataSeeder: SandboxDataSeeder
+    private val sandboxDataSeeder: SandboxDataSeeder,
+    private val sandboxPreferences: SandboxPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -73,7 +79,27 @@ class SettingsViewModel @Inject constructor(
     val householdSwitchedEvent: SharedFlow<Unit> = _householdSwitchedEvent.asSharedFlow()
 
     init {
+        _uiState.update { it.copy(isSandbox = sandboxPreferences.isSandboxCached) }
         loadSettings()
+    }
+
+    /**
+     * Leaves demo mode: clears the sandbox flag and signs out, which returns the user to the
+     * login screen. SettingsScreen shows this in place of the account-bound options.
+     */
+    fun exitSandbox() {
+        viewModelScope.launch {
+            try {
+                sandboxDataSeeder.clearSandboxData()
+                sandboxPreferences.setSandboxActive(false)
+                _uiState.update { it.copy(isSandbox = false) }
+                authRepository.signOut()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message ?: "Could not exit demo mode") }
+            }
+        }
     }
 
     private fun loadSettings() {
