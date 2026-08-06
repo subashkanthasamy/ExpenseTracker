@@ -3,8 +3,11 @@
     Adaptive icon background: the app's brand gradient.
 
     Replaces the Android Studio template background (#3DDC84 plus a grid of guide lines).
-    Colours match AppColors.gradient on iOS (0xFF7B61FF -> 0xFFE040FB -> 0xFFFF8A65) so both
-    platforms ship the same mark. The foreground layer is
+    Colours and direction are sampled from the supplied logo (docs/Expense.png): violet
+    #6B45F9 at bottom-left through magenta #B738ED to orange #FD7750 at top-right. The white
+    rupee glyph is keyed out of that same artwork into the foreground layer, so the adaptive
+    icon reproduces the logo while keeping the two elements on separate layers as Android
+    requires. The foreground layer is
     drawable-*dpi/ic_launcher_foreground.png — a white rupee sign kept inside the 66dp safe
     zone — which also serves as the monochrome layer for themed icons.
 -->
@@ -20,12 +23,12 @@
             <gradient
                 android:type="linear"
                 android:startX="0"
-                android:startY="0"
+                android:startY="108"
                 android:endX="108"
-                android:endY="108">
-                <item android:color="#FF7B61FF" android:offset="0.0" />
-                <item android:color="#FFE040FB" android:offset="0.55" />
-                <item android:color="#FFFF8A65" android:offset="1.0" />
+                android:endY="0">
+                <item android:color="#FF6B45F9" android:offset="0.0" />
+                <item android:color="#FFB738ED" android:offset="0.5" />
+                <item android:color="#FFFD7750" android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
