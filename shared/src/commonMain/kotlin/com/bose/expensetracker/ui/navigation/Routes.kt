@@ -7,7 +7,8 @@ import kotlinx.serialization.Serializable
 @Serializable object PhoneAuthRoute
 @Serializable object HouseholdSetupRoute
 @Serializable object DashboardRoute
-@Serializable object ExpenseListRoute
+/** [personFilter] is a member uid, set when arriving from the Analytics spending split. */
+@Serializable data class ExpenseListRoute(val personFilter: String? = null)
 @Serializable data class AddEditExpenseRoute(val expenseId: String? = null)
 @Serializable object CategoryRoute
 @Serializable object InsightsRoute

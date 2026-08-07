@@ -119,7 +119,12 @@ struct MainTabView: View {
 
             NavigationStack {
                 if let vm = insightsVM {
-                    InsightsView(viewModel: vm)
+                    InsightsView(viewModel: vm) { uid in
+                        // Both view models are owned here, so the split can hand the filter
+                        // straight to the expense list and switch to its tab.
+                        expenseListVM?.personFilter = uid
+                        selectedTab = 1
+                    }
                 } else {
                     ProgressView()
                 }

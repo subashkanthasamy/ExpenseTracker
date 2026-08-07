@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -19,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import com.bose.expensetracker.R
 import com.bose.expensetracker.ui.screen.auth.AuthViewModel
 import com.bose.expensetracker.ui.screen.auth.HouseholdSetupScreen
@@ -195,7 +197,7 @@ fun ExpenseTrackerNavGraph(
             DashboardScreen(
                 viewModel = viewModel,
                 onEditExpense = { id -> navController.navigate(AddEditExpenseRoute(expenseId = id)) },
-                onViewAllExpenses = { navController.navigate(ExpenseListRoute) },
+                onViewAllExpenses = { navController.navigate(ExpenseListRoute()) },
                 onNavigateToNotifications = { navController.navigate(NotificationsRoute) },
                 onNavigateToReminders = { navController.navigate(ReminderRoute) },
                 onNavigateToHouseholdSetup = {
@@ -209,8 +211,14 @@ fun ExpenseTrackerNavGraph(
             )
         }
 
-        composable<ExpenseListRoute> {
+        composable<ExpenseListRoute> { backStackEntry ->
             val viewModel: ExpenseListViewModel = hiltViewModel()
+            val personFilter = backStackEntry.toRoute<ExpenseListRoute>().personFilter
+            // Keyed on the argument so arriving from a different member re-applies; the guard
+            // stays inside the effect so a recomposition can't cancel it mid-flight.
+            LaunchedEffect(personFilter) {
+                if (personFilter != null) viewModel.setPersonFilter(personFilter)
+            }
             ExpenseListScreen(
                 viewModel = viewModel,
                 onAddExpense = { navController.navigate(AddEditExpenseRoute()) },
@@ -269,7 +277,12 @@ fun ExpenseTrackerNavGraph(
 
         composable<InsightsRoute> {
             val viewModel: InsightsViewModel = hiltViewModel()
-            InsightsScreen(viewModel = viewModel)
+            InsightsScreen(
+                viewModel = viewModel,
+                onPersonSelected = { uid ->
+                    navController.navigate(ExpenseListRoute(personFilter = uid))
+                }
+            )
         }
 
         composable<SmartInsightsRoute> {
@@ -283,7 +296,12 @@ fun ExpenseTrackerNavGraph(
 
         composable<AnalyticsRoute> {
             val viewModel: InsightsViewModel = hiltViewModel()
-            InsightsScreen(viewModel = viewModel)
+            InsightsScreen(
+                viewModel = viewModel,
+                onPersonSelected = { uid ->
+                    navController.navigate(ExpenseListRoute(personFilter = uid))
+                }
+            )
         }
 
         composable<FinancialCoachRoute> {

@@ -8,6 +8,8 @@ import com.bose.expensetracker.domain.model.SpendingInsight
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
+import com.bose.expensetracker.domain.usecase.insights.SpendingSplitCalculator
+import com.bose.expensetracker.ui.state.PersonSpending
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +38,7 @@ data class InsightsUiState(
     val insights: List<SpendingInsight> = emptyList(),
     val dailySpending: Map<String, Double> = emptyMap(),
     val categoryBreakdown: Map<String, Double> = emptyMap(),
+    val personSplit: List<PersonSpending> = emptyList(),
     val selectedPeriod: SummaryPeriod = SummaryPeriod.MONTH,
     val periodSummary: PeriodSummary = PeriodSummary(),
     val isLoading: Boolean = true
@@ -105,7 +108,8 @@ class InsightsViewModel @Inject constructor(
                     daysInPeriod = days
                 ),
                 categoryBreakdown = categoryBreakdown,
-                dailySpending = dailySpending
+                dailySpending = dailySpending,
+                personSplit = SpendingSplitCalculator.split(currentExpenses)
             )
         }
     }
@@ -248,22 +252,9 @@ class InsightsViewModel @Inject constructor(
             }
         }
 
-        // Person split
-        val byPerson = thisMonth.groupBy { it.addedByName.ifBlank { "Unknown" } }
-        if (byPerson.size > 1) {
-            val personSummary = byPerson.entries.joinToString(", ") { (name, expenses) ->
-                "$name: ${String.format("%.2f", expenses.sumOf { it.amount })}"
-            }
-            insights.add(
-                SpendingInsight(
-                    title = "Spending Split",
-                    description = personSummary,
-                    type = InsightType.SUGGESTION,
-                    relatedCategory = null,
-                    percentageChange = null
-                )
-            )
-        }
+        // The person split used to be a comma-joined string here, with raw unformatted amounts
+        // and no sense of proportion. It is now `personSplit` on the state, rendered as a
+        // proper breakdown on the Analytics screen where the period selector lives.
 
         return insights
     }

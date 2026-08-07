@@ -3,6 +3,7 @@ import Shared
 
 struct InsightsView: View {
     @Bindable var viewModel: InsightsViewModel
+    var onPersonSelected: (String) -> Void = { _ in }
 
     var body: some View {
         ScrollView {
@@ -41,6 +42,36 @@ struct InsightsView: View {
                             let pct = viewModel.totalSpent > 0 ? amount / viewModel.totalSpent : 0
                             ProgressView(value: pct)
                                 .tint(AppColors.accentPurple)
+                        }
+                    }
+                    .padding()
+                    .background(.regularMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+
+                // Spending split — only meaningful once more than one member has recorded
+                // something. Share of total rather than a bare ranked list of amounts: the
+                // same numbers as a proportion read as a contribution breakdown rather than
+                // a leaderboard.
+                if viewModel.personSplit.count > 1 {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("By Person").font(.headline)
+                        ForEach(viewModel.personSplit, id: \.userId) { person in
+                            Button { onPersonSelected(person.userId) } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text(person.name)
+                                        Spacer()
+                                        Text(formatCurrency(person.amount)).bold()
+                                    }
+                                    ProgressView(value: min(max(person.share, 0), 1))
+                                        .tint(AppColors.accentPurple)
+                                    Text("\(Int(person.share * 100))% of total")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding()

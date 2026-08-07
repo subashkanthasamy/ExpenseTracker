@@ -1,6 +1,7 @@
 package com.bose.expensetracker.ui.screen.insights
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,8 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Insights
@@ -22,6 +25,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +33,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,12 +44,16 @@ import com.bose.expensetracker.ui.components.SectionHeader
 import com.bose.expensetracker.ui.components.WeeklyBarChart
 import com.bose.expensetracker.ui.components.formatCurrency
 import com.bose.expensetracker.ui.components.getCategoryEmoji
+import com.bose.expensetracker.ui.state.PersonSpending
 import com.bose.expensetracker.ui.theme.AccentPurple
 import com.bose.expensetracker.ui.theme.ExpenseRed
 import com.bose.expensetracker.ui.theme.IncomeGreen
 
 @Composable
-fun InsightsScreen(viewModel: InsightsViewModel) {
+fun InsightsScreen(
+    viewModel: InsightsViewModel,
+    onPersonSelected: (String) -> Unit = {}
+) {
     val uiState by viewModel.uiState.collectAsState()
 
     Box(
@@ -259,8 +269,92 @@ fun InsightsScreen(viewModel: InsightsViewModel) {
                     }
                 }
 
+                // Only meaningful once more than one member has recorded something.
+                if (uiState.personSplit.size > 1) {
+                    item { SectionHeader(title = "BY PERSON") }
+
+                    items(uiState.personSplit) { person ->
+                        PersonSpendingBar(
+                            person = person,
+                            onClick = { onPersonSelected(person.userId) }
+                        )
+                    }
+                }
+
                 item { Spacer(modifier = Modifier.height(24.dp)) }
             }
+        }
+    }
+}
+
+/**
+ * One member's spending for the selected period: name, amount and share of the household total.
+ *
+ * The share bar is the point — a bare list of amounts reads as a leaderboard, where the same
+ * numbers as a proportion read as a contribution breakdown. Tapping opens the expense list
+ * already filtered to that member.
+ */
+@Composable
+private fun PersonSpendingBar(
+    person: PersonSpending,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(AccentPurple.copy(alpha = 0.2f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                person.name.take(1).uppercase(),
+                style = MaterialTheme.typography.labelLarge,
+                color = AccentPurple,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = person.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = formatCurrency(person.amount),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            LinearProgressIndicator(
+                progress = { person.share.toFloat().coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = AccentPurple,
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                strokeCap = StrokeCap.Round
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "${(person.share * 100).toInt()}% of total",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

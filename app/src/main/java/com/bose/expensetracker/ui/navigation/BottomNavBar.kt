@@ -52,7 +52,7 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem("Home", Icons.Outlined.Home, Icons.Filled.Home, DashboardRoute),
-    BottomNavItem("Timeline", Icons.Outlined.ViewTimeline, Icons.Filled.ViewTimeline, ExpenseListRoute),
+    BottomNavItem("Timeline", Icons.Outlined.ViewTimeline, Icons.Filled.ViewTimeline, ExpenseListRoute()),
     BottomNavItem("Insights", Icons.Outlined.Insights, Icons.Filled.Insights, SmartInsightsRoute),
     BottomNavItem("Wealth", Icons.Outlined.AccountBalance, Icons.Filled.AccountBalance, NetWorthRoute)
 )
@@ -165,5 +165,7 @@ private fun NavBarItem(
 private fun isRouteSelected(currentRoute: String?, itemRoute: Any): Boolean {
     val routeName = itemRoute::class.qualifiedName ?: ""
     val shortName = routeName.substringAfterLast(".")
-    return currentRoute?.endsWith(shortName) == true
+    // `contains`, not `endsWith`: a route carrying arguments serialises as
+    // "…ExpenseListRoute/{personFilter}", so the class name is no longer the tail.
+    return currentRoute?.contains(shortName) == true
 }
