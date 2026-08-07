@@ -2,11 +2,18 @@ import Foundation
 import FirebaseFirestore
 import Shared
 
+@MainActor
 @Observable
 class ExpenseListViewModel {
     var expenses: [Expense] = []
     var isLoading = true
+
+    // Filter state. Held as separate properties so SwiftUI can bind to each one, then
+    // assembled into the shared criteria on read.
     var searchQuery = ""
+    var categoryFilter: String?
+    var personFilter: String?
+    var dateRange: DateRangeFilter = .all
 
     private let authService: AuthService
     private let firestoreService: FirestoreService
@@ -17,22 +24,54 @@ class ExpenseListViewModel {
         self.firestoreService = firestoreService
     }
 
-    var filteredExpenses: [Expense] {
-        if searchQuery.isEmpty { return expenses }
-        return expenses.filter {
-            $0.categoryName.localizedCaseInsensitiveContains(searchQuery) ||
-            $0.notes.localizedCaseInsensitiveContains(searchQuery)
-        }
+    var criteria: ExpenseFilterCriteria {
+        ExpenseFilterCriteria.of(
+            searchQuery: searchQuery,
+            personFilter: personFilter,
+            categoryFilter: categoryFilter,
+            dateRange: dateRange
+        )
     }
 
+    var isFiltering: Bool { criteria.isActive }
+
+    /// Filtering goes through the shared engine rather than a Swift copy of the predicate, so
+    /// the same filter gives the same rows here as on Android.
+    var filteredExpenses: [Expense] {
+        ExpenseFilter.shared.apply(
+            expenses: expenses,
+            criteria: criteria,
+            nowMillis: Int64(Date().timeIntervalSince1970 * 1000)
+        )
+    }
+
+    var categoryOptions: [FilterOption] { ExpenseFilter.shared.categoryOptions(expenses: expenses) }
+
+    var personOptions: [FilterOption] { ExpenseFilter.shared.personOptions(expenses: expenses) }
+
+    /// Sorted explicitly rather than inheriting Firestore's `order(by:)` — relying on the
+    /// query's ordering silently reshuffles sections and rows if the query ever changes.
     var groupedExpenses: [(String, [Expense])] {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM dd, yyyy"
         let grouped = Dictionary(grouping: filteredExpenses) { formatter.string(from: $0.dateValue) }
-        return grouped.sorted { $0.value.first!.date > $1.value.first!.date }
+        return grouped
+            .map { ($0.key, $0.value.sorted { $0.date > $1.date }) }
+            .sorted { ($0.1.first?.date ?? 0) > ($1.1.first?.date ?? 0) }
+    }
+
+    func clearFilters() {
+        searchQuery = ""
+        categoryFilter = nil
+        personFilter = nil
+        dateRange = .all
     }
 
     func load() async {
+        // The view model outlives the view inside a TabView, so `.task` runs again on every
+        // reappearance. Without this guard each one attached another snapshot listener.
+        guard listener == nil else { return }
+
         guard let hid = await authService.getActiveHouseholdId() else {
             print("ExpenseList: No household ID")
             isLoading = false
@@ -52,7 +91,10 @@ class ExpenseListViewModel {
         try? await firestoreService.deleteExpense(householdId: hid, expenseId: expense.id)
     }
 
-    func cleanup() { listener?.remove() }
+    func cleanup() {
+        listener?.remove()
+        listener = nil
+    }
 }
 
 @Observable

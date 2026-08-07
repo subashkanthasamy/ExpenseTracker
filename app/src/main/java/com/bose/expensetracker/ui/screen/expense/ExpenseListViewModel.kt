@@ -2,11 +2,15 @@ package com.bose.expensetracker.ui.screen.expense
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bose.expensetracker.domain.model.Expense
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
+import com.bose.expensetracker.domain.usecase.filter.ExpenseFilter
+import com.bose.expensetracker.ui.state.DateRangeFilter
+import com.bose.expensetracker.ui.state.ExpenseFilterCriteria
+import com.bose.expensetracker.ui.state.ExpenseListUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,15 +18,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class ExpenseListUiState(
-    val expenses: List<Expense> = emptyList(),
-    val isLoading: Boolean = true,
-    val searchQuery: String = "",
-    val personFilter: String? = null,
-    val categoryFilter: String? = null,
-    val error: String? = null
-)
 
 @HiltViewModel
 class ExpenseListViewModel @Inject constructor(
@@ -34,17 +29,28 @@ class ExpenseListViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ExpenseListUiState())
     val uiState: StateFlow<ExpenseListUiState> = _uiState.asStateFlow()
 
+    /**
+     * The only home for filter state. It used to live both here (as three separate flows) and
+     * as mirror fields on the UiState that nothing read, so a filter could be "set" without
+     * ever reaching the list.
+     */
+    private val _criteria = MutableStateFlow(ExpenseFilterCriteria())
+
     private var householdId: String? = null
-    private val _searchQuery = MutableStateFlow("")
-    private val _personFilter = MutableStateFlow<String?>(null)
-    private val _categoryFilter = MutableStateFlow<String?>(null)
+    private var collectJob: Job? = null
 
     init {
         loadExpenses()
     }
 
-    private fun loadExpenses() {
-        viewModelScope.launch {
+    /**
+     * Public and re-callable: if the user or household can't be resolved we return before the
+     * `combine` below exists, and until it does every filter write goes to a flow with no
+     * subscriber. The screen can retry instead of being stuck with dead filters.
+     */
+    fun loadExpenses() {
+        collectJob?.cancel()
+        collectJob = viewModelScope.launch {
             val userId = authRepository.getCurrentUserId() ?: run {
                 _uiState.update { it.copy(isLoading = false) }
                 return@launch
@@ -59,56 +65,43 @@ class ExpenseListViewModel @Inject constructor(
 
             combine(
                 expenseRepository.getExpenses(hId),
-                _searchQuery,
-                _personFilter,
-                _categoryFilter
-            ) { expenses, query, person, category ->
-                filterExpenses(expenses, query, person, category)
-            }.collect { filtered ->
-                _uiState.update { state ->
-                    state.copy(
-                        expenses = filtered,
-                        isLoading = false
-                    )
-                }
+                _criteria
+            ) { expenses, criteria ->
+                // Options come from the unfiltered list so chips don't disappear as you use them.
+                ExpenseListUiState(
+                    expenses = ExpenseFilter.apply(
+                        expenses = expenses,
+                        criteria = criteria,
+                        nowMillis = System.currentTimeMillis()
+                    ),
+                    totalCount = expenses.size,
+                    categoryOptions = ExpenseFilter.categoryOptions(expenses),
+                    personOptions = ExpenseFilter.personOptions(expenses),
+                    criteria = criteria,
+                    isLoading = false
+                )
+            }.collect { state ->
+                _uiState.value = state
             }
         }
     }
 
-    fun setSearchQuery(query: String) {
-        _searchQuery.value = query
-        _uiState.update { it.copy(searchQuery = query) }
-    }
+    fun setSearchQuery(query: String) = _criteria.update { it.copy(searchQuery = query) }
 
-    fun setPersonFilter(userId: String?) {
-        _personFilter.value = userId
-        _uiState.update { it.copy(personFilter = userId) }
-    }
+    fun setPersonFilter(userId: String?) = _criteria.update { it.copy(personFilter = userId) }
 
-    fun setCategoryFilter(categoryId: String?) {
-        _categoryFilter.value = categoryId
-        _uiState.update { it.copy(categoryFilter = categoryId) }
+    fun setCategoryFilter(categoryId: String?) =
+        _criteria.update { it.copy(categoryFilter = categoryId) }
+
+    fun setDateRange(range: DateRangeFilter) = _criteria.update { it.copy(dateRange = range) }
+
+    fun clearFilters() {
+        _criteria.value = ExpenseFilterCriteria()
     }
 
     fun deleteExpense(expenseId: String) {
         viewModelScope.launch {
             expenseRepository.deleteExpense(expenseId)
-        }
-    }
-
-    private fun filterExpenses(
-        expenses: List<Expense>,
-        query: String,
-        personFilter: String?,
-        categoryFilter: String?
-    ): List<Expense> {
-        return expenses.filter { expense ->
-            val matchesQuery = query.isBlank() ||
-                    expense.notes.contains(query, ignoreCase = true) ||
-                    expense.categoryName.contains(query, ignoreCase = true)
-            val matchesPerson = personFilter == null || expense.addedBy == personFilter
-            val matchesCategory = categoryFilter == null || expense.categoryId == categoryFilter
-            matchesQuery && matchesPerson && matchesCategory
         }
     }
 

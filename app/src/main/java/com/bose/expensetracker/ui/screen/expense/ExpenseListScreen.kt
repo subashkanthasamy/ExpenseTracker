@@ -17,20 +17,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,12 +42,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bose.expensetracker.domain.model.Expense
 import com.bose.expensetracker.ui.components.DateGroupHeader
-import com.bose.expensetracker.ui.components.FilterTabRow
+import com.bose.expensetracker.ui.components.ScrollableFilterChipRow
 import com.bose.expensetracker.ui.components.TimelineItem
 import com.bose.expensetracker.ui.components.formatCurrency
 import com.bose.expensetracker.ui.components.getCategoryEmoji
+import com.bose.expensetracker.ui.state.DateRangeFilter
+import com.bose.expensetracker.ui.state.ExpenseFilterCriteria
+import com.bose.expensetracker.ui.state.FilterOption
 import com.bose.expensetracker.ui.theme.AccentPurple
 import com.bose.expensetracker.ui.theme.ExpenseRed
 import java.text.SimpleDateFormat
@@ -60,10 +66,8 @@ fun ExpenseListScreen(
     onAddExpense: () -> Unit,
     onEditExpense: (String) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val filterTabs = listOf("All", "Expense", "Income")
 
     Column(
         modifier = Modifier
@@ -112,15 +116,20 @@ fun ExpenseListScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // Nothing recorded yet means nothing to narrow — don't show filters over an empty list.
+        if (uiState.totalCount > 0) {
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Filter tabs
-        FilterTabRow(
-            tabs = filterTabs,
-            selectedIndex = selectedTab,
-            onTabSelected = { selectedTab = it },
-            modifier = Modifier.padding(horizontal = 20.dp)
-        )
+            ExpenseFilters(
+                criteria = uiState.criteria,
+                categoryOptions = uiState.categoryOptions,
+                personOptions = uiState.personOptions,
+                onSearchChange = viewModel::setSearchQuery,
+                onCategoryChange = viewModel::setCategoryFilter,
+                onPersonChange = viewModel::setPersonFilter,
+                onDateRangeChange = viewModel::setDateRange
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -134,25 +143,36 @@ fun ExpenseListScreen(
             uiState.expenses.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        // totalCount distinguishes "nothing recorded" from "filters excluded
+                        // everything" — showing the former for the latter reads as data loss.
+                        val filteredOut = uiState.totalCount > 0
                         Text(
-                            "No expenses yet",
+                            if (filteredOut) "No matching expenses" else "No expenses yet",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "Tap + to add your first expense",
+                            if (filteredOut) {
+                                "None of your ${uiState.totalCount} expenses match these filters"
+                            } else {
+                                "Tap + to add your first expense"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (filteredOut) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            TextButton(onClick = viewModel::clearFilters) {
+                                Text("Clear filters", color = AccentPurple)
+                            }
+                        }
                     }
                 }
             }
 
             else -> {
-                // All amounts are stored as positive; income support is future
-                val filtered = uiState.expenses // All tabs show same data until income is supported
-                val sorted = filtered.sortedByDescending { it.date }
+                val sorted = uiState.expenses.sortedByDescending { it.date }
                 val grouped = sorted.groupBy { expense ->
                     getDateLabel(expense.date)
                 }
@@ -231,6 +251,81 @@ fun ExpenseListScreen(
         )
     }
 }
+
+/**
+ * Search box plus the category / person / date-range chip rows.
+ *
+ * Every selection is hoisted out of [criteria] rather than kept in local `remember` state —
+ * the previous version stored the selected tab locally, never read it, and rendered the
+ * unfiltered list, so the chips highlighted but nothing changed.
+ */
+@Composable
+private fun ExpenseFilters(
+    criteria: ExpenseFilterCriteria,
+    categoryOptions: List<FilterOption>,
+    personOptions: List<FilterOption>,
+    onSearchChange: (String) -> Unit,
+    onCategoryChange: (String?) -> Unit,
+    onPersonChange: (String?) -> Unit,
+    onDateRangeChange: (DateRangeFilter) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(
+            value = criteria.searchQuery,
+            onValueChange = onSearchChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            placeholder = { Text("Search notes, category, person or amount") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            trailingIcon = {
+                if (criteria.searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { onSearchChange("") }) {
+                        Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                    }
+                }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp)
+        )
+
+        // "All" is index 0 in each row, so a selected id maps to index + 1.
+        ScrollableFilterChipRow(
+            labels = listOf("All dates") + DateRangeFilter.entries.drop(1).map { it.label },
+            selectedIndex = DateRangeFilter.entries.indexOf(criteria.dateRange),
+            onSelected = { onDateRangeChange(DateRangeFilter.entries[it]) }
+        )
+
+        if (categoryOptions.isNotEmpty()) {
+            ScrollableFilterChipRow(
+                labels = listOf("All categories") +
+                        categoryOptions.map { "${getCategoryEmoji(it.label)} ${it.label}" },
+                selectedIndex = optionIndex(categoryOptions, criteria.categoryFilter),
+                onSelected = { onCategoryChange(optionIdAt(categoryOptions, it)) }
+            )
+        }
+
+        // One member means the filter can only ever be a no-op.
+        if (personOptions.size > 1) {
+            ScrollableFilterChipRow(
+                labels = listOf("Everyone") + personOptions.map { it.label },
+                selectedIndex = optionIndex(personOptions, criteria.personFilter),
+                onSelected = { onPersonChange(optionIdAt(personOptions, it)) }
+            )
+        }
+    }
+}
+
+/** Chip index for [selectedId], where index 0 is the "All" chip. */
+private fun optionIndex(options: List<FilterOption>, selectedId: String?): Int {
+    if (selectedId == null) return 0
+    val index = options.indexOfFirst { it.id == selectedId }
+    return if (index >= 0) index + 1 else 0
+}
+
+/** Id behind chip [index], or `null` for the "All" chip. */
+private fun optionIdAt(options: List<FilterOption>, index: Int): String? =
+    options.getOrNull(index - 1)?.id
 
 private fun getDateLabel(timestamp: Long): String {
     val now = Calendar.getInstance()

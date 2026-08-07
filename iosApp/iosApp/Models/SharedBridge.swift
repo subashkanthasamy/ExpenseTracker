@@ -167,6 +167,24 @@ extension Budget {
     }
 }
 
+extension ExpenseFilterCriteria {
+    /// Kotlin default parameter values aren't exported, and a same-signature `convenience init`
+    /// would collide with the generated one — so this is a factory rather than an initialiser.
+    static func of(
+        searchQuery: String = "",
+        personFilter: String? = nil,
+        categoryFilter: String? = nil,
+        dateRange: DateRangeFilter = .all
+    ) -> ExpenseFilterCriteria {
+        ExpenseFilterCriteria(
+            searchQuery: searchQuery,
+            personFilter: personFilter,
+            categoryFilter: categoryFilter,
+            dateRange: dateRange
+        )
+    }
+}
+
 // MARK: - Mutation helpers
 //
 // Kotlin data classes are immutable across the boundary; `doCopy` needs every argument.
