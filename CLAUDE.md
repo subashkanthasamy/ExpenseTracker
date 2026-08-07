@@ -53,10 +53,19 @@ a real gap, not an assumption.
 - **ui/** — Jetpack Compose screens, ViewModels (Hilt), navigation
 - **di/** — Hilt DI modules
 
+## Working agreements
+
+- **Never commit without asking.** Finish the work, report what changed, and let the author
+  decide when it lands. This includes `git commit`, `git push`, branch creation and PRs.
+- **Don't write tests unless asked.** No unit tests, no instrumented tests, no test files added
+  alongside a change on your own initiative. Verify with the build and compile commands below
+  (and by running the app) instead. If a change genuinely seems to warrant a test, say so and
+  let the author decide rather than writing one.
+
 ## Build & Test Commands
 
 ```bash
-./gradlew :shared:allTests                        # The 37 shared tests — macOS only, see below
+./gradlew :shared:allTests                        # The 63 shared tests — macOS only, see below
 ./gradlew assembleDebug                           # Build debug Android APK
 ./gradlew :shared:allMetadataJar                  # Compile shared commonMain
 ./gradlew :shared:compileKotlinIosArm64           # Compile shared for iOS
