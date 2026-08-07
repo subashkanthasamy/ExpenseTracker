@@ -6,12 +6,14 @@ struct ExpenseListView: View {
     var onAdd: () -> Void
     var onEdit: (String) -> Void
 
+    @State private var showFilters = false
+
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             // Nothing recorded yet means nothing to narrow.
             if !viewModel.expenses.isEmpty {
-                searchField
-                ExpenseFilterChips(viewModel: viewModel)
+                searchRow
+                ActiveFilterChips(viewModel: viewModel)
             }
 
             if viewModel.isLoading {
@@ -48,26 +50,44 @@ struct ExpenseListView: View {
                 Button(action: onAdd) { Image(systemName: "plus") }
             }
         }
+        .sheet(isPresented: $showFilters) {
+            ExpenseFilterSheet(viewModel: viewModel)
+        }
         .task { await viewModel.load() }
         .onDisappear { viewModel.cleanup() }
     }
 
-    private var searchField: some View {
+    /// Search plus the filter button. Date / category / person live in a sheet rather than as
+    /// three stacked chip rows, which pushed the expenses themselves down the screen.
+    private var searchRow: some View {
         HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").foregroundStyle(DS.textSecondary)
-            TextField("Search notes, category, person or amount", text: $viewModel.searchQuery)
-                .textFieldStyle(.plain)
-                .autocorrectionDisabled()
-            if !viewModel.searchQuery.isEmpty {
-                Button { viewModel.searchQuery = "" } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(DS.textSecondary)
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundStyle(DS.textSecondary)
+                TextField("Search", text: $viewModel.searchQuery)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                if !viewModel.searchQuery.isEmpty {
+                    Button { viewModel.searchQuery = "" } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(DS.textSecondary)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(DS.elevated, in: RoundedRectangle(cornerRadius: DS.tileRadius))
+
+            Button { showFilters = true } label: {
+                Image(systemName: "slider.horizontal.3")
+                    .foregroundStyle(viewModel.hasChipFilters ? .white : DS.textSecondary)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        viewModel.hasChipFilters ? AnyShapeStyle(DS.accent) : AnyShapeStyle(DS.elevated),
+                        in: RoundedRectangle(cornerRadius: DS.tileRadius)
+                    )
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(DS.elevated, in: RoundedRectangle(cornerRadius: DS.tileRadius))
         .padding(.horizontal, DS.screenPadding)
     }
 
@@ -94,41 +114,124 @@ struct ExpenseListView: View {
     }
 }
 
-/// Date-range, category and person chip rows. Selections live on the view model, never in
-/// local `@State`, so the list and the chips can't disagree.
-private struct ExpenseFilterChips: View {
+/// A removable chip per active filter, so what's on is visible without opening the sheet.
+private struct ActiveFilterChips: View {
     @Bindable var viewModel: ExpenseListViewModel
+
+    var body: some View {
+        // The search field already shows its own text, so it doesn't get a chip.
+        let active = activeFilters
+        if !active.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Array(active.enumerated()), id: \.offset) { _, item in
+                        Button(action: item.remove) {
+                            HStack(spacing: 4) {
+                                Text(item.label)
+                                    .font(.subheadline)
+                                Image(systemName: "xmark")
+                                    .font(.caption2.weight(.bold))
+                            }
+                            .foregroundStyle(DS.accent)
+                            .padding(.leading, 14)
+                            .padding(.trailing, 10)
+                            .padding(.vertical, 6)
+                            .background(DS.accent.opacity(0.15), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, DS.screenPadding)
+            }
+        }
+    }
+
+    private var activeFilters: [(label: String, remove: () -> Void)] {
+        var items: [(label: String, remove: () -> Void)] = []
+        if viewModel.dateRange != .all {
+            items.append((viewModel.dateRange.label, { viewModel.dateRange = .all }))
+        }
+        if let option = viewModel.categoryOptions.first(where: { $0.id == viewModel.categoryFilter }) {
+            items.append((option.label, { viewModel.categoryFilter = nil }))
+        }
+        if let option = viewModel.personOptions.first(where: { $0.id == viewModel.personFilter }) {
+            items.append((option.label, { viewModel.personFilter = nil }))
+        }
+        return items
+    }
+}
+
+private struct ExpenseFilterSheet: View {
+    @Bindable var viewModel: ExpenseListViewModel
+    @Environment(\.dismiss) private var dismiss
 
     /// Kotlin enums export as NSObject singletons: `entries` is a real Swift array and `==`
     /// works, but `switch` pattern-matching does not.
     private let ranges = DateRangeFilter.entries
 
     var body: some View {
-        VStack(spacing: 8) {
-            chipRow(
-                labels: ranges.map { $0 == .all ? "All dates" : $0.label },
-                isSelected: { [ranges] in viewModel.dateRange == ranges[$0] },
-                select: { [ranges] in viewModel.dateRange = ranges[$0] }
-            )
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    section("Date") {
+                        chipRow(
+                            labels: ranges.map { $0 == .all ? "All dates" : $0.label },
+                            isSelected: { [ranges] in viewModel.dateRange == ranges[$0] },
+                            select: { [ranges] in viewModel.dateRange = ranges[$0] }
+                        )
+                    }
 
-            if !viewModel.categoryOptions.isEmpty {
-                optionRow(
-                    allLabel: "All categories",
-                    options: viewModel.categoryOptions,
-                    selectedId: viewModel.categoryFilter,
-                    select: { viewModel.categoryFilter = $0 }
-                )
-            }
+                    if !viewModel.categoryOptions.isEmpty {
+                        section("Category") {
+                            optionRow(
+                                allLabel: "All categories",
+                                options: viewModel.categoryOptions,
+                                selectedId: viewModel.categoryFilter,
+                                select: { viewModel.categoryFilter = $0 }
+                            )
+                        }
+                    }
 
-            // A single member makes the filter a guaranteed no-op.
-            if viewModel.personOptions.count > 1 {
-                optionRow(
-                    allLabel: "Everyone",
-                    options: viewModel.personOptions,
-                    selectedId: viewModel.personFilter,
-                    select: { viewModel.personFilter = $0 }
-                )
+                    // A single member makes the filter a guaranteed no-op.
+                    if viewModel.personOptions.count > 1 {
+                        section("Added by") {
+                            optionRow(
+                                allLabel: "Everyone",
+                                options: viewModel.personOptions,
+                                selectedId: viewModel.personFilter,
+                                select: { viewModel.personFilter = $0 }
+                            )
+                        }
+                    }
+                }
+                .padding(.vertical, 16)
             }
+            .navigationTitle("Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    if viewModel.isFiltering {
+                        Button("Clear all") { viewModel.clearFilters() }
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func section<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.footnote)
+                .foregroundStyle(DS.textSecondary)
+                .padding(.horizontal, DS.screenPadding)
+            content()
         }
     }
 

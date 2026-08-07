@@ -35,6 +35,12 @@ class ExpenseListViewModel {
 
     var isFiltering: Bool { criteria.isActive }
 
+    /// Everything except search, which has its own visible field — this is what the filter
+    /// button highlights on.
+    var hasChipFilters: Bool {
+        dateRange != .all || categoryFilter != nil || personFilter != nil
+    }
+
     /// Filtering goes through the shared engine rather than a Swift copy of the predicate, so
     /// the same filter gives the same rows here as on Android.
     var filteredExpenses: [Expense] {

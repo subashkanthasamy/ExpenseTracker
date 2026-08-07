@@ -2,6 +2,7 @@ package com.bose.expensetracker.ui.screen.expense
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,7 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,11 +27,14 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -127,7 +135,8 @@ fun ExpenseListScreen(
                 onSearchChange = viewModel::setSearchQuery,
                 onCategoryChange = viewModel::setCategoryFilter,
                 onPersonChange = viewModel::setPersonFilter,
-                onDateRangeChange = viewModel::setDateRange
+                onDateRangeChange = viewModel::setDateRange,
+                onClearAll = viewModel::clearFilters
             )
         }
 
@@ -253,11 +262,15 @@ fun ExpenseListScreen(
 }
 
 /**
- * Search box plus the category / person / date-range chip rows.
+ * One search row with a filter button, plus a chip per active filter.
  *
- * Every selection is hoisted out of [criteria] rather than kept in local `remember` state —
- * the previous version stored the selected tab locally, never read it, and rendered the
- * unfiltered list, so the chips highlighted but nothing changed.
+ * The date / category / person choices live in a sheet rather than as three stacked chip rows
+ * above the list — that pushed the expenses themselves most of the way down the screen. What
+ * stays inline is only what's currently on, so an unfiltered list costs a single row.
+ *
+ * Every selection is hoisted out of [criteria] rather than kept in local `remember` state; the
+ * original screen stored its tab selection locally, never read it, and rendered the unfiltered
+ * list, so chips highlighted while nothing changed.
  */
 @Composable
 private fun ExpenseFilters(
@@ -267,53 +280,214 @@ private fun ExpenseFilters(
     onSearchChange: (String) -> Unit,
     onCategoryChange: (String?) -> Unit,
     onPersonChange: (String?) -> Unit,
-    onDateRangeChange: (DateRangeFilter) -> Unit
+    onDateRangeChange: (DateRangeFilter) -> Unit,
+    onClearAll: () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(
-            value = criteria.searchQuery,
-            onValueChange = onSearchChange,
+    var showSheet by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp),
-            placeholder = { Text("Search notes, category, person or amount") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            trailingIcon = {
-                if (criteria.searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { onSearchChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear search")
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = criteria.searchQuery,
+                onValueChange = onSearchChange,
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Search") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (criteria.searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchChange("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                        }
                     }
-                }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp)
-        )
-
-        // "All" is index 0 in each row, so a selected id maps to index + 1.
-        ScrollableFilterChipRow(
-            labels = listOf("All dates") + DateRangeFilter.entries.drop(1).map { it.label },
-            selectedIndex = DateRangeFilter.entries.indexOf(criteria.dateRange),
-            onSelected = { onDateRangeChange(DateRangeFilter.entries[it]) }
-        )
-
-        if (categoryOptions.isNotEmpty()) {
-            ScrollableFilterChipRow(
-                labels = listOf("All categories") +
-                        categoryOptions.map { "${getCategoryEmoji(it.label)} ${it.label}" },
-                selectedIndex = optionIndex(categoryOptions, criteria.categoryFilter),
-                onSelected = { onCategoryChange(optionIdAt(categoryOptions, it)) }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp)
             )
+
+            val hasChipFilters = criteria.dateRange != DateRangeFilter.ALL ||
+                    criteria.categoryFilter != null ||
+                    criteria.personFilter != null
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        if (hasChipFilters) AccentPurple
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    .clickable { showSheet = true },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Tune,
+                    contentDescription = "Filters",
+                    tint = if (hasChipFilters) Color.White
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
-        // One member means the filter can only ever be a no-op.
-        if (personOptions.size > 1) {
-            ScrollableFilterChipRow(
-                labels = listOf("Everyone") + personOptions.map { it.label },
-                selectedIndex = optionIndex(personOptions, criteria.personFilter),
-                onSelected = { onPersonChange(optionIdAt(personOptions, it)) }
-            )
+        ActiveFilterChips(
+            criteria = criteria,
+            categoryOptions = categoryOptions,
+            personOptions = personOptions,
+            onCategoryChange = onCategoryChange,
+            onPersonChange = onPersonChange,
+            onDateRangeChange = onDateRangeChange
+        )
+    }
+
+    if (showSheet) {
+        ExpenseFilterSheet(
+            criteria = criteria,
+            categoryOptions = categoryOptions,
+            personOptions = personOptions,
+            onCategoryChange = onCategoryChange,
+            onPersonChange = onPersonChange,
+            onDateRangeChange = onDateRangeChange,
+            onClearAll = onClearAll,
+            onDismiss = { showSheet = false }
+        )
+    }
+}
+
+/** A removable chip per active filter, so what's on is visible without opening the sheet. */
+@Composable
+private fun ActiveFilterChips(
+    criteria: ExpenseFilterCriteria,
+    categoryOptions: List<FilterOption>,
+    personOptions: List<FilterOption>,
+    onCategoryChange: (String?) -> Unit,
+    onPersonChange: (String?) -> Unit,
+    onDateRangeChange: (DateRangeFilter) -> Unit
+) {
+    // The search box already shows its own text, so it doesn't get a chip.
+    val active = buildList {
+        if (criteria.dateRange != DateRangeFilter.ALL) {
+            add(criteria.dateRange.label to { onDateRangeChange(DateRangeFilter.ALL) })
+        }
+        categoryOptions.firstOrNull { it.id == criteria.categoryFilter }?.let { option ->
+            add("${getCategoryEmoji(option.label)} ${option.label}" to { onCategoryChange(null) })
+        }
+        personOptions.firstOrNull { it.id == criteria.personFilter }?.let { option ->
+            add(option.label to { onPersonChange(null) })
         }
     }
+    if (active.isEmpty()) return
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp)
+    ) {
+        items(active.size) { index ->
+            val (label, onRemove) = active[index]
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(AccentPurple.copy(alpha = 0.15f))
+                    .clickable(onClick = onRemove)
+                    .padding(start = 14.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AccentPurple,
+                    maxLines = 1
+                )
+                Icon(
+                    Icons.Default.Clear,
+                    contentDescription = "Remove $label filter",
+                    tint = AccentPurple,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExpenseFilterSheet(
+    criteria: ExpenseFilterCriteria,
+    categoryOptions: List<FilterOption>,
+    personOptions: List<FilterOption>,
+    onCategoryChange: (String?) -> Unit,
+    onPersonChange: (String?) -> Unit,
+    onDateRangeChange: (DateRangeFilter) -> Unit,
+    onClearAll: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Filters",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                if (criteria.isActive) {
+                    TextButton(onClick = onClearAll) {
+                        Text("Clear all", color = AccentPurple)
+                    }
+                }
+            }
+
+            FilterSection("Date")
+            // "All" is index 0 in each row, so a selected id maps to index + 1.
+            ScrollableFilterChipRow(
+                labels = listOf("All dates") + DateRangeFilter.entries.drop(1).map { it.label },
+                selectedIndex = DateRangeFilter.entries.indexOf(criteria.dateRange),
+                onSelected = { onDateRangeChange(DateRangeFilter.entries[it]) }
+            )
+
+            if (categoryOptions.isNotEmpty()) {
+                FilterSection("Category")
+                ScrollableFilterChipRow(
+                    labels = listOf("All categories") +
+                            categoryOptions.map { "${getCategoryEmoji(it.label)} ${it.label}" },
+                    selectedIndex = optionIndex(categoryOptions, criteria.categoryFilter),
+                    onSelected = { onCategoryChange(optionIdAt(categoryOptions, it)) }
+                )
+            }
+
+            // One member means the filter can only ever be a no-op.
+            if (personOptions.size > 1) {
+                FilterSection("Added by")
+                ScrollableFilterChipRow(
+                    labels = listOf("Everyone") + personOptions.map { it.label },
+                    selectedIndex = optionIndex(personOptions, criteria.personFilter),
+                    onSelected = { onPersonChange(optionIdAt(personOptions, it)) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterSection(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 20.dp, top = 8.dp)
+    )
 }
 
 /** Chip index for [selectedId], where index 0 is the "All" chip. */
