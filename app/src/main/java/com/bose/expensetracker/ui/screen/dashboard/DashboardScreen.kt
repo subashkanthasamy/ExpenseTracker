@@ -45,7 +45,7 @@ import com.bose.expensetracker.ui.components.GradientCard
 import com.bose.expensetracker.ui.components.SectionHeader
 import com.bose.expensetracker.ui.components.SmartInsightCard
 import com.bose.expensetracker.ui.components.formatCurrency
-import com.bose.expensetracker.ui.components.getCategoryEmoji
+import com.bose.expensetracker.ui.components.categoryIcon
 import com.bose.expensetracker.ui.theme.AccentPurple
 import com.bose.expensetracker.ui.theme.ExpenseRed
 import com.bose.expensetracker.ui.theme.IncomeGreen
@@ -309,7 +309,7 @@ fun DashboardScreen(
                     items(topCategories) { cat ->
                         val percentChange = (cat.percentage * 100).toInt()
                         SmartInsightCard(
-                            emoji = getCategoryEmoji(cat.categoryName),
+                            icon = categoryIcon(cat.categoryName),
                             title = "${percentChange}% on ${cat.categoryName.lowercase()}",
                             amount = formatCurrency(cat.amount),
                             badgeLabel = if (percentChange > 25) "OVER BUDGET" else "SAVINGS",
@@ -356,9 +356,11 @@ fun DashboardScreen(
                                         ),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        getCategoryEmoji(expense.categoryName),
-                                        fontSize = 22.sp
+                                    Icon(
+                                        imageVector = categoryIcon(expense.categoryName),
+                                        contentDescription = null,
+                                        tint = AccentPurple,
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))

@@ -155,7 +155,7 @@ struct AddEditExpenseView: View {
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(viewModel.categories) { category in
                         DSCategoryTile(
-                            emoji: categoryEmoji(category.name),
+                            symbol: categoryIcon(category.name, storedIcon: category.icon),
                             name: category.name,
                             isSelected: viewModel.selectedCategory?.id == category.id
                         ) {

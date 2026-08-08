@@ -59,8 +59,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.bose.expensetracker.ui.components.EmojiCategoryIcon
-import com.bose.expensetracker.ui.components.getCategoryEmoji
+import com.bose.expensetracker.ui.components.CategoryIconTile
+import com.bose.expensetracker.ui.components.categoryIcon
 import com.bose.expensetracker.ui.theme.AccentPurple
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -312,8 +312,8 @@ fun AddEditExpenseScreen(
                 ) {
                     items(displayCategories) { category ->
                         val isSelected = uiState.selectedCategory?.id == category.id
-                        EmojiCategoryIcon(
-                            emoji = getCategoryEmoji(category.name),
+                        CategoryIconTile(
+                            icon = categoryIcon(category.name, category.icon),
                             label = category.name,
                             isSelected = isSelected,
                             onClick = { viewModel.setCategory(category) }

@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Shared
 
 struct AppColors {
     static let gradientPurple = Color(hex: 0xFF7B61FF)
@@ -62,23 +63,34 @@ func formatAmount(_ amount: Double) -> String {
     }
 }
 
-func categoryEmoji(_ name: String) -> String {
-    switch name.lowercased() {
-    case "food": return "🍔"
-    case "groceries": return "🛒"
-    case "transport": return "🚗"
-    case "entertainment": return "🎬"
-    case "shopping": return "🛍️"
-    case "bills": return "📱"
-    case "health": return "🏥"
-    case "education": return "📚"
-    case "rent": return "🏠"
-    case "salary", "income": return "💰"
-    case "investment": return "📈"
-    case "travel": return "✈️"
-    case "insurance": return "🛡️"
-    case "gifts": return "🎁"
-    case "fitness": return "💪"
-    default: return "💳"
+/// SF Symbol name for a category.
+///
+/// Replaces the old emoji lookup. Emoji were drawn by the system emoji font, so the same
+/// category rendered as different art on iOS and Android, could not be tinted to follow the
+/// theme, and read to VoiceOver as "hamburger" rather than the category name. SF Symbols are
+/// vectors that inherit `foregroundStyle` and align to the platform's optical grid.
+///
+/// The name→key decision lives in shared `CategoryIcons` so Android resolves identically;
+/// only the key→symbol step below is platform-specific.
+func categoryIcon(_ name: String, storedIcon: String? = nil) -> String {
+    switch CategoryIcons.shared.resolve(icon: storedIcon, name: name) {
+    case "restaurant": return "fork.knife"
+    case "shopping_cart": return "cart.fill"
+    case "directions_car": return "car.fill"
+    case "home": return "house.fill"
+    case "receipt_long": return "doc.text.fill"
+    case "family_restroom": return "person.2.fill"
+    case "movie": return "film.fill"
+    case "shopping_bag": return "bag.fill"
+    case "medical_services": return "cross.case.fill"
+    case "school": return "book.fill"
+    case "flight": return "airplane"
+    case "shield": return "shield.fill"
+    case "card_giftcard": return "gift.fill"
+    case "fitness_center": return "figure.run"
+    case "payments": return "indianrupeesign.circle.fill"
+    case "trending_up": return "chart.line.uptrend.xyaxis"
+    case "autorenew": return "arrow.triangle.2.circlepath"
+    default: return "ellipsis.circle.fill"
     }
 }

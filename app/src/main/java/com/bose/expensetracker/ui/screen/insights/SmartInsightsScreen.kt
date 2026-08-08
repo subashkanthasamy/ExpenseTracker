@@ -13,6 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -146,31 +153,31 @@ fun SmartInsightsScreen(
                 // Insight cards
                 if (uiState.insights.isNotEmpty()) {
                     items(uiState.insights) { insight ->
-                        val (emoji, badgeLabel, badgeColor) = when (insight.type) {
+                        val (icon, badgeLabel, badgeColor) = when (insight.type) {
                             InsightType.TREND_UP -> Triple(
-                                "\uD83D\uDCC8",
+                                Icons.Filled.TrendingUp,
                                 "OVER BUDGET",
                                 OverBudgetRed
                             )
                             InsightType.TREND_DOWN -> Triple(
-                                "\uD83D\uDCB0",
+                                Icons.Filled.Payments,
                                 "SAVINGS",
                                 SavingsGreen
                             )
                             InsightType.ANOMALY -> Triple(
-                                "\u26A0\uFE0F",
+                                Icons.Filled.WarningAmber,
                                 "SPIKE",
                                 ExpenseRed
                             )
                             InsightType.SUGGESTION -> Triple(
-                                "\uD83D\uDCA1",
+                                Icons.Filled.Lightbulb,
                                 "INSIGHT",
                                 AccentPurple
                             )
                         }
 
                         SmartInsightCard(
-                            emoji = emoji,
+                            icon = icon,
                             title = insight.title + (insight.description.let { "\n$it" }),
                             amount = insight.percentageChange?.let {
                                 "${if (it >= 0) "+" else ""}${"%.0f".format(it)}%"
@@ -189,7 +196,7 @@ fun SmartInsightsScreen(
                         val pct = if (total > 0) (topCat.value / total * 100).toInt() else 0
                         item {
                             SmartInsightCard(
-                                emoji = "\uD83D\uDED2",
+                                icon = Icons.Filled.ShoppingCart,
                                 title = "${topCat.key} is your biggest\nspend category",
                                 amount = formatCurrency(topCat.value),
                                 badgeLabel = "HIGHEST SPEND",
@@ -203,7 +210,7 @@ fun SmartInsightsScreen(
                             total / uiState.periodSummary.daysInPeriod
                         else 0.0
                         SmartInsightCard(
-                            emoji = "\uD83D\uDCC5",
+                            icon = Icons.Filled.CalendarMonth,
                             title = "Daily average spend this\nmonth",
                             amount = formatCurrency(avgDaily),
                             badgeLabel = "PER DAY",

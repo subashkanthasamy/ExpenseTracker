@@ -23,8 +23,28 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.FamilyRestroom
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,12 +63,14 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bose.expensetracker.util.CategoryIcons
 import com.bose.expensetracker.ui.theme.AccentPurple
 import com.bose.expensetracker.ui.theme.ExpenseRed
 import com.bose.expensetracker.ui.theme.IncomeGreen
@@ -165,7 +187,7 @@ fun WeeklyBarChart(
 
 @Composable
 fun CategoryProgressBar(
-    emoji: String,
+    icon: ImageVector,
     name: String,
     percentage: Float,
     modifier: Modifier = Modifier,
@@ -177,7 +199,12 @@ fun CategoryProgressBar(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(emoji, fontSize = 20.sp)
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(20.dp)
+        )
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(
@@ -212,7 +239,7 @@ fun CategoryProgressBar(
 
 @Composable
 fun SmartInsightCard(
-    emoji: String,
+    icon: ImageVector,
     title: String,
     amount: String,
     badgeLabel: String,
@@ -232,7 +259,12 @@ fun SmartInsightCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(emoji, fontSize = 28.sp)
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = badgeColor,
+                modifier = Modifier.size(26.dp)
+            )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -341,7 +373,7 @@ private fun FilterChip(
 
 @Composable
 fun TimelineItem(
-    icon: String,
+    icon: ImageVector,
     title: String,
     subtitle: String,
     amount: Double,
@@ -401,7 +433,12 @@ fun TimelineItem(
                         .background(SurfaceDarkElevated),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(icon, fontSize = 20.sp)
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = AccentPurple,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -430,8 +467,8 @@ fun TimelineItem(
 }
 
 @Composable
-fun EmojiCategoryIcon(
-    emoji: String,
+fun CategoryIconTile(
+    icon: ImageVector,
     label: String,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -452,8 +489,13 @@ fun EmojiCategoryIcon(
             .padding(vertical = 12.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(emoji, fontSize = 28.sp)
-        Spacer(modifier = Modifier.height(4.dp))
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (isSelected) AccentPurple else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(26.dp)
+        )
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
@@ -535,20 +577,36 @@ fun DateGroupHeader(
     }
 }
 
-fun getCategoryEmoji(categoryName: String): String {
-    return when (categoryName.lowercase()) {
-        "food", "food & dining", "dining", "restaurant", "groceries" -> "\uD83C\uDF55"
-        "transport", "transportation", "travel", "cab", "fuel" -> "\uD83D\uDE97"
-        "shopping", "clothing", "fashion" -> "\uD83D\uDECD\uFE0F"
-        "bills", "utilities", "electricity", "water", "internet" -> "\uD83D\uDCC4"
-        "health", "medical", "pharmacy", "hospital" -> "❤\uFE0F"
-        "games", "entertainment", "movies", "gaming" -> "\uD83C\uDFAE"
-        "income", "salary", "freelance" -> "\uD83D\uDCB0"
-        "education", "books", "courses" -> "\uD83D\uDCDA"
-        "rent", "housing", "home" -> "\uD83C\uDFE0"
-        "insurance" -> "\uD83D\uDEE1\uFE0F"
-        "savings", "investment" -> "\uD83D\uDCB8"
-        "subscription" -> "\uD83D\uDD04"
-        else -> "\uD83D\uDCE6"
+/**
+ * Material icon for a category.
+ *
+ * Replaces the old emoji lookup. Emoji were drawn by the system emoji font, so the same
+ * category rendered as different art on Android and iOS, could not be tinted to follow the
+ * theme, and read to TalkBack as "pizza" rather than the category name. These are vectors:
+ * one shape, tintable, and optically matched to the rest of the UI.
+ *
+ * The name→key decision lives in shared [CategoryIcons] so iOS resolves identically; only the
+ * key→drawable step below is platform-specific.
+ */
+fun categoryIcon(categoryName: String, storedIcon: String? = null): ImageVector =
+    when (CategoryIcons.resolve(storedIcon, categoryName)) {
+        "restaurant" -> Icons.Filled.Restaurant
+        "shopping_cart" -> Icons.Filled.ShoppingCart
+        "directions_car" -> Icons.Filled.DirectionsCar
+        "home" -> Icons.Filled.Home
+        "receipt_long" -> Icons.Filled.ReceiptLong
+        "family_restroom" -> Icons.Filled.FamilyRestroom
+        "movie" -> Icons.Filled.Movie
+        "shopping_bag" -> Icons.Filled.ShoppingBag
+        "medical_services" -> Icons.Filled.MedicalServices
+        "school" -> Icons.Filled.School
+        "flight" -> Icons.Filled.Flight
+        "shield" -> Icons.Filled.Shield
+        "card_giftcard" -> Icons.Filled.CardGiftcard
+        "fitness_center" -> Icons.Filled.FitnessCenter
+        "payments" -> Icons.Filled.Payments
+        "trending_up" -> Icons.Filled.TrendingUp
+        "autorenew" -> Icons.Filled.Autorenew
+        else -> Icons.Filled.MoreHoriz
     }
-}
+

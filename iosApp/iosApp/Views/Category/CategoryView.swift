@@ -13,7 +13,7 @@ struct CategoryView: View {
                 Section("Preset Categories") {
                     ForEach(viewModel.presetCategories) { cat in
                         HStack {
-                            Text(categoryEmoji(cat.name)).font(.title3)
+                            Image(systemName: categoryIcon(cat.name, storedIcon: cat.icon)).font(.title3).foregroundStyle(AppColors.accentPurple).frame(width: 28)
                             Text(cat.name)
                             Spacer()
                             Image(systemName: "lock.fill").foregroundStyle(.secondary).font(.caption)
@@ -27,7 +27,7 @@ struct CategoryView: View {
                 } else {
                     ForEach(viewModel.customCategories) { cat in
                         HStack {
-                            Text(categoryEmoji(cat.name)).font(.title3)
+                            Image(systemName: categoryIcon(cat.name, storedIcon: cat.icon)).font(.title3).foregroundStyle(AppColors.accentPurple).frame(width: 28)
                             Text(cat.name)
                         }
                     }

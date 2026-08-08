@@ -34,7 +34,7 @@ struct InsightsView: View {
                         Text("By Category").font(.headline)
                         ForEach(viewModel.categoryBreakdown.sorted(by: { $0.value > $1.value }), id: \.key) { name, amount in
                             HStack {
-                                Text(categoryEmoji(name))
+                                Image(systemName: categoryIcon(name)).foregroundStyle(AppColors.accentPurple).frame(width: 22)
                                 Text(name)
                                 Spacer()
                                 Text(formatCurrency(amount)).bold()

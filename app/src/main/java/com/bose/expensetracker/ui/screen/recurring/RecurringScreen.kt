@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import com.bose.expensetracker.ui.components.categoryIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -218,7 +219,7 @@ private fun AddRecurringDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ExposedDropdownMenuBox(expanded = catExpanded, onExpandedChange = { catExpanded = it }) {
                     OutlinedTextField(
-                        value = selectedCategory?.let { "${it.icon} ${it.name}" } ?: "",
+                        value = selectedCategory?.name ?: "",
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Category") },
@@ -228,7 +229,13 @@ private fun AddRecurringDialog(
                     ExposedDropdownMenu(expanded = catExpanded, onDismissRequest = { catExpanded = false }) {
                         categories.forEach { cat ->
                             DropdownMenuItem(
-                                text = { Text("${cat.icon} ${cat.name}") },
+                                text = { Text(cat.name) },
+                                leadingIcon = {
+                                    Icon(
+                                        categoryIcon(cat.name, cat.icon),
+                                        contentDescription = null
+                                    )
+                                },
                                 onClick = { selectedCategory = cat; catExpanded = false }
                             )
                         }

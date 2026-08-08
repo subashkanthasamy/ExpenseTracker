@@ -22,7 +22,7 @@ struct BudgetView: View {
                     ForEach(viewModel.budgets) { budget in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text(categoryEmoji(budget.categoryName))
+                                Image(systemName: categoryIcon(budget.categoryName)).foregroundStyle(AppColors.accentPurple).frame(width: 22)
                                 Text(budget.categoryName).bold()
                                 Spacer()
                                 Text(formatCurrency(budget.spent))
@@ -63,7 +63,7 @@ struct BudgetView: View {
                     Picker("Category", selection: $selectedCatId) {
                         Text("Select").tag("")
                         ForEach(viewModel.categories) { cat in
-                            Text("\(categoryEmoji(cat.name)) \(cat.name)").tag(cat.id)
+                            Label(cat.name, systemImage: categoryIcon(cat.name, storedIcon: cat.icon)).tag(cat.id)
                         }
                     }
                     TextField("Monthly Limit", text: $limitStr)

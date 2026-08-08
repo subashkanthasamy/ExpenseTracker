@@ -43,7 +43,7 @@ import com.bose.expensetracker.ui.components.CategoryProgressBar
 import com.bose.expensetracker.ui.components.SectionHeader
 import com.bose.expensetracker.ui.components.WeeklyBarChart
 import com.bose.expensetracker.ui.components.formatCurrency
-import com.bose.expensetracker.ui.components.getCategoryEmoji
+import com.bose.expensetracker.ui.components.categoryIcon
 import com.bose.expensetracker.ui.state.PersonSpending
 import com.bose.expensetracker.ui.theme.AccentPurple
 import com.bose.expensetracker.ui.theme.ExpenseRed
@@ -261,7 +261,7 @@ fun InsightsScreen(
                     items(sortedCategories.toList()) { (name, amount) ->
                         val pct = if (total > 0) (amount / total * 100).toFloat() else 0f
                         CategoryProgressBar(
-                            emoji = getCategoryEmoji(name),
+                            icon = categoryIcon(name),
                             name = name,
                             percentage = pct,
                             color = AccentPurple

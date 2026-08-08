@@ -56,7 +56,7 @@ import com.bose.expensetracker.ui.components.DateGroupHeader
 import com.bose.expensetracker.ui.components.ScrollableFilterChipRow
 import com.bose.expensetracker.ui.components.TimelineItem
 import com.bose.expensetracker.ui.components.formatCurrency
-import com.bose.expensetracker.ui.components.getCategoryEmoji
+import com.bose.expensetracker.ui.components.categoryIcon
 import com.bose.expensetracker.ui.state.DateRangeFilter
 import com.bose.expensetracker.ui.state.ExpenseFilterCriteria
 import com.bose.expensetracker.ui.state.FilterOption
@@ -211,7 +211,7 @@ fun ExpenseListScreen(
 
                             @OptIn(ExperimentalFoundationApi::class)
                             TimelineItem(
-                                icon = getCategoryEmoji(expense.categoryName),
+                                icon = categoryIcon(expense.categoryName),
                                 title = expense.notes.ifBlank { expense.categoryName },
                                 subtitle = "${expense.categoryName} • $timeStr",
                                 amount = -expense.amount,
@@ -373,7 +373,7 @@ private fun ActiveFilterChips(
             add(criteria.dateRange.label to { onDateRangeChange(DateRangeFilter.ALL) })
         }
         categoryOptions.firstOrNull { it.id == criteria.categoryFilter }?.let { option ->
-            add("${getCategoryEmoji(option.label)} ${option.label}" to { onCategoryChange(null) })
+            add(option.label to { onCategoryChange(null) })
         }
         personOptions.firstOrNull { it.id == criteria.personFilter }?.let { option ->
             add(option.label to { onPersonChange(null) })
@@ -461,7 +461,7 @@ private fun ExpenseFilterSheet(
                 FilterSection("Category")
                 ScrollableFilterChipRow(
                     labels = listOf("All categories") +
-                            categoryOptions.map { "${getCategoryEmoji(it.label)} ${it.label}" },
+                            categoryOptions.map { it.label },
                     selectedIndex = optionIndex(categoryOptions, criteria.categoryFilter),
                     onSelected = { onCategoryChange(optionIdAt(categoryOptions, it)) }
                 )

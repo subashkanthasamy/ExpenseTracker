@@ -198,12 +198,17 @@ class AddEditExpenseViewModel {
     }
 
     private func seedPresetCategories(householdId: String) async {
+        // Icons are the shared Material-name keys, not emoji. Both platforms write to the
+        // same Firestore collection, so seeding emoji here meant an iOS-seeded household
+        // stored "🍔" where an Android-seeded one stored "restaurant" for the same category.
         let presets: [(String, String)] = [
-            ("Food", "🍔"), ("Groceries", "🛒"), ("Transport", "🚗"),
-            ("Entertainment", "🎬"), ("Shopping", "🛍️"), ("Bills", "📱"),
-            ("Health", "🏥"), ("Education", "📚"), ("Rent", "🏠"),
-            ("Travel", "✈️"), ("Insurance", "🛡️"), ("Gifts", "🎁"),
-            ("Fitness", "💪"), ("Misc", "💳")
+            ("Food", "restaurant"), ("Groceries", "shopping_cart"),
+            ("Transport", "directions_car"), ("Entertainment", "movie"),
+            ("Shopping", "shopping_bag"), ("Bills", "receipt_long"),
+            ("Health", "medical_services"), ("Education", "school"),
+            ("Rent", "home"), ("Travel", "flight"),
+            ("Insurance", "shield"), ("Gifts", "card_giftcard"),
+            ("Fitness", "fitness_center"), ("Misc", "more_horiz")
         ]
         for (name, icon) in presets {
             let id = "preset_\(name.lowercased())"

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Sms
+import com.bose.expensetracker.ui.components.categoryIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -373,9 +374,12 @@ private fun CategoryPickerDialog(
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            category.icon,
-                            style = MaterialTheme.typography.titleMedium
+                        Icon(
+                            categoryIcon(category.name, category.icon),
+                            contentDescription = null,
+                            tint = if (isSelected) AccentPurple
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(

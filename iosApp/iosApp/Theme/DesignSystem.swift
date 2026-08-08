@@ -165,9 +165,12 @@ struct DSCaptureRow: View {
     }
 }
 
-/// Emoji category tile; selected state gets a purple ring, as in the design.
+/// Category tile; selected state gets a purple ring, as in the design.
+///
+/// Takes an SF Symbol name rather than an emoji so the glyph inherits `foregroundStyle` and
+/// picks up the selected/unselected colour along with the label.
 struct DSCategoryTile: View {
-    let emoji: String
+    let symbol: String
     let name: String
     let isSelected: Bool
     let action: () -> Void
@@ -175,7 +178,10 @@ struct DSCategoryTile: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
-                Text(emoji).font(.system(size: 24))
+                Image(systemName: symbol)
+                    .font(.system(size: 22))
+                    .foregroundStyle(isSelected ? DS.accent : DS.textSecondary)
+                    .frame(height: 26)
                 Text(name)
                     .font(.system(size: 11, weight: .medium))
                     .lineLimit(1)

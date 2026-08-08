@@ -58,7 +58,7 @@ struct DashboardView: View {
                         }
                         ForEach(viewModel.categoryBreakdown) { cat in
                             HStack {
-                                Text(categoryEmoji(cat.categoryName))
+                                Image(systemName: categoryIcon(cat.categoryName)).foregroundStyle(AppColors.accentPurple).frame(width: 22)
                                 Text(cat.categoryName).font(.subheadline)
                                 Spacer()
                                 Text(formatCurrency(cat.amount)).font(.subheadline).bold()
@@ -117,7 +117,7 @@ struct ExpenseRow: View {
     let expense: Expense
     var body: some View {
         HStack {
-            Text(categoryEmoji(expense.categoryName))
+            Image(systemName: categoryIcon(expense.categoryName)).foregroundStyle(AppColors.accentPurple).frame(width: 22)
                 .font(.title2)
                 .frame(width: 44, height: 44)
                 .background(Color.purple.opacity(0.1))

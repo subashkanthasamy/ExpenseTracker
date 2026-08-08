@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import com.bose.expensetracker.ui.components.categoryIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -254,7 +255,7 @@ private fun AddBudgetDialog(
                     onExpandedChange = { expanded = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedCategory?.let { "${it.icon} ${it.name}" } ?: "",
+                        value = selectedCategory?.name ?: "",
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Category") },
@@ -269,7 +270,13 @@ private fun AddBudgetDialog(
                     ) {
                         availableCategories.forEach { category ->
                             DropdownMenuItem(
-                                text = { Text("${category.icon} ${category.name}") },
+                                text = { Text(category.name) },
+                                leadingIcon = {
+                                    Icon(
+                                        categoryIcon(category.name, category.icon),
+                                        contentDescription = null
+                                    )
+                                },
                                 onClick = {
                                     selectedCategory = category
                                     expanded = false
