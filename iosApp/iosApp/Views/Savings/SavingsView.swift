@@ -3,6 +3,9 @@ import Shared
 
 struct SavingsView: View {
     @Bindable var viewModel: SavingsViewModel
+    /// Shared household configuration is owner-level. Defaults to false so nothing the
+    /// rules would reject is shown before the role resolves.
+    var canManage: Bool = false
     @State private var showAdd = false
     @State private var goalName = ""
     @State private var targetStr = ""
@@ -41,8 +44,10 @@ struct SavingsView: View {
                             }
                         }
                         .swipeActions {
-                            Button(role: .destructive) { Task { await viewModel.deleteGoal(goal.id) } }
-                            label: { Label("Delete", systemImage: "trash") }
+                            if canManage {
+                                Button(role: .destructive) { Task { await viewModel.deleteGoal(goal.id) } }
+                                label: { Label("Delete", systemImage: "trash") }
+                            }
                         }
                     }
                 }
@@ -56,7 +61,7 @@ struct SavingsView: View {
             Button("OK") { viewModel.error = nil }
         } message: { Text(viewModel.error ?? "") }
         .toolbar {
-            ToolbarItem(placement: .primaryAction) { Button { showAdd = true } label: { Image(systemName: "plus") } }
+            ToolbarItem(placement: .primaryAction) { if canManage { Button { showAdd = true } label: { Image(systemName: "plus") } } }
         }
         .alert("New Goal", isPresented: $showAdd) {
             TextField("Goal name", text: $goalName)

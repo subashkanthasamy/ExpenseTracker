@@ -3,6 +3,9 @@ import Shared
 
 struct BudgetView: View {
     @Bindable var viewModel: BudgetViewModel
+    /// Shared household configuration is owner-level. Defaults to false so nothing the
+    /// rules would reject is shown before the role resolves.
+    var canManage: Bool = false
     @State private var showAdd = false
     @State private var selectedCatId = ""
     @State private var limitStr = ""
@@ -37,9 +40,11 @@ struct BudgetView: View {
                                 .foregroundStyle(budget.status == .exceeded ? .red : budget.status == .warning ? .orange : .green)
                         }
                         .swipeActions {
-                            Button(role: .destructive) {
-                                Task { await viewModel.deleteBudget(budget.id) }
-                            } label: { Label("Delete", systemImage: "trash") }
+                            if canManage {
+                                Button(role: .destructive) {
+                                    Task { await viewModel.deleteBudget(budget.id) }
+                                } label: { Label("Delete", systemImage: "trash") }
+                            }
                         }
                     }
                 }
@@ -54,7 +59,7 @@ struct BudgetView: View {
         } message: { Text(viewModel.error ?? "") }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button { showAdd = true } label: { Image(systemName: "plus") }
+                if canManage { Button { showAdd = true } label: { Image(systemName: "plus") } }
             }
         }
         .sheet(isPresented: $showAdd) {

@@ -3,6 +3,9 @@ import Shared
 
 struct RecurringView: View {
     @Bindable var viewModel: RecurringViewModel
+    /// Shared household configuration is owner-level. Defaults to false so nothing the
+    /// rules would reject is shown before the role resolves.
+    var canManage: Bool = false
     @State private var showAdd = false
 
     var body: some View {
@@ -41,8 +44,10 @@ struct RecurringView: View {
                         }
                     }
                     .swipeActions {
-                        Button("Delete", role: .destructive) {
-                            Task { await viewModel.delete(item) }
+                        if canManage {
+                            Button("Delete", role: .destructive) {
+                                Task { await viewModel.delete(item) }
+                            }
                         }
                     }
                 }
@@ -59,7 +64,7 @@ struct RecurringView: View {
         }
         .navigationTitle("Recurring")
         .toolbar {
-            Button { showAdd = true } label: { Image(systemName: "plus") }
+            if canManage { Button { showAdd = true } label: { Image(systemName: "plus") } }
         }
         .task { await viewModel.load() }
         .sheet(isPresented: $showAdd) {

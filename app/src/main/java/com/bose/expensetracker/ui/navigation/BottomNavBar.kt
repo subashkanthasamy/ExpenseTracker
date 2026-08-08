@@ -61,7 +61,9 @@ val bottomNavItems = listOf(
 fun BottomNavBar(
     currentRoute: String?,
     onItemClick: (Any) -> Unit,
-    onFabClick: () -> Unit = {}
+    onFabClick: () -> Unit = {},
+    /** Guests cannot add expenses, so the centre action is theirs to lose. */
+    showFab: Boolean = true
 ) {
     Box(
         modifier = Modifier
@@ -103,7 +105,7 @@ fun BottomNavBar(
         }
 
         // Center FAB (elevated above bar)
-        Box(
+        if (showFab) Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .offset(y = (-16).dp)

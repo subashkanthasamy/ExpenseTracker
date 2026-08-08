@@ -9,18 +9,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.bose.expensetracker.data.access.SessionRoleProvider
 import com.bose.expensetracker.data.preferences.BiometricPreferences
 import com.bose.expensetracker.data.preferences.SandboxPreferences
 import com.bose.expensetracker.data.preferences.ThemePreferences
 import com.bose.expensetracker.data.sync.LocalToFirestoreMigration
 import com.bose.expensetracker.domain.repository.HouseholdRepository
+import com.bose.expensetracker.domain.usecase.access.Permissions
 import com.bose.expensetracker.ui.navigation.AddEditExpenseRoute
 import com.bose.expensetracker.ui.navigation.BottomNavBar
 import com.bose.expensetracker.ui.navigation.bottomNavItems
@@ -49,6 +53,9 @@ class MainActivity : FragmentActivity() {
 
     @Inject
     lateinit var themePreferences: ThemePreferences
+
+    @Inject
+    lateinit var sessionRoleProvider: SessionRoleProvider
 
     @Inject
     lateinit var householdRepository: HouseholdRepository
@@ -177,6 +184,11 @@ class MainActivity : FragmentActivity() {
                 // arguments serialise as ".../ExpenseListRoute/{personFilter}", and
                 // "SmartInsightsRoute" contains "InsightsRoute", so matching on text is a
                 // false-positive waiting to happen.
+                var canAddExpense by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    canAddExpense = Permissions.canAddExpense(sessionRoleProvider.currentRole())
+                }
+
                 val showBottomBar = navBackStackEntry?.destination?.let { destination ->
                     bottomNavItems.any { destination.hasRoute(it.route::class) }
                 } ?: false
@@ -187,6 +199,9 @@ class MainActivity : FragmentActivity() {
                         if (showBottomBar) {
                             BottomNavBar(
                                 currentRoute = currentRoute,
+                                // Guests are read-only; the rules reject their writes, so the
+                                // add button would only ever fail for them.
+                                showFab = canAddExpense,
                                 onItemClick = { destination ->
                                     navController.navigate(destination) {
                                         popUpTo(navController.graph.startDestinationId) {

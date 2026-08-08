@@ -50,7 +50,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import com.bose.expensetracker.ui.theme.AccentPurple
 import androidx.compose.ui.unit.dp
+import com.bose.expensetracker.domain.usecase.access.HouseholdRole
 import com.bose.expensetracker.domain.usecase.access.Permissions
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,6 +116,35 @@ fun HouseholdScreen(
                     Spacer(modifier = Modifier.weight(1f))
                     Spacer(modifier = Modifier.size(48.dp))
                 }
+                // Your role. Without this, a member finds the management controls simply
+                // absent and reads it as the app being broken rather than as a permission.
+                if (uiState.role != HouseholdRole.NONE) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(AccentPurple.copy(alpha = 0.15f))
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                Permissions.label(uiState.role),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AccentPurple
+                            )
+                        }
+                        Text(
+                            Permissions.description(uiState.role),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 // Active Household Details
                 uiState.household?.let { household ->
                     Card(modifier = Modifier.fillMaxWidth()) {

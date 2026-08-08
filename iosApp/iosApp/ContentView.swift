@@ -86,12 +86,16 @@ struct MainTabView: View {
     @State private var insightsVM: InsightsViewModel?
     @State private var netWorthVM: NetWorthViewModel?
 
+    /// Owned here so every tab reads the same role rather than resolving it five times.
+    @State private var sessionRole: SessionRole?
+
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 if let vm = dashboardVM {
                     DashboardView(
                         viewModel: vm,
+                        canAddExpense: sessionRole?.canAddExpense ?? false,
                         onAddExpense: { showAddExpense = true },
                         onExpenseList: { selectedTab = 1 },
                         onSettings: { selectedTab = 4 }
@@ -107,6 +111,7 @@ struct MainTabView: View {
                 if let vm = expenseListVM {
                     ExpenseListView(
                         viewModel: vm,
+                        sessionRole: sessionRole,
                         onAdd: { showAddExpense = true },
                         onEdit: { id in editExpenseId = id; showAddExpense = true }
                     )
@@ -134,7 +139,7 @@ struct MainTabView: View {
 
             NavigationStack {
                 if let vm = netWorthVM {
-                    NetWorthView(viewModel: vm)
+                    NetWorthView(viewModel: vm, canManage: sessionRole?.canManageSharedConfig ?? false)
                 } else {
                     ProgressView()
                 }
@@ -143,7 +148,7 @@ struct MainTabView: View {
             .tag(3)
 
             NavigationStack {
-                MoreView(authService: authService, firestoreService: firestoreService, authVM: authVM, prefs: prefs, notifications: notifications)
+                MoreView(authService: authService, firestoreService: firestoreService, authVM: authVM, prefs: prefs, notifications: notifications, canManageSharedConfig: sessionRole?.canManageSharedConfig ?? false)
             }
             .tabItem { Label("More", systemImage: "ellipsis.circle.fill") }
             .tag(4)
@@ -151,6 +156,10 @@ struct MainTabView: View {
         .tint(AppColors.accentPurple)
         .task {
             // Create ViewModels once
+            let roles = SessionRole(authService: authService, firestoreService: firestoreService)
+            await roles.refresh()
+            sessionRole = roles
+
             dashboardVM = DashboardViewModel(authService: authService, firestoreService: firestoreService)
             expenseListVM = ExpenseListViewModel(authService: authService, firestoreService: firestoreService)
             insightsVM = InsightsViewModel(authService: authService, firestoreService: firestoreService)
@@ -189,6 +198,8 @@ struct MoreView: View {
     @Bindable var authVM: AuthViewModel
     @Bindable var prefs: AppPreferences
     @Bindable var notifications: NotificationService
+    /// Budgets, categories, savings goals and recurring rules are owner-level.
+    var canManageSharedConfig: Bool = false
 
     var body: some View {
         List {
@@ -201,19 +212,19 @@ struct MoreView: View {
 
             Section("Features") {
                 NavigationLink {
-                    BudgetView(viewModel: BudgetViewModel(authService: authService, firestoreService: firestoreService))
+                    BudgetView(viewModel: BudgetViewModel(authService: authService, firestoreService: firestoreService), canManage: canManageSharedConfig)
                 } label: { Label("Budgets", systemImage: "chart.pie") }
 
                 NavigationLink {
-                    CategoryView(viewModel: CategoryViewModel(authService: authService, firestoreService: firestoreService))
+                    CategoryView(viewModel: CategoryViewModel(authService: authService, firestoreService: firestoreService), canManage: canManageSharedConfig)
                 } label: { Label("Categories", systemImage: "tag.fill") }
 
                 NavigationLink {
-                    SavingsView(viewModel: SavingsViewModel(authService: authService, firestoreService: firestoreService))
+                    SavingsView(viewModel: SavingsViewModel(authService: authService, firestoreService: firestoreService), canManage: canManageSharedConfig)
                 } label: { Label("Savings Goals", systemImage: "target") }
 
                 NavigationLink {
-                    RecurringView(viewModel: RecurringViewModel(authService: authService, firestoreService: firestoreService))
+                    RecurringView(viewModel: RecurringViewModel(authService: authService, firestoreService: firestoreService), canManage: canManageSharedConfig)
                 } label: { Label("Recurring Expenses", systemImage: "arrow.clockwise.circle") }
 
                 NavigationLink {

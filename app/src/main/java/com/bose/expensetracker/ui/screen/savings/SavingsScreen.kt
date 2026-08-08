@@ -67,12 +67,15 @@ fun SavingsScreen(
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = AccentPurple,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Goal")
+            // Shared config is owner-level; the rules reject the write otherwise.
+            if (uiState.canManage) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = AccentPurple,
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Goal")
+                }
             }
         }
     ) { padding ->
@@ -117,7 +120,7 @@ fun SavingsScreen(
                         SavingsGoalCard(
                             goal = goal,
                             onAddContribution = { contributionGoalId = goal.id },
-                            onDelete = { viewModel.deleteGoal(goal.id) }
+                            onDelete = if (uiState.canManage) { { viewModel.deleteGoal(goal.id) } } else null
                         )
                     }
                     item { Spacer(modifier = Modifier.height(80.dp)) }
@@ -151,7 +154,7 @@ fun SavingsScreen(
 private fun SavingsGoalCard(
     goal: SavingsGoal,
     onAddContribution: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: (() -> Unit)?
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -225,7 +228,7 @@ private fun SavingsGoalCard(
                     Text("+", style = MaterialTheme.typography.labelLarge, color = Color.White)
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                if (onDelete != null) IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

@@ -87,4 +87,27 @@ object Permissions {
     /** The owner cannot walk away and orphan the household; they transfer or delete it. */
     fun canLeaveHousehold(role: HouseholdRole): Boolean =
         role == HouseholdRole.MEMBER || role == HouseholdRole.GUEST
+
+    /** Short name for the role, shown on the household screen. */
+    fun label(role: HouseholdRole): String = when (role) {
+        HouseholdRole.ADMIN -> "Admin"
+        HouseholdRole.OWNER -> "Owner"
+        HouseholdRole.MEMBER -> "Member"
+        HouseholdRole.GUEST -> "Guest"
+        HouseholdRole.NONE -> ""
+    }
+
+    /**
+     * What the role may do, in one line.
+     *
+     * Shown next to the label so a missing button reads as a permission rather than a bug —
+     * without it, a member simply finds controls absent and assumes the app is broken.
+     */
+    fun description(role: HouseholdRole): String = when (role) {
+        HouseholdRole.ADMIN -> "Full access to every household"
+        HouseholdRole.OWNER -> "You created this household and manage its members and settings"
+        HouseholdRole.MEMBER -> "You can add and edit your own expenses"
+        HouseholdRole.GUEST -> "You can view this household but not change anything"
+        HouseholdRole.NONE -> ""
+    }
 }

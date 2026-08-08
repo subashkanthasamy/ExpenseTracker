@@ -69,12 +69,15 @@ fun CategoryScreen(viewModel: CategoryViewModel) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = com.bose.expensetracker.ui.theme.AccentPurple,
-                shape = CircleShape
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Category", tint = Color.White)
+            // Shared config is owner-level; the rules reject the write otherwise.
+            if (uiState.canManage) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = com.bose.expensetracker.ui.theme.AccentPurple,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Category", tint = Color.White)
+                }
             }
         }
     ) { padding ->
@@ -115,7 +118,9 @@ fun CategoryScreen(viewModel: CategoryViewModel) {
                         name = category.name,
                         color = category.color,
                         isPreset = true,
-                        onDelete = { viewModel.deleteCategory(category.id) }
+                        onDelete = if (uiState.canManage) {
+                            { viewModel.deleteCategory(category.id) }
+                        } else null
                     )
                 }
 
@@ -143,7 +148,9 @@ fun CategoryScreen(viewModel: CategoryViewModel) {
                             name = category.name,
                             color = category.color,
                             isPreset = false,
-                            onDelete = { viewModel.deleteCategory(category.id) }
+                            onDelete = if (uiState.canManage) {
+                            { viewModel.deleteCategory(category.id) }
+                        } else null
                         )
                     }
                 }

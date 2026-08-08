@@ -11,6 +11,24 @@ struct HouseholdView: View {
                 ProgressView("Loading household...")
             } else if let h = viewModel.household {
                 List {
+                    // Your role. Without this, a member finds the management controls simply
+                    // absent and reads it as the app being broken rather than as a permission.
+                    if viewModel.role != HouseholdRole.none {
+                        Section {
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Text(Permissions.shared.label(role: viewModel.role))
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(DS.accent)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(DS.accent.opacity(0.15), in: Capsule())
+                                Text(Permissions.shared.description(role: viewModel.role))
+                                    .font(.footnote)
+                                    .foregroundStyle(DS.textSecondary)
+                            }
+                        }
+                    }
+
                     Section("Active Household") {
                         LabeledContent("Name", value: h.name)
                         LabeledContent("Invite Code") {

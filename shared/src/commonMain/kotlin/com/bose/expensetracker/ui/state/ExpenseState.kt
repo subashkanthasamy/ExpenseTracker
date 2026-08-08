@@ -2,6 +2,7 @@ package com.bose.expensetracker.ui.state
 
 import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.usecase.access.HouseholdRole
 import kotlinx.datetime.Clock
 
 /** Date windows the expense list can be narrowed to. `ALL` means no date constraint. */
@@ -53,6 +54,10 @@ data class ExpenseListUiState(
      * former for the latter reads as data loss.
      */
     val totalCount: Int = 0,
+    /** Signed-in account, so a row can tell whether it is the caller's to edit. */
+    val currentUid: String = "",
+    /** Caller's role in the household. Decides which controls render; not enforcement. */
+    val role: HouseholdRole = HouseholdRole.NONE,
     val error: String? = null
 )
 

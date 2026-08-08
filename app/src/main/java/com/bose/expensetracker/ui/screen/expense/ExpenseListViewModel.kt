@@ -2,9 +2,11 @@ package com.bose.expensetracker.ui.screen.expense
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bose.expensetracker.data.access.SessionRoleProvider
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
+import com.bose.expensetracker.domain.usecase.access.HouseholdRole
 import com.bose.expensetracker.domain.usecase.filter.ExpenseFilter
 import com.bose.expensetracker.ui.state.DateRangeFilter
 import com.bose.expensetracker.ui.state.ExpenseFilterCriteria
@@ -19,8 +21,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Caller identity and role, combined into the list state. */
+private data class ExpenseAccess(
+    val uid: String = "",
+    val role: HouseholdRole = HouseholdRole.NONE
+)
+
 @HiltViewModel
 class ExpenseListViewModel @Inject constructor(
+    private val sessionRoleProvider: SessionRoleProvider,
     private val expenseRepository: ExpenseRepository,
     private val authRepository: AuthRepository,
     private val householdRepository: HouseholdRepository
@@ -36,11 +45,27 @@ class ExpenseListViewModel @Inject constructor(
      */
     private val _criteria = MutableStateFlow(ExpenseFilterCriteria())
 
+    private val _access = MutableStateFlow(ExpenseAccess())
+
     private var householdId: String? = null
     private var collectJob: Job? = null
 
     init {
         loadExpenses()
+        loadAccess()
+    }
+
+    /**
+     * Who the caller is and what they may change. Separate from the expense load so a role
+     * lookup failure hides controls rather than emptying the list.
+     */
+    private fun loadAccess() {
+        viewModelScope.launch {
+            _access.value = ExpenseAccess(
+                uid = sessionRoleProvider.currentUid(),
+                role = sessionRoleProvider.currentRole()
+            )
+        }
     }
 
     /**
@@ -65,8 +90,9 @@ class ExpenseListViewModel @Inject constructor(
 
             combine(
                 expenseRepository.getExpenses(hId),
-                _criteria
-            ) { expenses, criteria ->
+                _criteria,
+                _access
+            ) { expenses, criteria, access ->
                 // Options come from the unfiltered list so chips don't disappear as you use them.
                 ExpenseListUiState(
                     expenses = ExpenseFilter.apply(
@@ -78,6 +104,8 @@ class ExpenseListViewModel @Inject constructor(
                     categoryOptions = ExpenseFilter.categoryOptions(expenses),
                     personOptions = ExpenseFilter.personOptions(expenses),
                     criteria = criteria,
+                    currentUid = access.uid,
+                    role = access.role,
                     isLoading = false
                 )
             }.collect { state ->

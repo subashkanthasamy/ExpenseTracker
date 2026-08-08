@@ -2,6 +2,8 @@ package com.bose.expensetracker.ui.screen.budget
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bose.expensetracker.data.access.SessionRoleProvider
+import com.bose.expensetracker.domain.usecase.access.Permissions
 import com.bose.expensetracker.domain.model.Budget
 import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.domain.repository.AuthRepository
@@ -18,6 +20,11 @@ import java.util.UUID
 import javax.inject.Inject
 
 data class BudgetUiState(
+    /**
+     * Shared household configuration is owner-level, so members and guests see the list
+     * without the controls that change it. Enforcement is firestore.rules.
+     */
+    val canManage: Boolean = false,
     val budgets: List<Budget> = emptyList(),
     val categories: List<Category> = emptyList(),
     val isLoading: Boolean = true
@@ -25,6 +32,7 @@ data class BudgetUiState(
 
 @HiltViewModel
 class BudgetViewModel @Inject constructor(
+    private val sessionRoleProvider: SessionRoleProvider,
     private val budgetRepository: BudgetRepository,
     private val categoryRepository: CategoryRepository,
     private val authRepository: AuthRepository,
@@ -38,7 +46,20 @@ class BudgetViewModel @Inject constructor(
 
     init {
         loadData()
+        loadRole()
     }
+
+    /**
+     * Resolved once per screen. Kept separate from the data load so a role lookup failure
+     * cannot leave the screen empty — it only leaves the controls hidden.
+     */
+    private fun loadRole() {
+        viewModelScope.launch {
+            val canManage = Permissions.canManageSharedConfig(sessionRoleProvider.currentRole())
+            _uiState.update { it.copy(canManage = canManage) }
+        }
+    }
+
 
     private fun loadData() {
         viewModelScope.launch {

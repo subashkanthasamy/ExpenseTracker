@@ -3,6 +3,9 @@ import Shared
 
 struct ExpenseListView: View {
     @Bindable var viewModel: ExpenseListViewModel
+    /// Optional so the view still renders before the role resolves; nil means "assume the
+    /// least", which hides the destructive affordances rather than showing ones that fail.
+    var sessionRole: SessionRole?
     var onAdd: () -> Void
     var onEdit: (String) -> Void
 
@@ -29,13 +32,17 @@ struct ExpenseListView: View {
                     ForEach(viewModel.groupedExpenses, id: \.0) { date, expenses in
                         Section(date) {
                             ForEach(expenses) { expense in
+                                let mine = sessionRole?.canEdit(expense) ?? false
                                 ExpenseRow(expense: expense)
                                     .contentShape(Rectangle())
-                                    .onTapGesture { onEdit(expense.id) }
+                                    .onTapGesture { if mine { onEdit(expense.id) } }
                                     .swipeActions(edge: .trailing) {
-                                        Button(role: .destructive) {
-                                            Task { await viewModel.delete(expense) }
-                                        } label: { Label("Delete", systemImage: "trash") }
+                                        // Only rows you may actually change offer the action.
+                                        if mine {
+                                            Button(role: .destructive) {
+                                                Task { await viewModel.delete(expense) }
+                                            } label: { Label("Delete", systemImage: "trash") }
+                                        }
                                     }
                             }
                         }
@@ -47,7 +54,9 @@ struct ExpenseListView: View {
         .navigationTitle("Expenses")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button(action: onAdd) { Image(systemName: "plus") }
+                if sessionRole?.canAddExpense ?? false {
+                    Button(action: onAdd) { Image(systemName: "plus") }
+                }
             }
         }
         .sheet(isPresented: $showFilters) {

@@ -3,6 +3,9 @@ import Shared
 
 struct CategoryView: View {
     @Bindable var viewModel: CategoryViewModel
+    /// Shared household configuration is owner-level. Defaults to false so nothing the
+    /// rules would reject is shown before the role resolves.
+    var canManage: Bool = false
     @State private var showAdd = false
     @State private var newName = ""
     @State private var newIcon = "💳"
@@ -43,7 +46,7 @@ struct CategoryView: View {
         .navigationTitle("Categories")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button { showAdd = true } label: { Image(systemName: "plus") }
+                if canManage { Button { showAdd = true } label: { Image(systemName: "plus") } }
             }
         }
         .alert("New Category", isPresented: $showAdd) {

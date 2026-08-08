@@ -3,6 +3,7 @@ import Shared
 
 struct DashboardView: View {
     @Bindable var viewModel: DashboardViewModel
+    var canAddExpense: Bool = true
     var onAddExpense: () -> Void
     var onExpenseList: () -> Void
     var onSettings: () -> Void
@@ -98,16 +99,20 @@ struct DashboardView: View {
         .task { await viewModel.load() }
         .onDisappear { viewModel.cleanup() }
         .overlay(alignment: .bottomTrailing) {
-            Button(action: onAddExpense) {
+            // Guests are read-only; the rules reject their writes, so offering the button
+            // would only produce a failure.
+            if canAddExpense {
+                Button(action: onAddExpense) {
                 Image(systemName: "plus")
                     .font(.title2).bold()
                     .foregroundStyle(.white)
                     .frame(width: 56, height: 56)
                     .background(AppColors.accentPurple)
                     .clipShape(Circle())
-                    .shadow(radius: 4)
+                        .shadow(radius: 4)
+                }
+                .padding(24)
             }
-            .padding(24)
         }
     }
 }

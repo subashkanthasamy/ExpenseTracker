@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.usecase.access.Permissions
 import com.bose.expensetracker.ui.components.DateGroupHeader
 import com.bose.expensetracker.ui.components.ScrollableFilterChipRow
 import com.bose.expensetracker.ui.components.TimelineItem
@@ -216,10 +217,16 @@ fun ExpenseListScreen(
                                 subtitle = "${expense.categoryName} • $timeStr",
                                 amount = -expense.amount,
                                 isLast = index == expenses.lastIndex,
-                                modifier = Modifier.combinedClickable(
-                                    onClick = { onEditExpense(expense.id) },
-                                    onLongClick = { expenseToDelete = expense }
-                                )
+                                // Members may only touch their own rows; the rules reject the
+                                // rest, so offering the gesture would just fail.
+                                modifier = if (
+                                    Permissions.canEditExpense(uiState.role, expense, uiState.currentUid)
+                                ) {
+                                    Modifier.combinedClickable(
+                                        onClick = { onEditExpense(expense.id) },
+                                        onLongClick = { expenseToDelete = expense }
+                                    )
+                                } else Modifier
                             )
                         }
 

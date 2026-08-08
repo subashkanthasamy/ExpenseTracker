@@ -3,6 +3,9 @@ import Shared
 
 struct NetWorthView: View {
     @Bindable var viewModel: NetWorthViewModel
+    /// Assets and liabilities are shared household configuration, so they are owner-level.
+    /// Defaults to false: before the role resolves, show nothing that would be rejected.
+    var canManage: Bool = false
     @State private var showAddAsset = false
     @State private var showAddLiability = false
     @State private var newName = ""
@@ -48,7 +51,7 @@ struct NetWorthView: View {
                             Text(formatCurrency(asset.value)).bold().foregroundStyle(AppColors.incomeGreen)
                         }
                         .padding().background(DS.card, in: RoundedRectangle(cornerRadius: DS.tileRadius))
-                        .swipeActions { Button(role: .destructive) { Task { await viewModel.deleteAsset(asset.id) } } label: { Label("Delete", systemImage: "trash") } }
+                        .swipeActions { if canManage { Button(role: .destructive) { Task { await viewModel.deleteAsset(asset.id) } } label: { Label("Delete", systemImage: "trash") } } }
                     }
                 } else {
                     ForEach(viewModel.liabilities) { l in
@@ -58,7 +61,7 @@ struct NetWorthView: View {
                             Text(formatCurrency(l.amount)).bold().foregroundStyle(AppColors.expenseRed)
                         }
                         .padding().background(DS.card, in: RoundedRectangle(cornerRadius: DS.tileRadius))
-                        .swipeActions { Button(role: .destructive) { Task { await viewModel.deleteLiability(l.id) } } label: { Label("Delete", systemImage: "trash") } }
+                        .swipeActions { if canManage { Button(role: .destructive) { Task { await viewModel.deleteLiability(l.id) } } label: { Label("Delete", systemImage: "trash") } } }
                     }
                 }
             }
@@ -68,10 +71,12 @@ struct NetWorthView: View {
         .navigationTitle("Net Worth")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button("Add Asset") { showAddAsset = true }
-                    Button("Add Liability") { showAddLiability = true }
-                } label: { Image(systemName: "plus") }
+                if canManage {
+                    Menu {
+                        Button("Add Asset") { showAddAsset = true }
+                        Button("Add Liability") { showAddLiability = true }
+                    } label: { Image(systemName: "plus") }
+                }
             }
         }
         .alert("Add Asset", isPresented: $showAddAsset) {

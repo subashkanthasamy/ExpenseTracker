@@ -61,12 +61,15 @@ fun NetWorthScreen(viewModel: NetWorthViewModel) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = com.bose.expensetracker.ui.theme.AccentPurple,
-                shape = androidx.compose.foundation.shape.CircleShape
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
+            // Shared config is owner-level; the rules reject the write otherwise.
+            if (uiState.canManage) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = com.bose.expensetracker.ui.theme.AccentPurple,
+                    shape = androidx.compose.foundation.shape.CircleShape
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
+                }
             }
         }
     ) { padding ->

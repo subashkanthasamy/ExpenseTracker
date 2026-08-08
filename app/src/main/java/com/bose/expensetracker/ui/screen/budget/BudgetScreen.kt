@@ -71,12 +71,15 @@ fun BudgetScreen(
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = AccentPurple,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Budget")
+            // Shared config is owner-level; the rules reject the write otherwise.
+            if (uiState.canManage) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = AccentPurple,
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Budget")
+                }
             }
         }
     ) { padding ->
@@ -135,7 +138,7 @@ fun BudgetScreen(
                     items(uiState.budgets) { budget ->
                         BudgetCard(
                             budget = budget,
-                            onDelete = { viewModel.deleteBudget(budget.id) }
+                            onDelete = if (uiState.canManage) { { viewModel.deleteBudget(budget.id) } } else null
                         )
                     }
                     item { Spacer(modifier = Modifier.height(80.dp)) }
@@ -160,7 +163,7 @@ fun BudgetScreen(
 @Composable
 private fun BudgetCard(
     budget: Budget,
-    onDelete: () -> Unit
+    onDelete: (() -> Unit)?
 ) {
     val progressColor = when (budget.status) {
         BudgetStatus.OK -> IncomeGreen
@@ -209,7 +212,7 @@ private fun BudgetCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                if (onDelete != null) IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Delete",

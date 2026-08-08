@@ -2,6 +2,8 @@ package com.bose.expensetracker.ui.screen.networth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bose.expensetracker.data.access.SessionRoleProvider
+import com.bose.expensetracker.domain.usecase.access.Permissions
 import com.bose.expensetracker.domain.model.Asset
 import com.bose.expensetracker.domain.model.Liability
 import com.bose.expensetracker.domain.repository.AuthRepository
@@ -11,6 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -25,6 +28,11 @@ data class NetWorthHistoryEntry(
 )
 
 data class NetWorthUiState(
+    /**
+     * Shared household configuration is owner-level, so members and guests see the list
+     * without the controls that change it. Enforcement is firestore.rules.
+     */
+    val canManage: Boolean = false,
     val totalAssets: Double = 0.0,
     val totalLiabilities: Double = 0.0,
     val netWorth: Double = 0.0,
@@ -37,6 +45,7 @@ data class NetWorthUiState(
 
 @HiltViewModel
 class NetWorthViewModel @Inject constructor(
+    private val sessionRoleProvider: SessionRoleProvider,
     private val netWorthRepository: NetWorthRepository,
     private val authRepository: AuthRepository,
     private val householdRepository: HouseholdRepository
@@ -49,7 +58,20 @@ class NetWorthViewModel @Inject constructor(
 
     init {
         loadNetWorth()
+        loadRole()
     }
+
+    /**
+     * Resolved once per screen. Kept separate from the data load so a role lookup failure
+     * cannot leave the screen empty — it only leaves the controls hidden.
+     */
+    private fun loadRole() {
+        viewModelScope.launch {
+            val canManage = Permissions.canManageSharedConfig(sessionRoleProvider.currentRole())
+            _uiState.update { it.copy(canManage = canManage) }
+        }
+    }
+
 
     private fun loadNetWorth() {
         viewModelScope.launch {
