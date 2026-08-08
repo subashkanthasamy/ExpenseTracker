@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.bose.expensetracker.data.preferences.BiometricPreferences
@@ -22,6 +23,7 @@ import com.bose.expensetracker.data.sync.LocalToFirestoreMigration
 import com.bose.expensetracker.domain.repository.HouseholdRepository
 import com.bose.expensetracker.ui.navigation.AddEditExpenseRoute
 import com.bose.expensetracker.ui.navigation.BottomNavBar
+import com.bose.expensetracker.ui.navigation.bottomNavItems
 import com.bose.expensetracker.ui.navigation.DashboardRoute
 import com.bose.expensetracker.ui.navigation.ExpenseTrackerNavGraph
 import com.bose.expensetracker.ui.navigation.HouseholdSetupRoute
@@ -165,15 +167,18 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                val showBottomBar = currentRoute?.let { route ->
-                    !route.contains("Login") &&
-                    !route.contains("SignUp") &&
-                    !route.contains("PhoneAuth") &&
-                    !route.contains("HouseholdSetup") &&
-                    !route.contains("AddEditExpense") &&
-                    !route.contains("ReceiptScanner") &&
-                    !route.contains("FinancialCoach") &&
-                    !route.contains("SandboxSetup")
+                // Allowlist, not a denylist: the bar belongs to the four tabs that can be
+                // reached from it, so anything pushed on top of them hides it by default.
+                // This was previously a list of routes to exclude, which meant every new
+                // screen showed the bar until someone remembered to add it — Settings,
+                // Budget, Savings, Reminder and eight others never were.
+                //
+                // `hasRoute` rather than a substring match on the route string: routes with
+                // arguments serialise as ".../ExpenseListRoute/{personFilter}", and
+                // "SmartInsightsRoute" contains "InsightsRoute", so matching on text is a
+                // false-positive waiting to happen.
+                val showBottomBar = navBackStackEntry?.destination?.let { destination ->
+                    bottomNavItems.any { destination.hasRoute(it.route::class) }
                 } ?: false
 
                 Scaffold(
