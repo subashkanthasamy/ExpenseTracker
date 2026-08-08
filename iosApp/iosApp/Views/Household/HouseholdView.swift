@@ -48,8 +48,8 @@ struct HouseholdView: View {
                 }
             } else {
                 VStack(spacing: 12) {
-                    Image(systemName: "house.slash").font(.system(size: 48)).foregroundStyle(.secondary)
-                    Text("No household found").foregroundStyle(.secondary)
+                    Image(systemName: "house.slash").font(.system(size: 48)).foregroundStyle(DS.textSecondary)
+                    Text("No household found").foregroundStyle(DS.textSecondary)
                 }
             }
         }

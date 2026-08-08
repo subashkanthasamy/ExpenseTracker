@@ -29,7 +29,7 @@ struct BiometricLockView: View {
                 ProgressView()
             } else if failed {
                 Text("Authentication failed")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DS.textSecondary)
                 Button("Retry") { Task { await unlock() } }
                     .buttonStyle(.borderedProminent)
                     .tint(AppColors.accentPurple)

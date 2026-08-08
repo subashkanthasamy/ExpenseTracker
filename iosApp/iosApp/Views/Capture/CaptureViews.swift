@@ -62,7 +62,7 @@ struct ReceiptScannerView: View {
                     Section("Raw text") {
                         Text(result.rawText.isEmpty ? "(nothing recognised)" : result.rawText)
                             .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DS.textSecondary)
                     }
                 }
             }
@@ -164,7 +164,7 @@ struct VoiceEntryView: View {
                 }
 
                 Text(voice.isListening ? "Listening…" : "Tap to speak")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DS.textSecondary)
 
                 if !voice.transcript.isEmpty {
                     Text("\u{201C}\(voice.transcript)\u{201D}")
@@ -176,7 +176,7 @@ struct VoiceEntryView: View {
                     VStack(spacing: 6) {
                         Text(formatCurrency(amount.doubleValue)).font(.largeTitle).bold()
                         if let hint = parsed.categoryHint {
-                            Text(hint.capitalized).foregroundStyle(.secondary)
+                            Text(hint.capitalized).foregroundStyle(DS.textSecondary)
                         }
                     }
                     Button("Use this") {

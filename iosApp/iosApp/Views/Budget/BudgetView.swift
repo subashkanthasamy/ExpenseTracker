@@ -13,9 +13,9 @@ struct BudgetView: View {
                 ProgressView()
             } else if viewModel.budgets.isEmpty {
                 VStack(spacing: 12) {
-                    Image(systemName: "chart.pie").font(.system(size: 48)).foregroundStyle(.secondary)
-                    Text("No budgets set").foregroundStyle(.secondary)
-                    Text("Tap + to add a monthly budget").font(.caption).foregroundStyle(.secondary)
+                    Image(systemName: "chart.pie").font(.system(size: 48)).foregroundStyle(DS.textSecondary)
+                    Text("No budgets set").foregroundStyle(DS.textSecondary)
+                    Text("Tap + to add a monthly budget").font(.caption).foregroundStyle(DS.textSecondary)
                 }
             } else {
                 List {
@@ -26,8 +26,8 @@ struct BudgetView: View {
                                 Text(budget.categoryName).bold()
                                 Spacer()
                                 Text(formatCurrency(budget.spent))
-                                Text("/").foregroundStyle(.secondary)
-                                Text(formatCurrency(budget.monthlyLimit)).foregroundStyle(.secondary)
+                                Text("/").foregroundStyle(DS.textSecondary)
+                                Text(formatCurrency(budget.monthlyLimit)).foregroundStyle(DS.textSecondary)
                             }
                             ProgressView(value: min(budget.percentage, 100), total: 100)
                                 .tint(budget.status == .exceeded ? .red : budget.status == .warning ? .orange : .green)

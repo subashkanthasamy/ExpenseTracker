@@ -15,8 +15,8 @@ struct SavingsView: View {
         Group {
             if viewModel.goals.isEmpty && !viewModel.isLoading {
                 VStack(spacing: 12) {
-                    Image(systemName: "target").font(.system(size: 48)).foregroundStyle(.secondary)
-                    Text("No savings goals yet").foregroundStyle(.secondary)
+                    Image(systemName: "target").font(.system(size: 48)).foregroundStyle(DS.textSecondary)
+                    Text("No savings goals yet").foregroundStyle(DS.textSecondary)
                 }
             } else {
                 List {
@@ -31,7 +31,7 @@ struct SavingsView: View {
                             ProgressView(value: goal.progress).tint(AppColors.savingsGreen)
                             HStack {
                                 Text(formatCurrency(goal.currentAmount)).font(.caption)
-                                Text("of").font(.caption).foregroundStyle(.secondary)
+                                Text("of").font(.caption).foregroundStyle(DS.textSecondary)
                                 Text(formatCurrency(goal.targetAmount)).font(.caption)
                                 Spacer()
                                 Button("Add") {

@@ -38,7 +38,7 @@ struct SmsImportView: View {
                     if body_.isEmpty {
                         Text("Paste the bank message here")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DS.textSecondary)
                     }
                 } header: {
                     Text("Bank message")

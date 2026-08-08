@@ -33,7 +33,7 @@ struct SettingsView: View {
                              ? "Require Face ID / Touch ID to open the app"
                              : "Not available on this device")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DS.textSecondary)
                     }
                 }
                 .disabled(!viewModel.biometricAvailable)
@@ -126,7 +126,7 @@ struct SettingsView: View {
             Image(systemName: icon).frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                Text(subtitle).font(.caption).foregroundStyle(DS.textSecondary)
             }
             Spacer()
         }

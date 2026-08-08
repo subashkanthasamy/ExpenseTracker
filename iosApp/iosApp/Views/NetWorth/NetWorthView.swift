@@ -15,25 +15,25 @@ struct NetWorthView: View {
             VStack(spacing: 20) {
                 // Summary
                 VStack(spacing: 8) {
-                    Text("Net Worth").font(.subheadline).foregroundStyle(.secondary)
+                    Text("Net Worth").font(.subheadline).foregroundStyle(DS.textSecondary)
                     Text(formatCurrency(viewModel.netWorth))
                         .font(.system(size: 32, weight: .bold))
                         .foregroundStyle(viewModel.netWorth >= 0 ? AppColors.incomeGreen : AppColors.expenseRed)
                     HStack(spacing: 24) {
                         VStack {
-                            Text("Assets").font(.caption).foregroundStyle(.secondary)
+                            Text("Assets").font(.caption).foregroundStyle(DS.textSecondary)
                             Text(formatAmount(viewModel.totalAssets)).font(.subheadline).bold()
                                 .foregroundStyle(AppColors.incomeGreen)
                         }
                         VStack {
-                            Text("Liabilities").font(.caption).foregroundStyle(.secondary)
+                            Text("Liabilities").font(.caption).foregroundStyle(DS.textSecondary)
                             Text(formatAmount(viewModel.totalLiabilities)).font(.subheadline).bold()
                                 .foregroundStyle(AppColors.expenseRed)
                         }
                     }
                 }
                 .frame(maxWidth: .infinity).padding()
-                .background(.regularMaterial).clipShape(RoundedRectangle(cornerRadius: 16))
+                .background(DS.card, in: RoundedRectangle(cornerRadius: DS.cardRadius))
 
                 Picker("", selection: $selectedTab) {
                     Text("Assets").tag(0)
@@ -43,27 +43,28 @@ struct NetWorthView: View {
                 if selectedTab == 0 {
                     ForEach(viewModel.assets) { asset in
                         HStack {
-                            VStack(alignment: .leading) { Text(asset.name).bold(); Text(asset.type).font(.caption).foregroundStyle(.secondary) }
+                            VStack(alignment: .leading) { Text(asset.name).bold(); Text(asset.type).font(.caption).foregroundStyle(DS.textSecondary) }
                             Spacer()
                             Text(formatCurrency(asset.value)).bold().foregroundStyle(AppColors.incomeGreen)
                         }
-                        .padding().background(.regularMaterial).clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding().background(DS.card, in: RoundedRectangle(cornerRadius: DS.tileRadius))
                         .swipeActions { Button(role: .destructive) { Task { await viewModel.deleteAsset(asset.id) } } label: { Label("Delete", systemImage: "trash") } }
                     }
                 } else {
                     ForEach(viewModel.liabilities) { l in
                         HStack {
-                            VStack(alignment: .leading) { Text(l.name).bold(); Text(l.type).font(.caption).foregroundStyle(.secondary) }
+                            VStack(alignment: .leading) { Text(l.name).bold(); Text(l.type).font(.caption).foregroundStyle(DS.textSecondary) }
                             Spacer()
                             Text(formatCurrency(l.amount)).bold().foregroundStyle(AppColors.expenseRed)
                         }
-                        .padding().background(.regularMaterial).clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding().background(DS.card, in: RoundedRectangle(cornerRadius: DS.tileRadius))
                         .swipeActions { Button(role: .destructive) { Task { await viewModel.deleteLiability(l.id) } } label: { Label("Delete", systemImage: "trash") } }
                     }
                 }
             }
             .padding()
         }
+        .background(DS.canvas)
         .navigationTitle("Net Worth")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

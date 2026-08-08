@@ -16,14 +16,14 @@ struct CategoryView: View {
                             Image(systemName: categoryIcon(cat.name, storedIcon: cat.icon)).font(.title3).foregroundStyle(AppColors.accentPurple).frame(width: 28)
                             Text(cat.name)
                             Spacer()
-                            Image(systemName: "lock.fill").foregroundStyle(.secondary).font(.caption)
+                            Image(systemName: "lock.fill").foregroundStyle(DS.textSecondary).font(.caption)
                         }
                     }
                 }
             }
             Section("Custom Categories") {
                 if viewModel.customCategories.isEmpty {
-                    Text("No custom categories").foregroundStyle(.secondary)
+                    Text("No custom categories").foregroundStyle(DS.textSecondary)
                 } else {
                     ForEach(viewModel.customCategories) { cat in
                         HStack {

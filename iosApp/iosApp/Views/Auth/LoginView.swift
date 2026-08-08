@@ -20,7 +20,7 @@ struct LoginView: View {
                 .font(.largeTitle).bold()
 
             Text("Track. Save. Grow.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DS.textSecondary)
 
             VStack(spacing: 16) {
                 TextField("Email", text: $email)
@@ -38,7 +38,7 @@ struct LoginView: View {
                     }
                     Button { showPassword.toggle() } label: {
                         Image(systemName: showPassword ? "eye.slash" : "eye")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DS.textSecondary)
                     }
                 }
                 .textFieldStyle(.roundedBorder)

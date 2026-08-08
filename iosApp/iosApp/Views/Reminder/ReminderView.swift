@@ -33,7 +33,7 @@ struct ReminderView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Log expenses daily")
                             Text(String(format: "Every day at %02d:%02d", daily.hour, daily.minute))
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(DS.textSecondary)
                         }
                     }
                     Button("Remove", role: .destructive) { notifications.remove(daily) }
@@ -55,7 +55,7 @@ struct ReminderView: View {
 
             Section("Bills") {
                 if billReminders.isEmpty {
-                    Text("No bill reminders yet").foregroundStyle(.secondary).font(.callout)
+                    Text("No bill reminders yet").foregroundStyle(DS.textSecondary).font(.callout)
                 }
                 ForEach(billReminders) { bill in
                     Toggle(isOn: Binding(
@@ -64,7 +64,7 @@ struct ReminderView: View {
                     )) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(bill.label)
-                            Text(billSubtitle(bill)).font(.caption).foregroundStyle(.secondary)
+                            Text(billSubtitle(bill)).font(.caption).foregroundStyle(DS.textSecondary)
                         }
                     }
                     .swipeActions {

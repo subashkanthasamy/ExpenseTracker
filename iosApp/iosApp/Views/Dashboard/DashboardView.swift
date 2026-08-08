@@ -15,12 +15,12 @@ struct DashboardView: View {
                     VStack(alignment: .leading) {
                         Text("Hello! 👋").font(.title2).bold()
                         Text(Date(), format: .dateTime.month(.wide).year())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DS.textSecondary)
                     }
                     Spacer()
                     Button(action: onSettings) {
                         Image(systemName: "gearshape.fill")
-                            .font(.title3).foregroundStyle(.secondary)
+                            .font(.title3).foregroundStyle(DS.textSecondary)
                     }
                 }
                 .padding(.horizontal)
@@ -68,8 +68,7 @@ struct DashboardView: View {
                         }
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .background(DS.card, in: RoundedRectangle(cornerRadius: DS.cardRadius))
                     .padding(.horizontal)
                 }
 
@@ -82,7 +81,7 @@ struct DashboardView: View {
                             .font(.caption).foregroundStyle(AppColors.accentPurple)
                     }
                     if viewModel.recentExpenses.isEmpty {
-                        Text("No expenses yet").foregroundStyle(.secondary).padding()
+                        Text("No expenses yet").foregroundStyle(DS.textSecondary).padding()
                     } else {
                         ForEach(viewModel.recentExpenses) { expense in
                             ExpenseRow(expense: expense)
@@ -90,12 +89,12 @@ struct DashboardView: View {
                     }
                 }
                 .padding()
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .background(DS.card, in: RoundedRectangle(cornerRadius: DS.cardRadius))
                 .padding(.horizontal)
             }
             .padding(.vertical)
         }
+        .background(DS.canvas)
         .task { await viewModel.load() }
         .onDisappear { viewModel.cleanup() }
         .overlay(alignment: .bottomTrailing) {
@@ -125,13 +124,13 @@ struct ExpenseRow: View {
             VStack(alignment: .leading) {
                 Text(expense.categoryName).font(.subheadline).bold()
                 Text(expense.notes.isEmpty ? expense.addedByName : expense.notes)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(DS.textSecondary)
             }
             Spacer()
             VStack(alignment: .trailing) {
                 Text(formatCurrency(expense.amount)).font(.subheadline).bold()
                 Text(expense.dateValue, format: .dateTime.day().month(.abbreviated))
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .font(.caption2).foregroundStyle(DS.textSecondary)
             }
         }
     }

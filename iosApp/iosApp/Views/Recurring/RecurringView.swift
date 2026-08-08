@@ -30,7 +30,7 @@ struct RecurringView: View {
                                 .background(AppColors.accentPurple.opacity(0.15))
                                 .clipShape(Capsule())
                             if !item.notes.isEmpty {
-                                Text(item.notes).font(.caption).foregroundStyle(.secondary)
+                                Text(item.notes).font(.caption).foregroundStyle(DS.textSecondary)
                             }
                             Spacer()
                             Toggle("", isOn: Binding(

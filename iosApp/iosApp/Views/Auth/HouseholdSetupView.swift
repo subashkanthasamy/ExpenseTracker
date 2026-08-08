@@ -19,7 +19,7 @@ struct HouseholdSetupView: View {
                 .font(.title).bold()
 
             Text(isJoining ? "Enter the invite code to join" : "Create a new household to get started")
-                .foregroundStyle(.secondary).multilineTextAlignment(.center)
+                .foregroundStyle(DS.textSecondary).multilineTextAlignment(.center)
 
             if isJoining {
                 TextField("Invite Code", text: $inviteCode)

@@ -10,7 +10,7 @@ struct InsightsView: View {
             VStack(spacing: 20) {
                 // Summary Card
                 VStack(spacing: 8) {
-                    Text("This Month").font(.subheadline).foregroundStyle(.secondary)
+                    Text("This Month").font(.subheadline).foregroundStyle(DS.textSecondary)
                     Text(formatCurrency(viewModel.totalSpent)).font(.title).bold()
                     if viewModel.lastPeriodSpent > 0 {
                         let diff = viewModel.totalSpent - viewModel.lastPeriodSpent
@@ -25,8 +25,7 @@ struct InsightsView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .background(DS.card, in: RoundedRectangle(cornerRadius: DS.cardRadius))
 
                 // Category Breakdown
                 if !viewModel.categoryBreakdown.isEmpty {
@@ -45,8 +44,7 @@ struct InsightsView: View {
                         }
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .background(DS.card, in: RoundedRectangle(cornerRadius: DS.cardRadius))
                 }
 
                 // Spending split — only meaningful once more than one member has recorded
@@ -68,15 +66,14 @@ struct InsightsView: View {
                                         .tint(AppColors.accentPurple)
                                     Text("\(Int(person.share * 100))% of total")
                                         .font(.caption2)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(DS.textSecondary)
                                 }
                             }
                             .buttonStyle(.plain)
                         }
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .background(DS.card, in: RoundedRectangle(cornerRadius: DS.cardRadius))
                 }
 
                 // Top Category
@@ -87,12 +84,12 @@ struct InsightsView: View {
                         Spacer()
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .background(DS.card, in: RoundedRectangle(cornerRadius: DS.cardRadius))
                 }
             }
             .padding()
         }
+        .background(DS.canvas)
         .navigationTitle("Insights")
         .task { await viewModel.load() }
     }
