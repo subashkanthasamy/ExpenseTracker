@@ -314,6 +314,10 @@ class HouseholdViewModel {
     var household: Household?
     var households: [Household] = []
     var members: [AppUser] = []
+    var currentUid: String = ""
+    /// Drives which controls the screen offers. Enforcement is firestore.rules; this only
+    /// keeps the UI from presenting a button that would fail.
+    var role: HouseholdRole = HouseholdRole.none
     var isLoading = true
     var error: String?
 
@@ -341,6 +345,10 @@ class HouseholdViewModel {
             } else if let first = allHouseholds.first {
                 household = first
             }
+            currentUid = uid
+            let admin = await authService.isAdmin()
+            role = household.map { Permissions.shared.roleOf(household: $0, uid: uid, isAdmin: admin) }
+                ?? HouseholdRole.none
             isLoading = false
             // Households predating the invite-code lookup have no entry yet; publish it so
             // the code shown on this screen actually works.

@@ -1,5 +1,6 @@
 package com.bose.expensetracker.data.remote
 
+import com.bose.expensetracker.domain.usecase.access.Permissions
 import com.bose.expensetracker.domain.model.Asset
 import com.bose.expensetracker.domain.model.Budget
 import com.bose.expensetracker.domain.model.RecurringExpense
@@ -162,7 +163,10 @@ class FirestoreDataSource @Inject constructor(
         firestore.collection("households").document(household.id).set(
             mapOf(
                 "name" to household.name,
+                "ownerUid" to household.ownerUid,
                 "memberUids" to household.memberUids,
+                // Empty at creation: the rules require the creator to grant nobody else a role.
+                "roles" to household.roles,
                 "inviteCode" to household.inviteCode,
                 "createdAt" to household.createdAt
             )
@@ -234,6 +238,8 @@ class FirestoreDataSource @Inject constructor(
             id = householdId,
             name = doc.getString("name") ?: "",
             memberUids = (doc.get("memberUids") as? List<String>) ?: emptyList(),
+            ownerUid = doc.getString("ownerUid") ?: "",
+            roles = (doc.get("roles") as? Map<String, String>) ?: emptyMap(),
             inviteCode = doc.getString("inviteCode") ?: "",
             createdAt = doc.getEpochMillis("createdAt") ?: 0L
         )
@@ -263,9 +269,19 @@ class FirestoreDataSource @Inject constructor(
         return InviteTarget(householdId, doc.getString("householdName") ?: "")
     }
 
+    /**
+     * Adds [userId] to a household as a plain member.
+     *
+     * Both fields move together: `memberUids` is what the "my households" query reads, `roles`
+     * is what the rules trust. The join branch of the security rules rejects an update that
+     * touches only one of them, so this cannot be split.
+     */
     suspend fun addMemberToHousehold(householdId: String, userId: String) {
         firestore.collection("households").document(householdId)
-            .update("memberUids", com.google.firebase.firestore.FieldValue.arrayUnion(userId))
+            .update(
+                "memberUids", com.google.firebase.firestore.FieldValue.arrayUnion(userId),
+                "roles.$userId", Permissions.ROLE_MEMBER
+            )
             .await()
     }
 

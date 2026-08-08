@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bose.expensetracker.domain.usecase.access.Permissions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -257,8 +258,9 @@ fun HouseholdScreen(
                     }
                 }
 
-                // Delete Household
-                uiState.household?.let {
+                // Delete Household — creator (or an admin) only. The rules deny it for
+                // anyone else, so showing the button would just produce a failure.
+                uiState.household?.takeIf { Permissions.canDeleteHousehold(uiState.role) }?.let {
                     Spacer(modifier = Modifier.height(8.dp))
                     if (uiState.isDeleting) {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {

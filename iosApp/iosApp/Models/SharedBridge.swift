@@ -120,8 +120,21 @@ extension Expense {
 }
 
 extension Household {
-    convenience init(id: String, name: String, memberUids: [String], inviteCode: String, createdAt: Date) {
-        self.init(id: id, name: name, memberUids: memberUids, inviteCode: inviteCode, createdAt: createdAt.epochMillis)
+    /// Kotlin's defaults for `ownerUid` / `roles` are not exported, so they are spelled out here.
+    convenience init(
+        id: String,
+        name: String,
+        memberUids: [String],
+        ownerUid: String = "",
+        roles: [String: String] = [:],
+        inviteCode: String,
+        createdAt: Date
+    ) {
+        self.init(
+            id: id, name: name, memberUids: memberUids,
+            ownerUid: ownerUid, roles: roles,
+            inviteCode: inviteCode, createdAt: createdAt.epochMillis
+        )
     }
 }
 

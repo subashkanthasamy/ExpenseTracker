@@ -160,6 +160,24 @@ class AuthService {
     }
 
     nonisolated var currentUserId: String? { auth.currentUser?.uid }
+
+    /// Whether this account carries the global `admin` custom claim.
+    ///
+    /// Read from the ID token, never from a document the account could write — a role field on
+    /// `users/{uid}` would be self-grantable, since the rules let a user write their own
+    /// profile. Claims are set server-side with the Admin SDK.
+    ///
+    /// Advisory only: this decides which buttons appear. `firestore.rules` re-checks the same
+    /// claim and is what actually stops an admin action.
+    func isAdmin() async -> Bool {
+        guard let user = auth.currentUser else { return false }
+        // forcingRefresh: false — a refresh here would add a round trip to every household
+        // load; a freshly granted claim lands within the hour, or on next sign-in.
+        guard let result = try? await user.getIDTokenResult(forcingRefresh: false) else {
+            return false
+        }
+        return result.claims["admin"] as? Bool ?? false
+    }
     nonisolated var currentUserDisplayName: String? { auth.currentUser?.displayName }
 
     /// Reliably get the active household ID - checks local user, then fetches from Firestore

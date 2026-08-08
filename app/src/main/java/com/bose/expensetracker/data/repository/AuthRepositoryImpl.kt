@@ -11,6 +11,7 @@ import com.bose.expensetracker.domain.repository.PhoneAuthRepository
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthProvider
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -146,6 +147,17 @@ class AuthRepositoryImpl @Inject constructor(
     override fun getCurrentUserId(): String? {
         if (sandboxPreferences.isSandboxCached) return SandboxConstants.SANDBOX_USER_ID
         return authDataSource.getCurrentUser()?.uid
+    }
+
+    override suspend fun isAdmin(): Boolean {
+        if (sandboxPreferences.isSandboxCached) return false
+        val user = authDataSource.getCurrentUser() ?: return false
+        return runCatching {
+            // false = use the cached token. Forcing a refresh here would add a network round
+            // trip to every household load; a freshly granted claim lands within the hour, or
+            // immediately after the user signs out and back in.
+            user.getIdToken(false).await().claims["admin"] == true
+        }.getOrDefault(false)
     }
 
     override fun getCurrentUserDisplayName(): String? {

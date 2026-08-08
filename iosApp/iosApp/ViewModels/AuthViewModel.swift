@@ -73,6 +73,9 @@ class AuthViewModel {
         do {
             let household = Household(
                 id: UUID().uuidString, name: name, memberUids: [uid],
+                // The creator is the owner, and starts as the only member with no roles
+                // granted — the security rules reject a create that says otherwise.
+                ownerUid: uid, roles: [:],
                 inviteCode: String((0..<6).map { _ in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".randomElement()! }),
                 createdAt: Date()
             )

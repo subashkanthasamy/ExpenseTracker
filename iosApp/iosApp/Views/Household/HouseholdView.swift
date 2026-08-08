@@ -42,8 +42,12 @@ struct HouseholdView: View {
                         }
                     }
 
-                    Section {
-                        Button("Delete Household", role: .destructive) { showDelete = true }
+                    // Creator (or an admin) only. The rules deny it for anyone else, so
+                    // showing the button would just produce a failure.
+                    if Permissions.shared.canDeleteHousehold(role: viewModel.role) {
+                        Section {
+                            Button("Delete Household", role: .destructive) { showDelete = true }
+                        }
                     }
                 }
             } else {

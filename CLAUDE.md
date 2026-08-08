@@ -195,14 +195,50 @@ only ever *write* millis. `tools/migrate-timestamps.js` normalises legacy docume
   enumerating households, reading their codes and joining them. Create writes the household
   first and the lookup document second (the rules require the author to already be a
   member); join resolves the code then adds the user with `arrayUnion`, so no household read
-  is needed.
+  is needed. **Join must write `memberUids` and `roles.<uid>` in the same update** — the join
+  branch rejects an update touching only one of them.
 - **`households` read is `uid() in resource.data.memberUids`.** That deliberately also
   permits the "my households" query (`memberUids arrayContains uid`) — Firestore accepts it
   because the query is provably constrained to documents satisfying the rule. Changing this
   to a helper that does a `get()` would break that query.
 
-Household deletion and member ejection are intentionally closed off; do those from a Cloud
-Function if needed.
+### Roles and permissions
+
+`firestore.rules` is the **only** enforcement. Both apps talk to Firestore directly with the
+end user's credentials, so `Permissions` in `shared/domain/usecase/access/` exists to grey out
+buttons, not to secure anything. Change the two together.
+
+| | admin | owner | member | guest |
+|---|---|---|---|---|
+| read household | ✅ | ✅ | ✅ | ✅ |
+| delete / rename household, manage members, invite codes | ✅ | ✅ | ❌ | ❌ |
+| shared config (categories, budgets, goals, recurring, assets) | ✅ | ✅ | ❌ | ❌ |
+| own expenses | ✅ | ✅ | ✅ | ❌ |
+| others' expenses | ✅ | ✅ | ❌ | ❌ |
+
+- **`admin` is a Firebase custom claim, never a field.** `users/{uid}` is self-writable, so a
+  role field there would be self-grantable. Set it with
+  `admin.auth().setCustomUserClaims(uid, { admin: true })`; it reaches the client on the next
+  ID token refresh.
+- **`ownerUid` is the creator and is immutable.** There is deliberately no ownership transfer:
+  it would let a compromised session hand the household away permanently.
+- **`memberUids` is an index, `roles` is the authority.** They must stay in step — the rules
+  assert it — because the "my households" query reads the former.
+- **Households predating this model** have neither field. Rules and clients fall back to
+  `memberUids[0]` as owner and treat an absent role as `member`, so nobody is locked out.
+  Run `tools/backfill-household-roles.js` **before** deploying the rules to pin it down; the
+  fallback is positional and picks the wrong person if the creator has since left.
+- **Only the owner can mint or rotate an invite code**, so holding a valid code *is* the
+  owner's authorisation to join. A code shared onward by a member still works until rotated —
+  closing that fully means moving the join into a Cloud Function that is the sole writer of
+  `memberUids`/`roles`, then setting the join branch to `if false`.
+- **Category seeding is owner-only** now. A member calling `seedPresetCategories` is denied;
+  on iOS those writes are wrapped in `try?`, so it fails silently and they see an empty
+  category list until the owner has opened the app once.
+
+Member ejection is available to the owner. Household deletion is owner-only but still does not
+cascade — Firestore orphans the subcollections, so a Cloud Function remains the right home for
+both deletion and any stricter join policy.
 
 
 ## Design source

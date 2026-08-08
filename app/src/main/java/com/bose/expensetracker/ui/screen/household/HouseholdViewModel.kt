@@ -8,6 +8,8 @@ import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
+import com.bose.expensetracker.domain.usecase.access.HouseholdRole
+import com.bose.expensetracker.domain.usecase.access.Permissions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,13 @@ data class HouseholdUiState(
     val household: Household? = null,
     val households: List<Household> = emptyList(),
     val members: List<User> = emptyList(),
+    val currentUid: String = "",
+    /**
+     * The caller's role in [household]. Drives which controls the screen offers — the actual
+     * enforcement is in firestore.rules, so this only keeps the UI from presenting a button
+     * that would fail.
+     */
+    val role: HouseholdRole = HouseholdRole.NONE,
     val isLoading: Boolean = true,
     val isDeleting: Boolean = false,
     val errorMessage: String? = null
@@ -66,8 +75,15 @@ class HouseholdViewModel @Inject constructor(
                 _uiState.update { it.copy(households = allHouseholds) }
             }
 
+            _uiState.update { it.copy(currentUid = uid) }
+
             householdRepository.getHousehold(hId).onSuccess { household ->
-                _uiState.update { it.copy(household = household) }
+                _uiState.update {
+                    it.copy(
+                        household = household,
+                        role = Permissions.roleOf(household, uid, isAdmin = authRepository.isAdmin())
+                    )
+                }
                 // Households created before invite codes moved to their own lookup
                 // collection have no entry yet; publish it so the code can be used.
                 firestoreDataSource.ensureInviteCodePublished(household)

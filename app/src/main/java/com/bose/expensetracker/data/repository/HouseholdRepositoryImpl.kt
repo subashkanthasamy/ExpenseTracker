@@ -28,6 +28,7 @@ class HouseholdRepositoryImpl @Inject constructor(
                 id = UUID.randomUUID().toString(),
                 name = name,
                 memberUids = listOf(userId),
+                ownerUid = userId,
                 inviteCode = generateInviteCode(),
                 createdAt = System.currentTimeMillis()
             )

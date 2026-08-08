@@ -36,7 +36,10 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
     func createHousehold(_ household: Household) async throws {
         try await db.collection("households").document(household.id).setData([
             "name": household.name,
+            "ownerUid": household.ownerUid,
             "memberUids": household.memberUids,
+            // Empty at creation: the rules require the creator to grant nobody else a role.
+            "roles": household.roles,
             "inviteCode": household.inviteCode,
             "createdAt": household.createdAt
         ])
@@ -104,9 +107,16 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
 
     /// Adds the current user with arrayUnion, so joining needs no read access to the
     /// household — which the rules no longer grant to non-members.
+    ///
+    /// `memberUids` and `roles` move together: the first is what the "my households" query
+    /// reads, the second is what the rules trust. The join branch rejects an update that
+    /// touches only one of them.
     func addSelfToHousehold(_ householdId: String, uid: String) async throws {
         try await db.collection("households").document(householdId)
-            .updateData(["memberUids": FieldValue.arrayUnion([uid])])
+            .updateData([
+                "memberUids": FieldValue.arrayUnion([uid]),
+                "roles.\(uid)": "member"
+            ])
     }
 
     func getHousehold(_ id: String) async throws -> Household? {
@@ -351,6 +361,8 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
             id: doc.documentID,
             name: d["name"] as? String ?? "",
             memberUids: d["memberUids"] as? [String] ?? [],
+            ownerUid: d["ownerUid"] as? String ?? "",
+            roles: d["roles"] as? [String: String] ?? [:],
             inviteCode: d["inviteCode"] as? String ?? "",
             createdAt: Self.decodeMillis(d["createdAt"]) ?? Date()
         )

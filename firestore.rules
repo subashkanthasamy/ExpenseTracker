@@ -4,17 +4,25 @@ rules_version = '2';
 //
 // Data model:
 //   users/{uid}                                  — profile + household membership
-//   households/{hid}                             — name, memberUids[], inviteCode
+//   households/{hid}                             — name, ownerUid, memberUids[], roles{}, inviteCode
 //   households/{hid}/expenses|categories|assets|liabilities|budgets|savingsGoals|recurring
 //
-// The subcollection rule is what unblocks budgets, savingsGoals and recurring: those were
-// previously Room-only on Android and, on iOS, every write was wrapped in `try?` so
-// permission failures were silent.
+// These rules are the ONLY enforcement of the permission model. Both apps talk to Firestore
+// directly with the end user's credentials — there is no server tier — so the role checks in
+// `shared/domain/usecase/access/Permissions.kt` are for greying out buttons, nothing more.
+// Change the two together.
 //
-// The invite-code client change these rules require is implemented on both platforms
-// (FirestoreDataSource.resolveInviteCode / FirestoreService.resolveInviteCode), so this
-// file is deployable. Read the "Deployment notes" at the bottom for what is intentionally
-// left closed and the residual risks.
+// Roles
+//   admin   — global, every household. Granted by the `admin` custom claim on the ID token.
+//   owner   — the creator of one household (households/{hid}.ownerUid).
+//   member  — may add and edit their OWN expenses. Nothing else that writes.
+//   guest   — read-only.
+//
+// Why admin is a custom claim and not a field: `users/{uid}` is self-writable (see below), so
+// a role field there would be self-grantable. Set it with the Admin SDK:
+//   admin.auth().setCustomUserClaims(uid, { admin: true })
+//
+// Read the "Deployment notes" at the bottom before deploying — the backfill must run first.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -27,26 +35,53 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
-    function householdMembers(hid) {
-      return get(/databases/$(database)/documents/households/$(hid)).data.memberUids;
+    // Global superuser. `.get` so a token minted before the claim existed is false, not an error.
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.get('admin', false) == true;
     }
 
-    function isMember(hid) {
-      return isSignedIn() && uid() in householdMembers(hid);
+    function householdData(hid) {
+      return get(/databases/$(database)/documents/households/$(hid)).data;
     }
+
+    // Owner of a household document.
+    //
+    // Falls back to memberUids[0] for households written before this model: the create rule
+    // admits exactly one initial member and joins append, so index 0 is the creator.
+    // tools/backfill-household-roles.js makes that permanent. The size guard matters because
+    // a default argument is evaluated eagerly — indexing an empty list would error the whole
+    // rule rather than deny it.
+    function ownerOf(h) {
+      return h.get('ownerUid', '') != ''
+        ? h.get('ownerUid', '')
+        : (h.memberUids.size() > 0 ? h.memberUids[0] : '');
+    }
+
+    // Role of the caller within a household document's data.
+    function roleIn(h) {
+      return isAdmin()
+        ? 'admin'
+        : (uid() == ownerOf(h)
+            ? 'owner'
+            : (uid() in h.memberUids
+                // Absent from `roles` means a pre-roles member — treat as member so nobody
+                // loses access in the window between deploying rules and running the backfill.
+                ? h.get('roles', {}).get(uid(), 'member')
+                : 'none'));
+    }
+
+    function isOwnerOf(h) { return roleIn(h) in ['admin', 'owner']; }
+    function canWriteIn(h) { return roleIn(h) in ['admin', 'owner', 'member']; }
+    function canReadIn(h) { return roleIn(h) != 'none'; }
 
     // ---- Users: strictly own document -------------------------------------
 
     match /users/{userId} {
       // Own document, plus any user who shares a household — the member list reads other
-      // users' documents (HouseholdRepositoryImpl.getHouseholdMembers).
-      //
-      // The previous rules allowed any signed-in user to read *every* user document, which
-      // exposed all email addresses. This narrows that to household co-members while
-      // keeping the feature working. `.get(key, default)` guards legacy documents that
-      // only had the old singular `householdId` field.
+      // users' documents (HouseholdRepositoryImpl.getHouseholdMembers). Admins read any.
       allow get: if isSignedIn() && (
         uid() == userId
+        || isAdmin()
         || resource.data.get('householdIds', []).hasAny(
              get(/databases/$(database)/documents/users/$(uid())).data.get('householdIds', [])
            )
@@ -54,6 +89,9 @@ service cloud.firestore {
       // No enumerating the user collection.
       allow list: if false;
 
+      // Note the absence of any role/permission field in the allowlist below. Roles live on
+      // the household document, which the holder cannot write. If a role field is ever added
+      // here it is self-grantable and the whole model collapses.
       allow create: if isSignedIn() && uid() == userId
         && request.resource.data.keys().hasOnly(
              ['email', 'displayName', 'householdIds', 'activeHouseholdId', 'createdAt', 'householdId'])
@@ -64,7 +102,8 @@ service cloud.firestore {
         && request.resource.data.householdIds is list
         && request.resource.data.householdIds.size() <= 50;
 
-      allow update: if isSignedIn() && uid() == userId
+      // Members manage their own profile; nobody else's. Admin may correct any.
+      allow update: if isSignedIn() && (uid() == userId || isAdmin())
         && request.resource.data.keys().hasOnly(
              ['email', 'displayName', 'householdIds', 'activeHouseholdId', 'createdAt', 'householdId'])
         && (!('displayName' in request.resource.data)
@@ -78,20 +117,20 @@ service cloud.firestore {
             || (request.resource.data.activeHouseholdId is string
                 && request.resource.data.activeHouseholdId.size() <= 128));
 
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
-
-    // ---- Households -------------------------------------------------------
 
     // ---- Invite code lookup ----------------------------------------------
     //
-    // Joining needs to resolve a code to a household *before* membership exists. Doing
-    // that by querying `households` would require making every household readable to
-    // every signed-in user — which leaks all household names and invite codes, and lets
-    // anyone add themselves to any household. So the lookup lives in its own tiny
-    // collection instead, and only leaks to someone who already knows the code.
+    // Joining needs to resolve a code to a household *before* membership exists. Doing that by
+    // querying `households` would require making every household readable to every signed-in
+    // user — which leaks all household names and invite codes. So the lookup lives in its own
+    // tiny collection, and only leaks to someone who already knows the code.
     //
-    // REQUIRES the client change described in the note at the bottom of this file.
+    // Owner-only lifecycle: because only the owner can bring a code into existence, rotate it
+    // or revoke it, possessing a valid code IS the owner's authorisation to join. That is how
+    // "only the creator can add members" is expressed without a server. See the deployment
+    // notes for the residual risk and the Cloud Function that removes it.
     match /inviteCodes/{code} {
       allow get: if isSignedIn();
       allow list: if false;  // no enumerating codes
@@ -102,25 +141,24 @@ service cloud.firestore {
         && request.resource.data.householdId.size() <= 128
         && request.resource.data.householdName is string
         && request.resource.data.householdName.size() <= 100
-        && isMember(request.resource.data.householdId);
+        && isOwnerOf(householdData(request.resource.data.householdId));
 
       allow update, delete: if isSignedIn()
-        && isMember(resource.data.householdId);
+        && isOwnerOf(householdData(resource.data.householdId));
     }
 
+    // ---- Households -------------------------------------------------------
+
     match /households/{hid} {
-      // Members only. Non-members resolve a code via /inviteCodes and then add themselves
-      // with the join branch of `update` below, which does not require read access.
-      //
-      // Using resource.data rather than the isMember() helper avoids an extra document
-      // read, and crucially it also permits the "my households" query
-      // (whereField memberUids arrayContains uid): for list operations Firestore evaluates
-      // this per candidate document and accepts the query because it is provably
-      // constrained to documents that satisfy the rule.
-      allow read: if isSignedIn() && uid() in resource.data.memberUids;
+      // Any role including guest may read. Using resource.data rather than a get() both saves
+      // a read and permits the "my households" query (memberUids arrayContains uid): for list
+      // operations Firestore evaluates this per candidate document and accepts the query
+      // because it is provably constrained to documents satisfying the rule.
+      allow read: if isSignedIn() && (uid() in resource.data.memberUids || isAdmin());
 
       allow create: if isSignedIn()
-        && request.resource.data.keys().hasOnly(['name', 'memberUids', 'inviteCode', 'createdAt'])
+        && request.resource.data.keys().hasOnly(
+             ['name', 'ownerUid', 'memberUids', 'roles', 'inviteCode', 'createdAt'])
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 100
@@ -128,64 +166,114 @@ service cloud.firestore {
         && request.resource.data.inviteCode.size() >= 4
         && request.resource.data.inviteCode.size() <= 16
         && request.resource.data.createdAt is int
+        // The creator owns it, is the only initial member, and grants nobody else a role.
+        && request.resource.data.ownerUid == uid()
         && request.resource.data.memberUids is list
-        // The creator must be the only initial member — no pre-loading other people.
         && request.resource.data.memberUids.size() == 1
-        && request.resource.data.memberUids[0] == uid();
+        && request.resource.data.memberUids[0] == uid()
+        && request.resource.data.roles is map
+        && request.resource.data.roles.keys().size() == 0;
 
       allow update: if isSignedIn() && (
-        // A member may edit the household, but never rewrite its identity fields.
+        // --- Owner / admin: rename, admit, eject, change roles ---------------
         (
-          uid() in resource.data.memberUids
-          && request.resource.data.inviteCode == resource.data.inviteCode
+          isOwnerOf(resource.data)
+          // Identity is immutable. Ownership transfer is deliberately not expressible here:
+          // it would let a compromised session hand the household to an attacker permanently.
+          && request.resource.data.ownerUid == ownerOf(resource.data)
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
           && request.resource.data.name.size() <= 100
           && request.resource.data.memberUids is list
           && request.resource.data.memberUids.size() <= 20
-          // A member may leave, or rename the household — but not eject others and not
-          // add strangers. Without this, any one member could rewrite the whole member
-          // list, which is privilege escalation inside the household.
-          && request.resource.data.memberUids.toSet().difference(resource.data.memberUids.toSet()).size() == 0
+          && request.resource.data.roles is map
+          // The owner always remains a member, and memberUids must stay in step with roles —
+          // otherwise the index and the authority disagree and the query lies.
+          && request.resource.data.ownerUid in request.resource.data.memberUids
+          && request.resource.data.memberUids.toSet() ==
+             request.resource.data.roles.keys().toSet().union([request.resource.data.ownerUid].toSet())
         )
         ||
-        // Joining: a non-member may add only themselves and change nothing else.
+        // --- Member / guest: may only remove themselves ----------------------
+        (
+          roleIn(resource.data) in ['member', 'guest']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'roles'])
+          && !(uid() in request.resource.data.memberUids)
+          && !(uid() in request.resource.data.roles.keys())
+          // Exactly themselves and nobody else.
+          && resource.data.memberUids.toSet().difference(request.resource.data.memberUids.toSet())
+             == [uid()].toSet()
+        )
+        ||
+        // --- Join: a non-member adds only themselves, as a member ------------
+        //
+        // Reachable only by someone holding a code the owner issued (see /inviteCodes).
         (
           !(uid() in resource.data.memberUids)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids'])
+          && !isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'roles'])
           && request.resource.data.memberUids is list
           && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
           && request.resource.data.memberUids.size() <= 20
           && uid() in request.resource.data.memberUids
+          // Self-promotion guard: a joiner takes the 'member' role, never 'owner', and cannot
+          // rewrite anyone else's.
+          && request.resource.data.roles.get(uid(), '') == 'member'
+          && request.resource.data.roles.diff(resource.data.get('roles', {})).affectedKeys()
+             == [uid()].toSet()
           // No existing member may be dropped in the process.
           && resource.data.memberUids.toSet().difference(request.resource.data.memberUids.toSet()).size() == 0
         )
       );
 
-      // Members may delete, matching the previous rules and the in-app "Delete household"
-      // action. Worth knowing: Firestore does not cascade, so the subcollections are
-      // orphaned rather than removed — a Cloud Function that deletes children first would
-      // be the correct implementation, and would also be the place to require more than one
-      // member to confirm.
-      allow delete: if isSignedIn() && uid() in resource.data.memberUids;
+      // Only the creator (or an admin) may delete. Firestore does not cascade, so the
+      // subcollections are orphaned rather than removed — see the deployment notes.
+      allow delete: if isSignedIn() && isOwnerOf(resource.data);
 
-      // ---- Household data: members only ----------------------------------
-      //
-      // Covers expenses, categories, assets, liabilities, budgets, savingsGoals and
-      // recurring with one rule, since they share the same access requirement.
+      // ---- Expenses: members own their own rows ---------------------------
 
-      match /{collection}/{docId} {
-        allow read: if isMember(hid);
+      match /expenses/{docId} {
+        allow read: if canReadIn(householdData(hid));
 
-        allow create, update: if isMember(hid)
-          // Keep documents attributable to their household.
+        // Guests cannot add. `addedBy` must be the caller — without this a member could file
+        // an expense against someone else, which also poisons the per-member spending split.
+        allow create: if canWriteIn(householdData(hid))
+          && request.resource.data.addedBy == uid()
           && (!('householdId' in request.resource.data)
               || request.resource.data.householdId == hid)
-          // Coarse anti-abuse bound; the largest legitimate document here is small.
           && request.resource.data.keys().size() <= 40;
 
-        allow delete: if isMember(hid);
+        // Your own rows, or anyone's if you own the household. Reassignment is blocked so a
+        // row cannot be edited out of your ownership and then edited freely.
+        allow update: if (
+            isOwnerOf(householdData(hid))
+            || (canWriteIn(householdData(hid)) && resource.data.addedBy == uid())
+          )
+          && request.resource.data.addedBy == resource.data.addedBy
+          && (!('householdId' in request.resource.data)
+              || request.resource.data.householdId == hid)
+          && request.resource.data.keys().size() <= 40;
+
+        allow delete: if isOwnerOf(householdData(hid))
+          || (canWriteIn(householdData(hid)) && resource.data.addedBy == uid());
+      }
+
+      // ---- Shared configuration: owner only -------------------------------
+      //
+      // Categories, budgets, savingsGoals, recurring, assets, liabilities. Members contribute
+      // expenses; they do not reshape the household. Everyone including guests may read, or
+      // the expense list could not render a category name.
+
+      match /{collection}/{docId} {
+        allow read: if canReadIn(householdData(hid));
+
+        allow create, update: if isOwnerOf(householdData(hid))
+          && (!('householdId' in request.resource.data)
+              || request.resource.data.householdId == hid)
+          && request.resource.data.keys().size() <= 40;
+
+        allow delete: if isOwnerOf(householdData(hid));
       }
     }
   }
@@ -193,23 +281,32 @@ service cloud.firestore {
 
 // ---- Deployment notes -------------------------------------------------------
 //
-// Client support (already implemented on both platforms):
-//   1. On create: the household is written first, then `inviteCodes/{code}` =
-//      { householdId, householdName } — that order matters, because the rules require the
-//      author of the lookup document to already be a member.
-//   2. On join: resolve `inviteCodes/{code}`, then add yourself to
-//      `households/{id}.memberUids` with arrayUnion. No household read is involved, so
-//      the join works without read access.
-//   3. Rotating a code means writing a new lookup document and deleting the old one.
+// ORDER MATTERS. Run tools/backfill-household-roles.js BEFORE deploying these rules on a
+// database that already has households. The rules tolerate a missing `ownerUid` by falling
+// back to memberUids[0], so a skipped backfill is not fatal — but a household whose creator
+// has since left would be owned by whoever now sits at index 0, which is not what you want.
+//
+// Granting admin (server-side only, never from a client):
+//   admin.auth().setCustomUserClaims(uid, { admin: true })
+// The claim reaches the rules on the client's NEXT ID token refresh — up to an hour, or
+// immediately after getIdToken(true).
+//
+// Client support required by these rules:
+//   1. Create writes ownerUid = the creator and roles = {}.
+//   2. Join writes memberUids arrayUnion(uid) AND roles.<uid> = 'member' in one update.
+//      Writing only memberUids now fails the join branch.
+//   3. Only the owner's client should attempt category seeding — a member calling
+//      seedPresetCategories will be denied. iOS wraps those writes in `try?`, so it fails
+//      silently and the member sees an empty category list rather than an error.
 //
 // Deploy with:  firebase deploy --only firestore:rules
 //
-// Remaining accepted risk: anyone who learns an invite code can join that household.
-// That is what an invite code is for. If you need stronger control, move the join into
-// a Cloud Function that verifies the code and is the only writer of `memberUids`, then
-// tighten the join branch of `households/{hid}` update to `if false`.
-//
-// Not validated by these rules: field types inside household subcollections (amount,
-// date, and so on). A member can still write a wrongly-typed field, which is the exact
-// shape of the crash fixed earlier (`Field 'date' is not a java.lang.Number`). Adding
-// per-collection type checks would harden this further.
+// Accepted residual risks:
+//   - Anyone holding a current invite code can join. Only the owner can mint or rotate a code,
+//     so this is the owner's authorisation — but a code shared onward by a member works until
+//     rotated. Closing it fully means moving the join into a Cloud Function that is the sole
+//     writer of memberUids/roles, then setting the join branch to `if false`.
+//   - Deleting a household orphans its subcollections. The same Function should cascade.
+//   - Field types inside subcollections are still unvalidated beyond addedBy and householdId,
+//     so a member can write a wrongly-typed field — the shape of the earlier
+//     "Field 'date' is not a java.lang.Number" crash.
