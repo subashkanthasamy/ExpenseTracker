@@ -116,6 +116,19 @@ class HouseholdRepositoryImpl @Inject constructor(
             firestoreDataSource.setActiveHouseholdId(userId, householdId)
         }
 
+    override suspend fun updateMemberRole(
+        householdId: String,
+        userId: String,
+        role: String
+    ): Result<Unit> = runCatching {
+        firestoreDataSource.updateMemberRole(householdId, userId, role)
+    }
+
+    override suspend fun removeMember(householdId: String, userId: String): Result<Unit> =
+        runCatching {
+            firestoreDataSource.removeMemberFromHousehold(householdId, userId)
+        }
+
     override suspend fun deleteHousehold(householdId: String, userId: String): Result<Unit> =
         runCatching {
             android.util.Log.d("HouseholdRepo", "deleteHousehold: id=$householdId, userId=$userId")

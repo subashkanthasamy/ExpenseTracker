@@ -285,6 +285,26 @@ class FirestoreDataSource @Inject constructor(
             .await()
     }
 
+    /** Owner-only. Only `roles.<uid>` changes; `memberUids` already contains them. */
+    suspend fun updateMemberRole(householdId: String, userId: String, role: String) {
+        firestore.collection("households").document(householdId)
+            .update("roles.$userId", role)
+            .await()
+    }
+
+    /**
+     * Owner-only. Both fields move together — the rules reject an update that leaves
+     * `memberUids` and `roles` disagreeing.
+     */
+    suspend fun removeMemberFromHousehold(householdId: String, userId: String) {
+        firestore.collection("households").document(householdId)
+            .update(
+                "memberUids", com.google.firebase.firestore.FieldValue.arrayRemove(userId),
+                "roles.$userId", com.google.firebase.firestore.FieldValue.delete()
+            )
+            .await()
+    }
+
     suspend fun deleteHousehold(householdId: String) {
         firestore.collection("households").document(householdId).delete().await()
     }

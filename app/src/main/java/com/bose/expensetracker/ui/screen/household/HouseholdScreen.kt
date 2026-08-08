@@ -30,6 +30,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import com.bose.expensetracker.ui.theme.AccentPurple
+import com.bose.expensetracker.ui.theme.ExpenseRed
 import androidx.compose.ui.unit.dp
 import com.bose.expensetracker.domain.usecase.access.HouseholdRole
 import com.bose.expensetracker.domain.usecase.access.Permissions
@@ -189,31 +193,28 @@ fun HouseholdScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             uiState.members.forEach { member ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.Person,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column {
-                                        Text(
-                                            member.displayName,
-                                            style = MaterialTheme.typography.bodyMedium
+                                val isOwner = member.uid == household.ownerUid
+                                MemberRow(
+                                    name = member.displayName,
+                                    email = member.email,
+                                    // The owner has no `roles` entry — they are identified by
+                                    // ownerUid — so their label comes from that, not the map.
+                                    roleLabel = if (isOwner) {
+                                        Permissions.label(HouseholdRole.OWNER)
+                                    } else {
+                                        Permissions.label(
+                                            if (household.roles[member.uid] == Permissions.ROLE_GUEST) {
+                                                HouseholdRole.GUEST
+                                            } else HouseholdRole.MEMBER
                                         )
-                                        Text(
-                                            member.email,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
+                                    },
+                                    isGuest = household.roles[member.uid] == Permissions.ROLE_GUEST,
+                                    // Nobody may change the owner's role, including the owner:
+                                    // the rules pin ownerUid, so the control would only fail.
+                                    canManage = Permissions.canManageMembers(uiState.role) && !isOwner,
+                                    onSetRole = { role -> viewModel.setMemberRole(member.uid, role) },
+                                    onRemove = { viewModel.removeMember(member.uid) }
+                                )
                             }
                         }
                     }
@@ -426,6 +427,106 @@ fun HouseholdScreen(
                 TextButton(onClick = { viewModel.clearErrorMessage() }) {
                     Text("OK")
                 }
+            }
+        )
+    }
+}
+
+/**
+ * One household member, with the owner's controls when the caller has them.
+ *
+ * Role and removal sit behind an overflow menu rather than inline buttons: ejecting someone is
+ * destructive and shouldn't be one stray tap away in a list.
+ */
+@Composable
+private fun MemberRow(
+    name: String,
+    email: String,
+    roleLabel: String,
+    isGuest: Boolean,
+    canManage: Boolean,
+    onSetRole: (String) -> Unit,
+    onRemove: () -> Unit
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    var confirmRemove by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.Person,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(name, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                email,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            roleLabel,
+            style = MaterialTheme.typography.labelSmall,
+            color = AccentPurple,
+            fontWeight = FontWeight.SemiBold
+        )
+        if (canManage) {
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "Manage $name",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(if (isGuest) "Make member" else "Make guest") },
+                        onClick = {
+                            menuOpen = false
+                            onSetRole(
+                                if (isGuest) Permissions.ROLE_MEMBER else Permissions.ROLE_GUEST
+                            )
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Remove from household", color = ExpenseRed) },
+                        onClick = {
+                            menuOpen = false
+                            confirmRemove = true
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    if (confirmRemove) {
+        AlertDialog(
+            onDismissRequest = { confirmRemove = false },
+            title = { Text("Remove $name?") },
+            text = {
+                Text(
+                    "They lose access to this household immediately. Expenses they already " +
+                        "added stay, and they can rejoin with the invite code."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRemove()
+                    confirmRemove = false
+                }) { Text("Remove", color = ExpenseRed) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRemove = false }) { Text("Cancel") }
             }
         )
     }

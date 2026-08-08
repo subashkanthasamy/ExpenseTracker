@@ -125,6 +125,40 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
     }
 
 
+    /// Profiles for a household's members.
+    ///
+    /// The rules allow reading a user document only if you share a household with them, which
+    /// is exactly this case. Missing documents are skipped rather than failing the whole list.
+    func getHouseholdMembers(uids: [String]) async throws -> [AppUser] {
+        var users: [AppUser] = []
+        for uid in uids {
+            let doc = try? await db.collection("users").document(uid).getDocument()
+            guard let d = doc?.data() else { continue }
+            users.append(AppUser(
+                uid: uid,
+                email: d["email"] as? String ?? "",
+                displayName: d["displayName"] as? String ?? "(no name)"
+            ))
+        }
+        return users
+    }
+
+    /// Owner-only. Only `roles.<uid>` changes; `memberUids` already contains them.
+    func updateMemberRole(householdId: String, uid: String, role: String) async throws {
+        try await db.collection("households").document(householdId)
+            .updateData(["roles.\(uid)": role])
+    }
+
+    /// Owner-only. Both fields move together — the rules reject an update that leaves
+    /// `memberUids` and `roles` disagreeing.
+    func removeMember(householdId: String, uid: String) async throws {
+        try await db.collection("households").document(householdId)
+            .updateData([
+                "memberUids": FieldValue.arrayRemove([uid]),
+                "roles.\(uid)": FieldValue.delete()
+            ])
+    }
+
     func updateHouseholdMembers(_ id: String, members: [String]) async throws {
         try await db.collection("households").document(id).updateData(["memberUids": members])
     }

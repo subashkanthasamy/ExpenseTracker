@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.User
+import com.bose.expensetracker.data.access.SessionRoleProvider
 import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
@@ -42,7 +43,8 @@ class HouseholdViewModel @Inject constructor(
     private val firestoreDataSource: FirestoreDataSource,
     private val authRepository: AuthRepository,
     private val householdRepository: HouseholdRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val sessionRoleProvider: SessionRoleProvider
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HouseholdUiState())
@@ -58,7 +60,7 @@ class HouseholdViewModel @Inject constructor(
         loadHouseholdData()
     }
 
-    private fun loadHouseholdData() {
+    fun loadHouseholdData() {
         viewModelScope.launch {
             val uid = authRepository.getCurrentUserId() ?: run {
                 _uiState.update { it.copy(isLoading = false) }
@@ -95,6 +97,44 @@ class HouseholdViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
+    }
+
+    /**
+     * Promote or demote a member.
+     *
+     * Reloads afterwards rather than patching state locally: the write can be rejected by the
+     * rules, and showing the new role before the server accepted it would be a lie.
+     */
+    fun setMemberRole(userId: String, role: String) {
+        val householdId = _uiState.value.household?.id ?: return
+        viewModelScope.launch {
+            householdRepository.updateMemberRole(householdId, userId, role)
+                .onSuccess {
+                    sessionRoleProvider.invalidate()
+                    loadHouseholdData()
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(errorMessage = "Could not change role: ${error.message}") }
+                }
+        }
+    }
+
+    fun removeMember(userId: String) {
+        val householdId = _uiState.value.household?.id ?: return
+        viewModelScope.launch {
+            householdRepository.removeMember(householdId, userId)
+                .onSuccess {
+                    sessionRoleProvider.invalidate()
+                    loadHouseholdData()
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(errorMessage = "Could not remove member: ${error.message}") }
+                }
+        }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 
     fun switchHousehold(householdId: String) {

@@ -346,6 +346,9 @@ class HouseholdViewModel {
                 household = first
             }
             currentUid = uid
+            if let household {
+                members = (try? await firestoreService.getHouseholdMembers(uids: household.memberUids)) ?? []
+            }
             let admin = await authService.isAdmin()
             role = household.map { Permissions.shared.roleOf(household: $0, uid: uid, isAdmin: admin) }
                 ?? HouseholdRole.none
@@ -359,6 +362,30 @@ class HouseholdViewModel {
         } catch {
             print("HouseholdVM load error: \(error)")
             isLoading = false
+        }
+    }
+
+    /// Promote or demote a member.
+    ///
+    /// Reloads afterwards rather than patching state locally: the write can be rejected by the
+    /// rules, and showing the new role before the server accepted it would be a lie.
+    func setMemberRole(uid: String, role: String) async {
+        guard let hid = household?.id else { return }
+        do {
+            try await firestoreService.updateMemberRole(householdId: hid, uid: uid, role: role)
+            await load()
+        } catch {
+            self.error = "Could not change role: \(error.localizedDescription)"
+        }
+    }
+
+    func removeMember(uid: String) async {
+        guard let hid = household?.id else { return }
+        do {
+            try await firestoreService.removeMember(householdId: hid, uid: uid)
+            await load()
+        } catch {
+            self.error = "Could not remove member: \(error.localizedDescription)"
         }
     }
 
