@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bose.expensetracker.ui.components.QuickSuggestionChip
 import com.bose.expensetracker.ui.theme.AccentPurple
-import com.bose.expensetracker.ui.theme.ChatBotBubble
 import com.bose.expensetracker.ui.theme.ChatUserBubble
 import com.bose.expensetracker.ui.theme.IncomeGreen
 import com.bose.expensetracker.ui.theme.ScoreBadgeGreen
@@ -173,7 +172,7 @@ fun FinancialCoachScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(ChatBotBubble)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                 .padding(16.dp)
                         ) {
                             Text(
@@ -307,7 +306,10 @@ private fun ChatBubble(message: ChatMessage) {
                             bottomEnd = if (isUser) 4.dp else 16.dp
                         )
                     )
-                    .background(if (isUser) ChatUserBubble else ChatBotBubble)
+                    .background(
+                        if (isUser) ChatUserBubble
+                        else MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
                     .padding(14.dp)
             ) {
                 Text(

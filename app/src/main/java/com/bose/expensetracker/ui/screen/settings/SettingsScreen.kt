@@ -69,6 +69,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bose.expensetracker.data.preferences.ThemePreferences
+import com.bose.expensetracker.ui.theme.ExpenseRed
 import com.bose.expensetracker.ui.theme.AccentPurple
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -539,7 +540,7 @@ fun SettingsScreen(
                         .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFF44336)
+                        containerColor = ExpenseRed
                     )
                 ) {
                     Icon(
@@ -565,7 +566,7 @@ fun SettingsScreen(
                         .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFF44336)
+                        containerColor = ExpenseRed
                     )
                 ) {
                     Icon(
@@ -765,7 +766,7 @@ private fun SettingsActionCard(
             Icon(
                 icon,
                 contentDescription = null,
-                tint = if (isDestructive) Color(0xFFF44336) else AccentPurple,
+                tint = if (isDestructive) ExpenseRed else AccentPurple,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -785,7 +786,7 @@ private fun SettingsActionCard(
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
-                    color = if (isDestructive) Color(0xFFF44336) else AccentPurple,
+                    color = if (isDestructive) ExpenseRed else AccentPurple,
                     strokeWidth = 2.dp
                 )
             } else {
@@ -793,7 +794,7 @@ private fun SettingsActionCard(
                     onClick = onClick,
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isDestructive) Color(0xFFF44336) else AccentPurple
+                        containerColor = if (isDestructive) ExpenseRed else AccentPurple
                     ),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {

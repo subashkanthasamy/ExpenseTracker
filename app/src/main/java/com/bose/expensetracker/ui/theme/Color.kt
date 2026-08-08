@@ -19,10 +19,10 @@ val GradientOrange = Color(0xFFFF8A65)
 val BackgroundLight = Color(0xFFF5F5FA)
 val SurfaceWhite = Color(0xFFFFFFFF)
 
-// Dark theme colors
+// Dark theme colors. These belong to Theme.kt's DarkColorScheme and nowhere else — a screen
+// referencing them directly renders dark in light mode, which is how the bugs above happened.
 val BackgroundDark = Color(0xFF121218)
 val SurfaceDark = Color(0xFF1E1E2A)
-val SurfaceDarkElevated = Color(0xFF252532)
 
 // Semantic colors (work on both light and dark)
 val IncomeGreen = Color(0xFF4CAF50)
@@ -42,8 +42,9 @@ val NavInactive = Color(0xFFBDBDBD)
 val CardBorder = Color(0xFFE8E8EE)
 val CardBorderDark = Color(0xFF2E2E3A)
 
-// Chat colors (Financial Coach)
-val ChatBotBubble = Color(0xFF1E1E2A)
+// Chat colors (Financial Coach). Only the user bubble is a fixed colour — it is the brand
+// purple with white text, which reads the same in both themes. The bot bubble must come from
+// the scheme: as a fixed dark it left themed text unreadable on it in light mode.
 val ChatUserBubble = Color(0xFF7B61FF)
 
 // Insight badge colors

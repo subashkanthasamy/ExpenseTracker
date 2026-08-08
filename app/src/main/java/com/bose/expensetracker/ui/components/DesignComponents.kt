@@ -74,7 +74,6 @@ import com.bose.expensetracker.util.CategoryIcons
 import com.bose.expensetracker.ui.theme.AccentPurple
 import com.bose.expensetracker.ui.theme.ExpenseRed
 import com.bose.expensetracker.ui.theme.IncomeGreen
-import com.bose.expensetracker.ui.theme.SurfaceDarkElevated
 
 @Composable
 fun CircularProgressRing(
@@ -430,7 +429,7 @@ fun TimelineItem(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceDarkElevated),
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

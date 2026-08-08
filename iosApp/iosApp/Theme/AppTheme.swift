@@ -2,16 +2,19 @@ import SwiftUI
 import UIKit
 import Shared
 
+/// Accents and semantic colours only — everything here is deliberately the same in both
+/// appearances.
+///
+/// Surface and text colours live in `DS` (DesignSystem.swift) and are adaptive. The fixed
+/// `backgroundLight` / `surfaceWhite` / `backgroundDark` / `surfaceDark` / `surfaceDarkElevated`
+/// constants that used to sit here were unused by any view but were a standing trap: reaching
+/// for one would pin a screen to a single appearance. Android had exactly that bug — a fixed
+/// dark chat bubble and icon tile that stayed dark in light mode. Use `DS.card`,
+/// `DS.elevated`, `DS.canvas` instead.
 struct AppColors {
     static let gradientPurple = Color(hex: 0xFF7B61FF)
     static let gradientPink = Color(hex: 0xFFE040FB)
     static let gradientOrange = Color(hex: 0xFFFF8A65)
-
-    static let backgroundLight = Color(hex: 0xFFF5F5FA)
-    static let surfaceWhite = Color.white
-    static let backgroundDark = Color(hex: 0xFF121218)
-    static let surfaceDark = Color(hex: 0xFF1E1E2A)
-    static let surfaceDarkElevated = Color(hex: 0xFF252532)
 
     static let incomeGreen = Color(hex: 0xFF4CAF50)
     static let expenseRed = Color(hex: 0xFFF44336)
