@@ -137,6 +137,30 @@ const db = getFirestore();
   console.log(`written: ${written}`);
   console.log('Now deploy the rules:  firebase deploy --only firestore:rules');
 })().catch((err) => {
+  // The default credential failure arrives as a bare stack trace from deep inside
+  // google-auth-library, which says nothing about what to actually do about it.
+  const message = String(err && err.message);
+  if (
+    message.includes('Could not load the default credentials') ||
+    message.includes('NO_ADC_FOUND')
+  ) {
+    console.error('');
+    console.error('No credentials. This script talks to Firestore as an administrator, so it');
+    console.error('needs a service account — being signed in to the app is not enough.');
+    console.error('');
+    console.error('  1. Firebase Console -> Project Settings -> Service accounts');
+    console.error('  2. "Generate new private key", save the JSON OUTSIDE this repo');
+    console.error('  3. Re-run:');
+    console.error('');
+    console.error('     GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json \\');
+    console.error('       node tools/backfill-household-roles.js');
+    console.error('');
+    console.error('That key is a full-access credential for the project. Do not commit it.');
+    console.error('');
+    console.error('Alternatively, with the gcloud CLI installed:');
+    console.error('     gcloud auth application-default login');
+    process.exit(1);
+  }
   console.error(err);
   process.exit(1);
 });

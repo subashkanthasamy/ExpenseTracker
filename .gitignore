@@ -55,6 +55,12 @@ keystore.properties
 # Firebase config (contains API keys)
 app/google-services.json
 
+# Service account keys — full project access, NEVER commit. The tools/ scripts need one,
+# and the console downloads it as "<project>-firebase-adminsdk-xxxxx-yyyyyyy.json".
+*-firebase-adminsdk-*.json
+serviceAccount*.json
+service-account*.json
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -99,8 +105,10 @@ iosApp/*.xcworkspace
 
 .DS_Store
 
-# Node deps for tools/ scripts
-tools/node_modules/
+# Node deps. Unanchored so it matches at any depth — this was `tools/node_modules/` only,
+# and an npm install at the repo root put 8,900 files one `git add -A` away from being
+# committed.
+node_modules/
 tools/package-lock.json
 tools/package.json
 
