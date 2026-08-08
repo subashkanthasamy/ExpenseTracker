@@ -62,7 +62,6 @@ import androidx.compose.ui.unit.sp
 import com.bose.expensetracker.ui.components.EmojiCategoryIcon
 import com.bose.expensetracker.ui.components.getCategoryEmoji
 import com.bose.expensetracker.ui.theme.AccentPurple
-import com.bose.expensetracker.ui.theme.ExpenseRed
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -98,14 +97,37 @@ fun AddEditExpenseScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
         ) {
-            // Header
+            // Header. Cancel lives here rather than floating over the bottom of the screen:
+            // as a bottom-anchored circle it sat on top of the Add Transaction button
+            // whenever the content ended near the bottom, covering the label. This also
+            // matches iOS, which has always had the quiet X in the header.
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = if (uiState.isEditing) "Edit Transaction" else "New Transaction",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (uiState.isEditing) "Edit Transaction" else "New Transaction",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { onNavigateBack() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Cancel",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -387,26 +409,9 @@ fun AddEditExpenseScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(80.dp))
-        }
-
-        // Red close button (floating at bottom center)
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 24.dp)
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(ExpenseRed)
-                .clickable { onNavigateBack() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "Close",
-                tint = Color.White,
-                modifier = Modifier.size(28.dp)
-            )
+            // Was 80dp to clear the floating close button; now just breathing room so the
+            // primary button isn't flush against the navigation bar.
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 
