@@ -355,6 +355,7 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
             endDate: longOrNil("endDate"),
             lastGeneratedDate: longOrNil("lastGeneratedDate"),
             isActive: d["isActive"] as? Bool ?? true,
+            paymentMethod: PaymentMethod.companion.fromWire(value: d["paymentMethod"] as? String),
             createdAt: (Self.decodeMillis(d["createdAt"]) ?? Date()).epochMillis
         )
     }
@@ -371,6 +372,7 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
             "frequency": Int(r.frequency.ordinal),
             "startDate": r.startDate,
             "isActive": r.isActive,
+            "paymentMethod": r.paymentMethod.wire,
             "createdAt": r.createdAt,
         ]
         if let dow = r.dayOfWeek { data["dayOfWeek"] = dow.intValue }

@@ -60,7 +60,8 @@ class RecurringExpenseWorker @AssistedInject constructor(
                             addedBy = rule.addedBy,
                             addedByName = rule.addedByName,
                             createdAt = now,
-                            updatedAt = now
+                            updatedAt = now,
+                            paymentMethod = rule.paymentMethod
                         )
                     )
                     created++

@@ -45,7 +45,8 @@ struct RecurringExpenseService {
                     date: Date(epochMillis: day.int64Value),
                     notes: rule.notes.isEmpty ? "Recurring" : "Recurring: \(rule.notes)",
                     addedBy: rule.addedBy,
-                    addedByName: rule.addedByName
+                    addedByName: rule.addedByName,
+                    paymentMethod: rule.paymentMethod
                 )
                 try await firestoreService.addExpense(householdId: householdId, expense: expense)
                 created += 1
@@ -92,6 +93,7 @@ extension RecurringExpense {
             endDate: endDate,
             lastGeneratedDate: KotlinLong(longLong: date.epochMillis),
             isActive: isActive,
+            paymentMethod: paymentMethod,
             createdAt: createdAt
         )
     }
@@ -102,7 +104,8 @@ extension RecurringExpense {
             categoryName: categoryName, notes: notes, addedBy: addedBy, addedByName: addedByName,
             frequency: frequency, dayOfWeek: dayOfWeek, dayOfMonth: dayOfMonth,
             monthOfYear: monthOfYear, startDate: startDate, endDate: endDate,
-            lastGeneratedDate: lastGeneratedDate, isActive: active, createdAt: createdAt
+            lastGeneratedDate: lastGeneratedDate, isActive: active,
+            paymentMethod: paymentMethod, createdAt: createdAt
         )
     }
 }

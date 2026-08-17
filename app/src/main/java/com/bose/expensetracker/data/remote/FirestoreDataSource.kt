@@ -544,6 +544,7 @@ class FirestoreDataSource @Inject constructor(
         notes = getString("notes") ?: "",
         addedBy = getString("addedBy") ?: "",
         addedByName = getString("addedByName") ?: "",
+        paymentMethod = PaymentMethod.fromWire(getString("paymentMethod")),
         frequency = frequencyFromOrdinal((getLong("frequency") ?: 2L).toInt()),
         dayOfWeek = getLong("dayOfWeek")?.toInt(),
         dayOfMonth = getLong("dayOfMonth")?.toInt(),
@@ -571,6 +572,7 @@ class FirestoreDataSource @Inject constructor(
             "frequency" to recurring.frequency.ordinal,
             "startDate" to recurring.startDate,
             "isActive" to recurring.isActive,
+            "paymentMethod" to recurring.paymentMethod.wire,
             "createdAt" to recurring.createdAt
         )
         recurring.dayOfWeek?.let { data["dayOfWeek"] = it }

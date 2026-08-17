@@ -32,6 +32,12 @@ struct RecurringView: View {
                                 .padding(.horizontal, 8).padding(.vertical, 2)
                                 .background(AppColors.accentPurple.opacity(0.15))
                                 .clipShape(Capsule())
+                            // Only when set — an "Unspecified" tag on every legacy rule is noise.
+                            if item.paymentMethod != PaymentMethod.unspecified {
+                                Text(item.paymentMethod.label)
+                                    .font(.caption)
+                                    .foregroundStyle(DS.textSecondary)
+                            }
                             if !item.notes.isEmpty {
                                 Text(item.notes).font(.caption).foregroundStyle(DS.textSecondary)
                             }
@@ -90,6 +96,7 @@ private struct AddRecurringSheet: View {
     @State private var dayOfMonth = 1
     @State private var weekday = 2
     @State private var startDate = Date()
+    @State private var paymentMethod: PaymentMethod = PaymentMethod.upi
 
     private let frequencies = ["Daily", "Weekly", "Monthly", "Yearly"]
 
@@ -129,6 +136,17 @@ private struct AddRecurringSheet: View {
                     DatePicker("Starts", selection: $startDate, displayedComponents: .date)
                 }
 
+                // Asked once on the rule: a standing charge leaves by the same instrument
+                // every time, so every expense it generates inherits this.
+                Section("Paid with") {
+                    Picker("Paid with", selection: $paymentMethod) {
+                        ForEach(PaymentMethod.companion.selectable, id: \.self) { method in
+                            Text("\(method.emoji)  \(method.label)").tag(method)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
                 Section("Note") {
                     TextField("Rent, Netflix, EMI…", text: $notes)
                 }
@@ -148,7 +166,8 @@ private struct AddRecurringSheet: View {
                                 frequencyIndex: frequencyIndex,
                                 dayOfMonth: dayOfMonth,
                                 weekday: weekday,
-                                startDate: startDate
+                                startDate: startDate,
+                                paymentMethod: paymentMethod
                             )
                             dismiss()
                         }

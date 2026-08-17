@@ -21,6 +21,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import com.bose.expensetracker.ui.components.categoryIcon
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import com.bose.expensetracker.domain.model.PaymentMethod
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -133,8 +137,8 @@ fun RecurringScreen(
     if (showAddDialog) {
         AddRecurringDialog(
             categories = uiState.categories,
-            onAdd = { cat, amount, notes, freq, dow, dom, moy ->
-                viewModel.addRecurring(cat, amount, notes, freq, dow, dom, moy)
+            onAdd = { cat, amount, notes, freq, dow, dom, moy, method ->
+                viewModel.addRecurring(cat, amount, notes, freq, dow, dom, moy, method)
                 showAddDialog = false
             },
             onDismiss = { showAddDialog = false }
@@ -169,8 +173,11 @@ private fun RecurringCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(item.categoryName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                val methodSuffix = if (item.paymentMethod == PaymentMethod.UNSPECIFIED) {
+                    ""
+                } else " \u2022 ${item.paymentMethod.label}"
                 Text(
-                    "\u20B9${"%.2f".format(item.amount)} \u2022 $freqLabel",
+                    "\u20B9${"%.2f".format(item.amount)} \u2022 $freqLabel$methodSuffix",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -201,7 +208,7 @@ private fun RecurringCard(
 @Composable
 private fun AddRecurringDialog(
     categories: List<Category>,
-    onAdd: (Category, Double, String, RecurringFrequency, Int?, Int?, Int?) -> Unit,
+    onAdd: (Category, Double, String, RecurringFrequency, Int?, Int?, Int?, PaymentMethod) -> Unit,
     onDismiss: () -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf<Category?>(null) }
@@ -211,6 +218,7 @@ private fun AddRecurringDialog(
     var dayOfMonth by remember { mutableStateOf("1") }
     var catExpanded by remember { mutableStateOf(false) }
     var freqExpanded by remember { mutableStateOf(false) }
+    var paymentMethod by remember { mutableStateOf(PaymentMethod.UPI) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -281,6 +289,42 @@ private fun AddRecurringDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+
+                // Asked once here rather than left off every generated expense.
+                Text(
+                    "PAID WITH",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PaymentMethod.selectable.forEach { method ->
+                        val selected = paymentMethod == method
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .then(
+                                    if (selected) Modifier.background(AccentPurple)
+                                    else Modifier.border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outline,
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                )
+                                .clickable { paymentMethod = method }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                method.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (selected) Color.White
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -290,7 +334,7 @@ private fun AddRecurringDialog(
                     val amount = amountText.toDoubleOrNull() ?: return@TextButton
                     if (amount <= 0) return@TextButton
                     val dom = dayOfMonth.toIntOrNull()?.coerceIn(1, 31)
-                    onAdd(cat, amount, notesText, selectedFreq, null, dom, null)
+                    onAdd(cat, amount, notesText, selectedFreq, null, dom, null, paymentMethod)
                 },
                 enabled = selectedCategory != null && (amountText.toDoubleOrNull() ?: 0.0) > 0
             ) { Text("Add") }

@@ -69,3 +69,4 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         db.execSQL("ALTER TABLE pending_sms ADD COLUMN paymentMethod TEXT NOT NULL DEFAULT ''")
     }
 }
+

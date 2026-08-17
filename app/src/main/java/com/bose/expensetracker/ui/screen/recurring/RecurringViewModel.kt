@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.Category
+import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.model.RecurringExpense
 import com.bose.expensetracker.ui.state.RecurringUiState
 import kotlinx.coroutines.CancellationException
@@ -73,7 +74,8 @@ class RecurringViewModel @Inject constructor(
         frequency: RecurringFrequency,
         dayOfWeek: Int?,
         dayOfMonth: Int?,
-        monthOfYear: Int?
+        monthOfYear: Int?,
+        paymentMethod: PaymentMethod
     ) {
         val hId = householdId ?: return
         val uid = userId ?: return
@@ -94,6 +96,7 @@ class RecurringViewModel @Inject constructor(
                     dayOfMonth = dayOfMonth,
                     monthOfYear = monthOfYear,
                     startDate = System.currentTimeMillis(),
+                    paymentMethod = paymentMethod,
                     createdAt = System.currentTimeMillis()
                 )
             )

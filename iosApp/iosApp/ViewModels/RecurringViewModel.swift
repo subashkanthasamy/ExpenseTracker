@@ -49,7 +49,8 @@ class RecurringViewModel {
         frequencyIndex: Int,
         dayOfMonth: Int,
         weekday: Int,
-        startDate: Date
+        startDate: Date,
+        paymentMethod: PaymentMethod
     ) async {
         guard let hid = await authService.getActiveHouseholdId(), let category else { return }
         let all = RecurringFrequency.entries
@@ -78,6 +79,7 @@ class RecurringViewModel {
                 longLong: (cal.date(byAdding: .day, value: -1, to: cal.startOfDay(for: startDate)) ?? startDate).epochMillis
             ),
             isActive: true,
+            paymentMethod: paymentMethod,
             createdAt: Date().epochMillis
         )
         do {

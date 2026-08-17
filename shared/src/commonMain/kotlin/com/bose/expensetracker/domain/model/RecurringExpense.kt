@@ -19,6 +19,12 @@ data class RecurringExpense(
     val endDate: Long? = null,
     val lastGeneratedDate: Long? = null,
     val isActive: Boolean = true,
+    /**
+     * How this rule is paid, stamped onto every expense it generates. A standing charge like
+     * rent or a subscription always leaves by the same instrument, so asking once on the rule
+     * beats leaving each generated row unspecified.
+     */
+    val paymentMethod: PaymentMethod = PaymentMethod.UNSPECIFIED,
     val createdAt: Long = Clock.System.now().toEpochMilliseconds()
 )
 
