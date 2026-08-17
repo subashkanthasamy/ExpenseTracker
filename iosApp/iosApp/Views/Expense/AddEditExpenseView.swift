@@ -53,6 +53,7 @@ struct AddEditExpenseView: View {
 
                     amountField
                     categoryGrid
+                    paymentMethodRow
                     noteField
                     dateField
 
@@ -84,10 +85,13 @@ struct AddEditExpenseView: View {
             }
         }
         .sheet(isPresented: $showSmsImport) {
-            SmsImportView { amount, merchant, categoryHint in
+            SmsImportView { amount, merchant, categoryHint, method in
                 viewModel.amount = String(amount)
                 if let merchant, viewModel.notes.isEmpty { viewModel.notes = merchant }
                 applyCategoryHint(categoryHint)
+                // Only overwrite when the message actually said — an unspecified inference
+                // must not clobber the default the user would otherwise get.
+                if method != PaymentMethod.unspecified { viewModel.paymentMethod = method }
             }
         }
         .sheet(isPresented: $showVoice) {
@@ -162,6 +166,31 @@ struct AddEditExpenseView: View {
                             viewModel.selectedCategory = category
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /// Sits between the category and the note because it is part of recording the
+    /// transaction, not an afterthought like the note.
+    private var paymentMethodRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            DSSectionLabel(text: "Paid with")
+            HStack(spacing: 8) {
+                ForEach(PaymentMethod.companion.selectable, id: \.self) { method in
+                    let selected = viewModel.paymentMethod == method
+                    Button { viewModel.paymentMethod = method } label: {
+                        Text("\(method.emoji)  \(method.label)")
+                            .font(.subheadline.weight(selected ? .semibold : .regular))
+                            .foregroundStyle(selected ? .white : DS.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                selected ? AnyShapeStyle(DS.accent) : AnyShapeStyle(DS.elevated),
+                                in: RoundedRectangle(cornerRadius: DS.tileRadius)
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }

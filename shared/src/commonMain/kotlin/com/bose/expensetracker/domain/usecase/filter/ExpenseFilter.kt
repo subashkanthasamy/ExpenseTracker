@@ -55,6 +55,8 @@ object ExpenseFilter {
             matchesQuery(expense, query) &&
                 (criteria.personFilter == null || expense.addedBy == criteria.personFilter) &&
                 (criteria.categoryFilter == null || expense.categoryId == criteria.categoryFilter) &&
+                (criteria.paymentMethodFilter == null ||
+                    expense.paymentMethod == criteria.paymentMethodFilter) &&
                 (bounds == null || expense.date in bounds)
         }
     }

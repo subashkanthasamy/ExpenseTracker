@@ -8,6 +8,7 @@ import com.bose.expensetracker.domain.model.RecurringFrequency
 import com.bose.expensetracker.domain.model.SavingsGoal
 import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.Liability
 import com.bose.expensetracker.domain.model.User
@@ -362,7 +363,8 @@ class FirestoreDataSource @Inject constructor(
                     "addedBy" to expense.addedBy,
                     "addedByName" to expense.addedByName,
                     "createdAt" to expense.createdAt,
-                    "updatedAt" to expense.updatedAt
+                    "updatedAt" to expense.updatedAt,
+                    "paymentMethod" to expense.paymentMethod.wire
                 )
             ).await()
     }
@@ -379,7 +381,8 @@ class FirestoreDataSource @Inject constructor(
                     "addedBy" to expense.addedBy,
                     "addedByName" to expense.addedByName,
                     "createdAt" to expense.createdAt,
-                    "updatedAt" to expense.updatedAt
+                    "updatedAt" to expense.updatedAt,
+                    "paymentMethod" to expense.paymentMethod.wire
                 )
             ).await()
     }
@@ -419,6 +422,7 @@ class FirestoreDataSource @Inject constructor(
                         notes = doc.getString("notes") ?: "",
                         addedBy = doc.getString("addedBy") ?: "",
                         addedByName = doc.getString("addedByName") ?: "",
+                        paymentMethod = PaymentMethod.fromWire(doc.getString("paymentMethod")),
                         createdAt = doc.getEpochMillis("createdAt") ?: 0L,
                         updatedAt = doc.getEpochMillis("updatedAt") ?: 0L,
                         isSynced = true

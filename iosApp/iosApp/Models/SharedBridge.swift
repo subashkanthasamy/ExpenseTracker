@@ -100,6 +100,7 @@ extension Expense {
         addedByName: String,
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
+        paymentMethod: PaymentMethod = PaymentMethod.unspecified,
         isSynced: Bool = false
     ) {
         self.init(
@@ -114,6 +115,7 @@ extension Expense {
             addedByName: addedByName,
             createdAt: createdAt.epochMillis,
             updatedAt: updatedAt.epochMillis,
+            paymentMethod: paymentMethod,
             isSynced: isSynced
         )
     }
@@ -187,12 +189,14 @@ extension ExpenseFilterCriteria {
         searchQuery: String = "",
         personFilter: String? = nil,
         categoryFilter: String? = nil,
+        paymentMethodFilter: PaymentMethod? = nil,
         dateRange: DateRangeFilter = .all
     ) -> ExpenseFilterCriteria {
         ExpenseFilterCriteria(
             searchQuery: searchQuery,
             personFilter: personFilter,
             categoryFilter: categoryFilter,
+            paymentMethodFilter: paymentMethodFilter,
             dateRange: dateRange
         )
     }

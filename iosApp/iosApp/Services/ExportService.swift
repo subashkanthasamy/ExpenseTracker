@@ -17,7 +17,7 @@ struct ExportService {
         let skipped: Int
     }
 
-    private static let header = ["Date", "Category", "Amount", "Notes", "Added By"]
+    private static let header = ["Date", "Category", "Amount", "Payment Method", "Notes", "Added By"]
 
     private static var dateFormatter: DateFormatter {
         let f = DateFormatter()
@@ -43,6 +43,7 @@ struct ExportService {
                 f.string(from: e.dateValue),
                 Self.escape(e.categoryName),
                 String(e.amount),
+                Self.escape(e.paymentMethod.label),
                 Self.escape(e.notes),
                 Self.escape(e.addedByName),
             ].joined(separator: ","))

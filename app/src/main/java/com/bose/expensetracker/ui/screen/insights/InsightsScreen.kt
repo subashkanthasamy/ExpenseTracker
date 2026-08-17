@@ -20,6 +20,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.bose.expensetracker.domain.model.PaymentMethod
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -269,6 +275,20 @@ fun InsightsScreen(
                     }
                 }
 
+                // Only meaningful once more than one instrument has been used.
+                if (uiState.paymentSplit.size > 1) {
+                    item { SectionHeader(title = "BY PAYMENT METHOD") }
+
+                    items(uiState.paymentSplit) { slice ->
+                        CategoryProgressBar(
+                            icon = paymentMethodIcon(slice.id),
+                            name = slice.label,
+                            percentage = (slice.share * 100).toFloat(),
+                            color = AccentPurple
+                        )
+                    }
+                }
+
                 // Only meaningful once more than one member has recorded something.
                 if (uiState.personSplit.size > 1) {
                     item { SectionHeader(title = "BY PERSON") }
@@ -390,4 +410,12 @@ private fun AnalyticsHeader() {
             )
         }
     }
+}
+
+/** Material icon for a payment method slice, keyed by [PaymentMethod.name]. */
+private fun paymentMethodIcon(id: String): ImageVector = when (id) {
+    PaymentMethod.CASH.name -> Icons.Filled.Payments
+    PaymentMethod.UPI.name -> Icons.Filled.PhoneAndroid
+    PaymentMethod.CREDIT_CARD.name -> Icons.Filled.CreditCard
+    else -> Icons.Filled.HelpOutline
 }

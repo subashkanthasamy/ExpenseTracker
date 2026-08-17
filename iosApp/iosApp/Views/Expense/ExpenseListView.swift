@@ -166,6 +166,9 @@ private struct ActiveFilterChips: View {
         if let option = viewModel.personOptions.first(where: { $0.id == viewModel.personFilter }) {
             items.append((option.label, { viewModel.personFilter = nil }))
         }
+        if let method = viewModel.paymentMethodFilter {
+            items.append(("\(method.emoji) \(method.label)", { viewModel.paymentMethodFilter = nil }))
+        }
         return items
     }
 }
@@ -199,6 +202,21 @@ private struct ExpenseFilterSheet: View {
                                 select: { viewModel.categoryFilter = $0 }
                             )
                         }
+                    }
+
+                    section("Paid with") {
+                        let methods = PaymentMethod.companion.selectable
+                        chipRow(
+                            labels: ["Any method"] + methods.map { $0.label },
+                            isSelected: { [methods] index in
+                                index == 0
+                                    ? viewModel.paymentMethodFilter == nil
+                                    : viewModel.paymentMethodFilter == methods[index - 1]
+                            },
+                            select: { [methods] index in
+                                viewModel.paymentMethodFilter = index == 0 ? nil : methods[index - 1]
+                            }
+                        )
                     }
 
                     // A single member makes the filter a guaranteed no-op.

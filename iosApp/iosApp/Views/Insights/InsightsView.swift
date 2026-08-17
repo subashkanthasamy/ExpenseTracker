@@ -76,6 +76,26 @@ struct InsightsView: View {
                     .background(DS.card, in: RoundedRectangle(cornerRadius: DS.cardRadius))
                 }
 
+                // Only meaningful once more than one instrument has been used.
+                if viewModel.paymentSplit.count > 1 {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("By Payment Method").font(.headline)
+                        ForEach(viewModel.paymentSplit, id: \.id) { slice in
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(slice.label)
+                                    Spacer()
+                                    Text(formatCurrency(slice.amount)).bold()
+                                }
+                                ProgressView(value: min(max(slice.share, 0), 1))
+                                    .tint(AppColors.accentPurple)
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(DS.card, in: RoundedRectangle(cornerRadius: DS.cardRadius))
+                }
+
                 // Top Category
                 if !viewModel.topCategory.isEmpty {
                     HStack {

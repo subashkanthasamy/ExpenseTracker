@@ -14,6 +14,8 @@ data class PendingSmsEntity(
     val categoryId: String,
     val categoryName: String,
     val cardOrAccount: String?,
+    /** PaymentMethod.wire inferred from the message; "" when it did not say. */
+    val paymentMethod: String = "",
     val householdId: String,
     val userId: String,
     val userName: String,

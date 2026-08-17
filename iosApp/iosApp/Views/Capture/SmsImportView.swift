@@ -13,7 +13,7 @@ import SwiftUI
 /// amount, merchant and category on both platforms.
 struct SmsImportView: View {
     /// amount, merchant (for the note) and a category hint, if one was recognised.
-    let onImport: (Double, String?, String?) -> Void
+    let onImport: (Double, String?, String?, PaymentMethod) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var body_ = ""
@@ -69,7 +69,7 @@ struct SmsImportView: View {
                     }
                     Section {
                         Button("Use these details") {
-                            onImport(parsed.amount, parsed.merchant, categoryHint)
+                            onImport(parsed.amount, parsed.merchant, categoryHint, parsed.paymentMethod)
                             dismiss()
                         }
                     }

@@ -16,6 +16,8 @@ data class ExpenseEntity(
     val addedByName: String,
     val createdAt: Long,
     val updatedAt: Long,
+    /** PaymentMethod.wire; "" for rows written before payment methods existed. */
+    val paymentMethod: String = "",
     val syncStatus: Int = SyncStatus.SYNCED
 )
 

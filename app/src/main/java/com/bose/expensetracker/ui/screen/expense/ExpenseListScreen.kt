@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.usecase.access.Permissions
 import com.bose.expensetracker.ui.components.DateGroupHeader
 import com.bose.expensetracker.ui.components.ScrollableFilterChipRow
@@ -137,6 +138,7 @@ fun ExpenseListScreen(
                 onCategoryChange = viewModel::setCategoryFilter,
                 onPersonChange = viewModel::setPersonFilter,
                 onDateRangeChange = viewModel::setDateRange,
+                onPaymentMethodChange = viewModel::setPaymentMethodFilter,
                 onClearAll = viewModel::clearFilters
             )
         }
@@ -288,6 +290,7 @@ private fun ExpenseFilters(
     onCategoryChange: (String?) -> Unit,
     onPersonChange: (String?) -> Unit,
     onDateRangeChange: (DateRangeFilter) -> Unit,
+    onPaymentMethodChange: (PaymentMethod?) -> Unit,
     onClearAll: () -> Unit
 ) {
     var showSheet by remember { mutableStateOf(false) }
@@ -319,7 +322,8 @@ private fun ExpenseFilters(
 
             val hasChipFilters = criteria.dateRange != DateRangeFilter.ALL ||
                     criteria.categoryFilter != null ||
-                    criteria.personFilter != null
+                    criteria.personFilter != null ||
+                    criteria.paymentMethodFilter != null
             Box(
                 modifier = Modifier
                     .size(52.dp)
@@ -346,7 +350,8 @@ private fun ExpenseFilters(
             personOptions = personOptions,
             onCategoryChange = onCategoryChange,
             onPersonChange = onPersonChange,
-            onDateRangeChange = onDateRangeChange
+            onDateRangeChange = onDateRangeChange,
+            onPaymentMethodChange = onPaymentMethodChange
         )
     }
 
@@ -358,6 +363,7 @@ private fun ExpenseFilters(
             onCategoryChange = onCategoryChange,
             onPersonChange = onPersonChange,
             onDateRangeChange = onDateRangeChange,
+            onPaymentMethodChange = onPaymentMethodChange,
             onClearAll = onClearAll,
             onDismiss = { showSheet = false }
         )
@@ -372,7 +378,8 @@ private fun ActiveFilterChips(
     personOptions: List<FilterOption>,
     onCategoryChange: (String?) -> Unit,
     onPersonChange: (String?) -> Unit,
-    onDateRangeChange: (DateRangeFilter) -> Unit
+    onDateRangeChange: (DateRangeFilter) -> Unit,
+    onPaymentMethodChange: (PaymentMethod?) -> Unit
 ) {
     // The search box already shows its own text, so it doesn't get a chip.
     val active = buildList {
@@ -384,6 +391,9 @@ private fun ActiveFilterChips(
         }
         personOptions.firstOrNull { it.id == criteria.personFilter }?.let { option ->
             add(option.label to { onPersonChange(null) })
+        }
+        criteria.paymentMethodFilter?.let { method ->
+            add("${method.emoji} ${method.label}" to { onPaymentMethodChange(null) })
         }
     }
     if (active.isEmpty()) return
@@ -429,6 +439,7 @@ private fun ExpenseFilterSheet(
     onCategoryChange: (String?) -> Unit,
     onPersonChange: (String?) -> Unit,
     onDateRangeChange: (DateRangeFilter) -> Unit,
+    onPaymentMethodChange: (PaymentMethod?) -> Unit,
     onClearAll: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -473,6 +484,17 @@ private fun ExpenseFilterSheet(
                     onSelected = { onCategoryChange(optionIdAt(categoryOptions, it)) }
                 )
             }
+
+            FilterSection("Paid with")
+            // "Any" is index 0, so method i sits at chip i + 1.
+            ScrollableFilterChipRow(
+                labels = listOf("Any method") + PaymentMethod.selectable.map { it.label },
+                selectedIndex = criteria.paymentMethodFilter
+                    ?.let { PaymentMethod.selectable.indexOf(it) + 1 } ?: 0,
+                onSelected = { index ->
+                    onPaymentMethodChange(PaymentMethod.selectable.getOrNull(index - 1))
+                }
+            )
 
             // One member means the filter can only ever be a no-op.
             if (personOptions.size > 1) {

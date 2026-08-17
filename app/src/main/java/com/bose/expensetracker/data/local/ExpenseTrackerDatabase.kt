@@ -1,5 +1,7 @@
 package com.bose.expensetracker.data.local
 
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.bose.expensetracker.data.local.dao.AssetDao
@@ -36,7 +38,7 @@ import com.bose.expensetracker.data.local.entity.SavingsGoalEntity
         RecurringExpenseEntity::class,
         SavingsGoalEntity::class
 ],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 abstract class ExpenseTrackerDatabase : RoomDatabase() {
@@ -50,4 +52,20 @@ abstract class ExpenseTrackerDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun recurringExpenseDao(): RecurringExpenseDao
     abstract fun savingsGoalDao(): SavingsGoalDao
+}
+
+/**
+ * Adds `paymentMethod` to `expenses` and to the pending-SMS queue.
+ *
+ * Written out rather than left to `fallbackToDestructiveMigration()`, which would drop the
+ * table. Room is the offline cache and holds rows with `SyncStatus.PENDING_CREATE` — expenses
+ * added without a connection and not yet pushed to Firestore. A destructive migration would
+ * delete exactly those, and only for users who happened to be offline at upgrade time, which
+ * is the kind of data loss that never shows up in testing.
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE expenses ADD COLUMN paymentMethod TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE pending_sms ADD COLUMN paymentMethod TEXT NOT NULL DEFAULT ''")
+    }
 }

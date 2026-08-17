@@ -1,10 +1,14 @@
 package com.bose.expensetracker.domain.usecase.smsimport
 
+import com.bose.expensetracker.domain.model.PaymentMethod
+
 data class ParsedTransaction(
     val amount: Double,
     val merchant: String?,
     val transactionType: TransactionType,
     val cardOrAccount: String?,
+    /** Inferred instrument, [PaymentMethod.UNSPECIFIED] when the message does not say. */
+    val paymentMethod: PaymentMethod,
     val rawMessage: String
 )
 
@@ -51,8 +55,41 @@ class SmsTransactionParser {
             merchant = merchant?.trim()?.take(50),
             transactionType = type,
             cardOrAccount = account,
+            paymentMethod = inferPaymentMethod(body),
             rawMessage = body
         )
+    }
+
+    /**
+     * Which instrument the message describes, or [PaymentMethod.UNSPECIFIED].
+     *
+     * Guessing wrong is worse than not guessing: a mislabelled row silently distorts the
+     * spending breakdown, and the user has no reason to re-check a field the import filled in.
+     * So this only fires on unambiguous wording.
+     *
+     * Two deliberate refusals:
+     *  - A bare "card" is NOT credit. Indian bank SMS use the same phrasing for debit cards,
+     *    which are an immediate bank debit and behave like UPI. Only an explicit credit signal
+     *    counts.
+     *  - ATM and cash-withdrawal messages are NOT [PaymentMethod.CASH]. A withdrawal is not an
+     *    expense at all — it moves money between your own pockets — and importing it as one
+     *    double-counts when that cash is later spent. Cash stays manual-entry only.
+     */
+    private fun inferPaymentMethod(body: String): PaymentMethod {
+        val lower = body.lowercase()
+
+        // UPI states itself: "via UPI", "UPI Ref no", or a VPA like name@okhdfcbank.
+        val looksUpi = lower.contains("upi") ||
+            lower.contains("vpa") ||
+            Regex("""[\w.\-]+@[a-z]{2,}""").containsMatchIn(lower)
+        if (looksUpi) return PaymentMethod.UPI
+
+        val looksCredit = lower.contains("credit card") ||
+            lower.contains("creditcard") ||
+            Regex("""\bcc\b""").containsMatchIn(lower)
+        if (looksCredit) return PaymentMethod.CREDIT_CARD
+
+        return PaymentMethod.UNSPECIFIED
     }
 
     private fun isTransactionalSms(sender: String, body: String): Boolean {

@@ -12,5 +12,11 @@ data class Expense(
     val addedByName: String,
     val createdAt: Long,
     val updatedAt: Long,
+    /**
+     * How it was paid. Defaulted so every existing construction site keeps compiling, and so
+     * rows written before this field existed read back as
+     * [PaymentMethod.UNSPECIFIED] rather than being guessed at.
+     */
+    val paymentMethod: PaymentMethod = PaymentMethod.UNSPECIFIED,
     val isSynced: Boolean = false
 )

@@ -33,11 +33,11 @@ class ExportExpensesUseCase @Inject constructor(
         val file = File(context.cacheDir, "expenses_${System.currentTimeMillis()}.csv")
 
         FileWriter(file).use { writer ->
-            writer.write("Date,Amount,Category,Notes,Added By\n")
+            writer.write("Date,Amount,Category,Payment Method,Notes,Added By\n")
             expenses.forEach { expense ->
                 val date = dateFormat.format(Date(expense.date))
                 val notes = expense.notes.replace("\"", "\"\"")
-                writer.write("$date,${expense.amount},\"${expense.categoryName}\",\"$notes\",\"${expense.addedByName}\"\n")
+                writer.write("$date,${expense.amount},\"${expense.categoryName}\",\"${expense.paymentMethod.label}\",\"$notes\",\"${expense.addedByName}\"\n")
             }
         }
         return file
@@ -85,7 +85,8 @@ class ExportExpensesUseCase @Inject constructor(
         canvas.drawText("Date", 40f, yPosition, headerPaint)
         canvas.drawText("Category", 150f, yPosition, headerPaint)
         canvas.drawText("Amount", 300f, yPosition, headerPaint)
-        canvas.drawText("Added By", 400f, yPosition, headerPaint)
+        canvas.drawText("Paid With", 390f, yPosition, headerPaint)
+        canvas.drawText("Added By", 480f, yPosition, headerPaint)
         yPosition += 20f
 
         expenses.forEach { expense ->
@@ -99,7 +100,8 @@ class ExportExpensesUseCase @Inject constructor(
             canvas.drawText(dateFormat.format(Date(expense.date)), 40f, yPosition, bodyPaint)
             canvas.drawText(expense.categoryName, 150f, yPosition, bodyPaint)
             canvas.drawText(currencyFormat.format(expense.amount), 300f, yPosition, bodyPaint)
-            canvas.drawText(expense.addedByName, 400f, yPosition, bodyPaint)
+            canvas.drawText(expense.paymentMethod.label, 390f, yPosition, bodyPaint)
+            canvas.drawText(expense.addedByName, 480f, yPosition, bodyPaint)
             yPosition += 18f
         }
 

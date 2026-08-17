@@ -12,6 +12,20 @@ final class AppPreferences {
     private enum Key {
         static let themeMode = "theme_mode"
         static let biometricEnabled = "biometric_enabled"
+        static let lastPaymentMethod = "last_payment_method"
+    }
+
+    /// Last method chosen when adding an expense.
+    ///
+    /// A device preference, not household data — it never reaches Firestore, so it does not
+    /// touch the permission model. Defaults to UPI, the most common instrument for a rupee
+    /// household; without this every entry costs a tap on the field users change least.
+    static func lastPaymentMethodWire(_ defaults: UserDefaults = .standard) -> String? {
+        defaults.string(forKey: Key.lastPaymentMethod)
+    }
+
+    static func setLastPaymentMethodWire(_ wire: String, _ defaults: UserDefaults = .standard) {
+        defaults.set(wire, forKey: Key.lastPaymentMethod)
     }
 
     private let defaults: UserDefaults

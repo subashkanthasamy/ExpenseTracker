@@ -2,6 +2,7 @@ package com.bose.expensetracker.ui.state
 
 import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.usecase.access.HouseholdRole
 import kotlinx.datetime.Clock
 
@@ -26,6 +27,7 @@ data class ExpenseFilterCriteria(
     val searchQuery: String = "",
     val personFilter: String? = null,
     val categoryFilter: String? = null,
+    val paymentMethodFilter: PaymentMethod? = null,
     val dateRange: DateRangeFilter = DateRangeFilter.ALL
 ) {
     /** True when anything is actually narrowing the list — drives the empty-state copy. */
@@ -33,6 +35,7 @@ data class ExpenseFilterCriteria(
         get() = searchQuery.isNotBlank() ||
                 personFilter != null ||
                 categoryFilter != null ||
+                paymentMethodFilter != null ||
                 dateRange != DateRangeFilter.ALL
 }
 

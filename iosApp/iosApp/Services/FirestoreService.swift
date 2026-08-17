@@ -415,7 +415,8 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
             addedBy: d["addedBy"] as? String ?? "",
             addedByName: d["addedByName"] as? String ?? "",
             createdAt: Self.decodeMillis(d["createdAt"]) ?? Date(),
-            updatedAt: Self.decodeMillis(d["updatedAt"]) ?? Date()
+            updatedAt: Self.decodeMillis(d["updatedAt"]) ?? Date(),
+            paymentMethod: PaymentMethod.companion.fromWire(value: d["paymentMethod"] as? String)
         )
     }
 
@@ -423,7 +424,8 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
         ["householdId": e.householdId, "amount": e.amount, "categoryId": e.categoryId,
          "categoryName": e.categoryName, "date": e.date, "notes": e.notes,
          "addedBy": e.addedBy, "addedByName": e.addedByName,
-         "createdAt": e.createdAt, "updatedAt": e.updatedAt]
+         "createdAt": e.createdAt, "updatedAt": e.updatedAt,
+         "paymentMethod": e.paymentMethod.wire]
     }
 
     private func decodeCategory(_ doc: DocumentSnapshot) -> Shared.Category? {

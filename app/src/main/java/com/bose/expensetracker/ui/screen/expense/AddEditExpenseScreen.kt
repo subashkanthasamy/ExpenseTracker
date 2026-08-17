@@ -59,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.ui.components.CategoryIconTile
 import com.bose.expensetracker.ui.components.categoryIcon
 import com.bose.expensetracker.ui.theme.AccentPurple
@@ -326,6 +327,48 @@ fun AddEditExpenseScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Paid with. Sits between the category and the note because it is part of
+            // recording the transaction, not an afterthought like the note.
+            Text(
+                "PAID WITH",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                letterSpacing = 1.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PaymentMethod.selectable.forEach { method ->
+                    val selected = uiState.paymentMethod == method
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .then(
+                                if (selected) Modifier.background(AccentPurple)
+                                else Modifier.border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outline,
+                                    RoundedCornerShape(12.dp)
+                                )
+                            )
+                            .clickable { viewModel.setPaymentMethod(method) }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "${method.emoji}  ${method.label}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (selected) Color.White
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 1
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))

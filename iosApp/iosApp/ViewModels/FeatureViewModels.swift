@@ -257,6 +257,7 @@ class InsightsViewModel {
     var categoryBreakdown: [String: Double] = [:]
     var dailySpending: [String: Double] = [:]
     var personSplit: [PersonSpending] = []
+    var paymentSplit: [SpendingSlice] = []
     var totalSpent: Double = 0
     var lastPeriodSpent: Double = 0
     var topCategory = ""
@@ -298,6 +299,7 @@ class InsightsViewModel {
             dailySpending = daily
             // Shared with Android so both platforms split the same way.
             personSplit = SpendingSplitCalculator.shared.split(expenses: thisMonth)
+            paymentSplit = PaymentMethodSplitCalculator.shared.split(expenses: thisMonth)
             topCategory = catMap.max(by: { $0.value < $1.value })?.key ?? ""
             isLoading = false
         } catch {

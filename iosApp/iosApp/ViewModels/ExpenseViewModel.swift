@@ -13,6 +13,7 @@ class ExpenseListViewModel {
     var searchQuery = ""
     var categoryFilter: String?
     var personFilter: String?
+    var paymentMethodFilter: PaymentMethod?
     var dateRange: DateRangeFilter = .all
 
     private let authService: AuthService
@@ -29,6 +30,7 @@ class ExpenseListViewModel {
             searchQuery: searchQuery,
             personFilter: personFilter,
             categoryFilter: categoryFilter,
+            paymentMethodFilter: paymentMethodFilter,
             dateRange: dateRange
         )
     }
@@ -39,6 +41,7 @@ class ExpenseListViewModel {
     /// button highlights on.
     var hasChipFilters: Bool {
         dateRange != .all || categoryFilter != nil || personFilter != nil
+            || paymentMethodFilter != nil
     }
 
     /// Filtering goes through the shared engine rather than a Swift copy of the predicate, so
@@ -70,6 +73,7 @@ class ExpenseListViewModel {
         searchQuery = ""
         categoryFilter = nil
         personFilter = nil
+        paymentMethodFilter = nil
         dateRange = .all
     }
 
@@ -110,6 +114,7 @@ class AddEditExpenseViewModel {
     var categories: [Shared.Category] = []
     var date = Date()
     var notes = ""
+    var paymentMethod: PaymentMethod = AddEditExpenseViewModel.defaultPaymentMethod()
     var isEditing = false
     var isLoading = false
     var error: String?
@@ -118,6 +123,13 @@ class AddEditExpenseViewModel {
     private let firestoreService: FirestoreService
     private var editingExpenseId: String?
     private var householdId: String?
+
+    /// Last method used on this device, or UPI. Never [PaymentMethod.unspecified] — that is a
+    /// state old rows are in, not one the user should be nudged into choosing.
+    fileprivate static func defaultPaymentMethod() -> PaymentMethod {
+        let stored = PaymentMethod.companion.fromWire(value: AppPreferences.lastPaymentMethodWire())
+        return stored == PaymentMethod.unspecified ? PaymentMethod.upi : stored
+    }
 
     init(authService: AuthService, firestoreService: FirestoreService, expenseId: String? = nil) {
         self.authService = authService
@@ -157,6 +169,9 @@ class AddEditExpenseViewModel {
                 selectedCategory = categories.first { $0.id == expense.categoryId }
                 date = expense.dateValue
                 notes = expense.notes
+                // Keep an unspecified row unspecified: editing an old expense shouldn't
+                // silently stamp it with the default method.
+                paymentMethod = expense.paymentMethod
             }
         }
     }
@@ -178,13 +193,18 @@ class AddEditExpenseViewModel {
             id: editingExpenseId ?? UUID().uuidString, householdId: hid,
             amount: amt, categoryId: cat.id, categoryName: cat.name, date: date,
             notes: notes, addedBy: uid, addedByName: authService.currentUserDisplayName ?? "User",
-            createdAt: isEditing ? date : Date(), updatedAt: Date()
+            createdAt: isEditing ? date : Date(), updatedAt: Date(),
+            paymentMethod: paymentMethod
         )
         do {
             if isEditing {
                 try await firestoreService.updateExpense(householdId: hid, expense: expense)
             } else {
                 try await firestoreService.addExpense(householdId: hid, expense: expense)
+            }
+            // Remember only a real choice; an untouched Unspecified must not become the default.
+            if paymentMethod != PaymentMethod.unspecified {
+                AppPreferences.setLastPaymentMethodWire(paymentMethod.wire)
             }
             print("AddEditExpense: Saved expense \(expense.id) to \(hid)")
             isLoading = false

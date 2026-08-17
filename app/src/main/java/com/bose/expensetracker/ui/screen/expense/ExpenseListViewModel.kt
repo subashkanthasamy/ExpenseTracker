@@ -3,6 +3,7 @@ package com.bose.expensetracker.ui.screen.expense
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.data.access.SessionRoleProvider
+import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
@@ -122,6 +123,9 @@ class ExpenseListViewModel @Inject constructor(
         _criteria.update { it.copy(categoryFilter = categoryId) }
 
     fun setDateRange(range: DateRangeFilter) = _criteria.update { it.copy(dateRange = range) }
+
+    fun setPaymentMethodFilter(method: PaymentMethod?) =
+        _criteria.update { it.copy(paymentMethodFilter = method) }
 
     fun clearFilters() {
         _criteria.value = ExpenseFilterCriteria()

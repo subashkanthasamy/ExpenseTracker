@@ -4,7 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.domain.model.Category
+import com.bose.expensetracker.data.preferences.PaymentMethodPreferences
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
@@ -29,6 +31,7 @@ data class AddEditExpenseUiState(
     val date: Long = System.currentTimeMillis(),
     val notes: String = "",
     val addedByName: String = "",
+    val paymentMethod: PaymentMethod = PaymentMethod.UPI,
     val isEditing: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null
@@ -37,6 +40,7 @@ data class AddEditExpenseUiState(
 @HiltViewModel
 class AddEditExpenseViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
+    private val paymentMethodPreferences: PaymentMethodPreferences,
     private val expenseRepository: ExpenseRepository,
     private val categoryRepository: CategoryRepository,
     private val authRepository: AuthRepository,
@@ -105,6 +109,10 @@ class AddEditExpenseViewModel @Inject constructor(
             categoryRepository.startRealtimeSync(hId)
 
             // Load existing expense if editing
+            if (expenseId == null) {
+                _uiState.update { it.copy(paymentMethod = paymentMethodPreferences.lastUsed()) }
+            }
+
             if (expenseId != null) {
                 val expense = expenseRepository.getExpenseById(expenseId)
                 if (expense != null) {
@@ -115,6 +123,9 @@ class AddEditExpenseViewModel @Inject constructor(
                             date = expense.date,
                             notes = expense.notes,
                             addedByName = expense.addedByName,
+                            // Keep an unspecified row unspecified: editing an old expense
+                            // shouldn't silently stamp it with the default method.
+                            paymentMethod = expense.paymentMethod,
                             isEditing = true
                         )
                     }
@@ -202,6 +213,10 @@ class AddEditExpenseViewModel @Inject constructor(
         }
     }
 
+    fun setPaymentMethod(method: PaymentMethod) {
+        _uiState.update { it.copy(paymentMethod = method) }
+    }
+
     fun save() {
         viewModelScope.launch {
             val state = _uiState.value
@@ -240,7 +255,8 @@ class AddEditExpenseViewModel @Inject constructor(
                 addedBy = uid,
                 addedByName = state.addedByName.ifBlank { userDisplayName ?: "Unknown" },
                 createdAt = if (state.isEditing) (originalCreatedAt ?: now) else now,
-                updatedAt = now
+                updatedAt = now,
+                paymentMethod = state.paymentMethod
             )
 
             val result = if (state.isEditing) {
@@ -250,6 +266,7 @@ class AddEditExpenseViewModel @Inject constructor(
             }
 
             result.onSuccess {
+                paymentMethodPreferences.setLastUsed(state.paymentMethod)
                 _uiState.update { it.copy(isLoading = false) }
                 _saveComplete.emit(Unit)
             }.onFailure { error ->

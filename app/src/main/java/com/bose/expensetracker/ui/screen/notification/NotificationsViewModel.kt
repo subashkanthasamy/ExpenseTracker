@@ -8,6 +8,7 @@ import com.bose.expensetracker.data.local.entity.PendingSmsEntity
 import com.bose.expensetracker.data.local.entity.ProcessedSmsEntity
 import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
@@ -132,7 +133,8 @@ class NotificationsViewModel @Inject constructor(
                 addedBy = pending.userId,
                 addedByName = pending.userName,
                 createdAt = now,
-                updatedAt = now
+                updatedAt = now,
+                paymentMethod = PaymentMethod.fromWire(pending.paymentMethod)
             )
             val result = expenseRepository.addExpense(expense)
             if (result.isSuccess) {

@@ -70,6 +70,7 @@ class ProcessSmsUseCase @Inject constructor(
             categoryId = category?.id ?: "",
             categoryName = category?.name ?: categoryName,
             cardOrAccount = transaction.cardOrAccount,
+            paymentMethod = transaction.paymentMethod.wire,
             householdId = householdId,
             userId = uid,
             userName = userName,

@@ -8,6 +8,8 @@ import com.bose.expensetracker.domain.model.SpendingInsight
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
+import com.bose.expensetracker.domain.usecase.insights.PaymentMethodSplitCalculator
+import com.bose.expensetracker.domain.usecase.insights.SpendingSlice
 import com.bose.expensetracker.domain.usecase.insights.SpendingSplitCalculator
 import com.bose.expensetracker.ui.state.PersonSpending
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,6 +41,7 @@ data class InsightsUiState(
     val dailySpending: Map<String, Double> = emptyMap(),
     val categoryBreakdown: Map<String, Double> = emptyMap(),
     val personSplit: List<PersonSpending> = emptyList(),
+    val paymentSplit: List<SpendingSlice> = emptyList(),
     val selectedPeriod: SummaryPeriod = SummaryPeriod.MONTH,
     val periodSummary: PeriodSummary = PeriodSummary(),
     val isLoading: Boolean = true
@@ -109,7 +112,8 @@ class InsightsViewModel @Inject constructor(
                 ),
                 categoryBreakdown = categoryBreakdown,
                 dailySpending = dailySpending,
-                personSplit = SpendingSplitCalculator.split(currentExpenses)
+                personSplit = SpendingSplitCalculator.split(currentExpenses),
+                paymentSplit = PaymentMethodSplitCalculator.split(currentExpenses)
             )
         }
     }

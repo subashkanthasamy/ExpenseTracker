@@ -3,6 +3,7 @@ package com.bose.expensetracker.data.mapper
 import com.bose.expensetracker.data.local.entity.ExpenseEntity
 import com.bose.expensetracker.data.local.entity.SyncStatus
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.model.PaymentMethod
 
 fun ExpenseEntity.toDomain() = Expense(
     id = id,
@@ -16,6 +17,7 @@ fun ExpenseEntity.toDomain() = Expense(
     addedByName = addedByName,
     createdAt = createdAt,
     updatedAt = updatedAt,
+    paymentMethod = PaymentMethod.fromWire(paymentMethod),
     isSynced = syncStatus == SyncStatus.SYNCED
 )
 
@@ -31,5 +33,6 @@ fun Expense.toEntity(syncStatus: Int = SyncStatus.SYNCED) = ExpenseEntity(
     addedByName = addedByName,
     createdAt = createdAt,
     updatedAt = updatedAt,
+    paymentMethod = paymentMethod.wire,
     syncStatus = syncStatus
 )
