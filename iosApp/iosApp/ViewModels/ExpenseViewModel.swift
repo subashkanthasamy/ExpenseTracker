@@ -162,9 +162,12 @@ class AddEditExpenseViewModel {
         var seen = Set<String>()
         cats = cats.filter { seen.insert($0.name).inserted }
 
-        // Only seed if no presets exist
-        if cats.filter({ $0.isPreset }).isEmpty {
-            await seedPresetCategories(householdId: hid)
+        // Top up whatever is missing rather than only seeding an empty household — a household
+        // that had ever been seeded previously never saw a newly added category. Owner-only per
+        // the rules, so on a member's device the writes fail silently and they see the old set
+        // until the owner next opens the app.
+        if cats.count < Int(CategoryPresets.shared.all.count) {
+            await seedPresetCategories(householdId: hid, existing: cats)
             cats = (try? await firestoreService.getCategories(householdId: hid)) ?? []
             seen.removeAll()
             cats = cats.filter { seen.insert($0.name).inserted }
@@ -230,23 +233,30 @@ class AddEditExpenseViewModel {
         }
     }
 
-    private func seedPresetCategories(householdId: String) async {
-        // Icons are the shared Material-name keys, not emoji. Both platforms write to the
-        // same Firestore collection, so seeding emoji here meant an iOS-seeded household
-        // stored "🍔" where an Android-seeded one stored "restaurant" for the same category.
-        let presets: [(String, String)] = [
-            ("Food", "restaurant"), ("Groceries", "shopping_cart"),
-            ("Transport", "directions_car"), ("Entertainment", "movie"),
-            ("Shopping", "shopping_bag"), ("Bills", "receipt_long"),
-            ("Health", "medical_services"), ("Education", "school"),
-            ("Rent", "home"), ("Travel", "flight"),
-            ("Insurance", "shield"), ("Gifts", "card_giftcard"),
-            ("Fitness", "fitness_center"), ("Misc", "more_horiz")
-        ]
-        for (name, icon) in presets {
-            let id = "preset_\(name.lowercased())"
-            let cat = Category(id: id, name: name, icon: icon,
-                             color: 0xFF7B61FF, isPreset: true, householdId: householdId)
+    /// Seeds the categories a household is missing, from the shared catalogue.
+    ///
+    /// Both the list and the id scheme used to be hardcoded here and differed from Android's:
+    /// 14 presets against 8, "Rent" against "Rent/Home Loan", one purple for everything, and
+    /// `preset_{name}` against `preset_{householdId}_{name}`. A household seeded by both ended
+    /// up with two documents per category, which the read-time name dedupe hid rather than
+    /// fixed. `CategoryPresets` is now the single list and `idFor` the single scheme.
+    ///
+    /// Existing `preset_{name}` documents are left alone: matching is by **name**, so they are
+    /// recognised as present rather than duplicated under the new id.
+    private func seedPresetCategories(householdId: String, existing: [Shared.Category]) async {
+        let haveNames = Set(existing.map { $0.name.trimmingCharacters(in: .whitespaces).lowercased() })
+
+        for preset in CategoryPresets.shared.all {
+            let key = preset.name.trimmingCharacters(in: .whitespaces).lowercased()
+            guard !haveNames.contains(key) else { continue }
+            let cat = Category(
+                id: CategoryPresets.shared.idFor(householdId: householdId, name: preset.name),
+                name: preset.name,
+                icon: preset.iconKey,
+                color: preset.color,
+                isPreset: true,
+                householdId: householdId
+            )
             try? await firestoreService.addCategory(householdId: householdId, category: cat)
         }
     }

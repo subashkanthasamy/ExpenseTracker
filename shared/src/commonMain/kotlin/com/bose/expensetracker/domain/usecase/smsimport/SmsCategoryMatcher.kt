@@ -36,9 +36,22 @@ class SmsCategoryMatcher {
             "makemytrip" to "Transport",
             "goibibo" to "Transport",
             "redbus" to "Transport",
-            "petrol" to "Transport",
-            "fuel" to "Transport",
             "parking" to "Transport",
+            "auto" to "Transport",
+            "share auto" to "Transport",
+
+            // Fuel — its own category now rather than folded into Transport. Existing expenses
+            // keep saying Transport: categoryName is denormalised onto each row, so history is
+            // not rewritten by a catalogue change.
+            "petrol" to "Fuel",
+            "diesel" to "Fuel",
+            "fuel" to "Fuel",
+            "indian oil" to "Fuel",
+            "iocl" to "Fuel",
+            "hpcl" to "Fuel",
+            "bharat petroleum" to "Fuel",
+            "bpcl" to "Fuel",
+            "nayara" to "Fuel",
 
             // Entertainment
             "netflix" to "Entertainment",
@@ -62,29 +75,57 @@ class SmsCategoryMatcher {
             "grocery" to "Groceries",
             "supermarket" to "Groceries",
 
-            // Bills & Utilities
-            "airtel" to "Bills",
-            "jio" to "Bills",
-            "vodafone" to "Bills",
-            "vi " to "Bills",
-            "bescom" to "Bills",
-            "electricity" to "Bills",
+            // Milk — Aavin is the Tamil Nadu co-operative; delivery is a daily recurring cost.
+            "aavin" to "Milk",
+            "milk" to "Milk",
+            "heritage" to "Milk",
+            "arokya" to "Milk",
+
+            // Electricity. TNEB is what a Tamil Nadu bill actually says.
+            "tneb" to "Electricity",
+            "tangedco" to "Electricity",
+            "electricity board" to "Electricity",
+            "electricity" to "Electricity",
+            "bescom" to "Electricity",
+            "tata power" to "Electricity",
+            "current bill" to "Electricity",
+
+            // Gas cylinder
+            "indane" to "Gas Cylinder",
+            "bharat gas" to "Gas Cylinder",
+            "hp gas" to "Gas Cylinder",
+            "gas cylinder" to "Gas Cylinder",
+            "lpg" to "Gas Cylinder",
+            "gas booking" to "Gas Cylinder",
+
+            // Mobile & Internet
+            "airtel" to "Mobile & Internet",
+            "jio" to "Mobile & Internet",
+            "vodafone" to "Mobile & Internet",
+            "vi " to "Mobile & Internet",
+            "bsnl" to "Mobile & Internet",
+            "act fibernet" to "Mobile & Internet",
+            "hathway" to "Mobile & Internet",
+            "recharge" to "Mobile & Internet",
+            "broadband" to "Mobile & Internet",
+            "dth" to "Mobile & Internet",
+
+            // Medical
+            "apollo" to "Medical",
+            "medplus" to "Medical",
+            "pharmeasy" to "Medical",
+            "netmeds" to "Medical",
+            "pharmacy" to "Medical",
+            "hospital" to "Medical",
+            "clinic" to "Medical",
+            "diagnostics" to "Medical",
+
+            // Bills — whatever is left over
             "water bill" to "Bills",
             "gas bill" to "Bills",
-            "broadband" to "Bills",
-            "tata power" to "Bills",
-            "bsnl" to "Bills",
-
-            // Health
-            "apollo" to "Health",
-            "pharmeasy" to "Health",
-            "1mg" to "Health",
-            "netmeds" to "Health",
-            "hospital" to "Health",
-            "clinic" to "Health",
-            "pharmacy" to "Health",
-            "medical" to "Health",
-            "doctor" to "Health",
+            "1mg" to "Medical",
+            "medical" to "Medical",
+            "doctor" to "Medical",
 
             // Education
             "udemy" to "Education",

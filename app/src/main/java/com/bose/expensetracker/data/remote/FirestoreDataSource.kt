@@ -243,7 +243,8 @@ class FirestoreDataSource @Inject constructor(
             ownerUid = doc.getString("ownerUid") ?: "",
             roles = (doc.get("roles") as? Map<String, String>) ?: emptyMap(),
             inviteCode = doc.getString("inviteCode") ?: "",
-            createdAt = doc.getEpochMillis("createdAt") ?: 0L
+            createdAt = doc.getEpochMillis("createdAt") ?: 0L,
+            presetVersion = (doc.getLong("presetVersion") ?: 0L).toInt()
         )
     }
 
@@ -304,6 +305,19 @@ class FirestoreDataSource @Inject constructor(
                 "memberUids", com.google.firebase.firestore.FieldValue.arrayRemove(userId),
                 "roles.$userId", com.google.firebase.firestore.FieldValue.delete()
             )
+            .await()
+    }
+
+    /**
+     * Records the catalogue version a household has been seeded up to.
+     *
+     * An update rather than part of create: the create rule uses `keys().hasOnly(...)` and would
+     * reject the extra field, whereas the manager branch of update asserts specific fields and
+     * lets an unasserted one through. Owner-only, like the seeding it accompanies.
+     */
+    suspend fun setHouseholdPresetVersion(householdId: String, version: Int) {
+        firestore.collection("households").document(householdId)
+            .update("presetVersion", version)
             .await()
     }
 

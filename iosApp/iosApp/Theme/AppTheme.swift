@@ -94,6 +94,16 @@ func categoryIcon(_ name: String, storedIcon: String? = nil) -> String {
     case "payments": return "indianrupeesign.circle.fill"
     case "trending_up": return "chart.line.uptrend.xyaxis"
     case "autorenew": return "arrow.triangle.2.circlepath"
+    // India / Tamil Nadu staples. Unlike Material, a wrong SF Symbol name does not fail the
+    // build — it renders an empty frame — so each of these is a plain, long-standing symbol
+    // rather than anything added in a recent SF Symbols release.
+    case "eco": return "leaf.fill"
+    case "local_drink": return "cup.and.saucer.fill"
+    case "water_drop": return "drop.fill"
+    case "local_gas_station": return "fuelpump.fill"
+    case "bolt": return "bolt.fill"
+    case "propane_tank": return "flame.fill"
+    case "wifi": return "wifi"
     default: return "ellipsis.circle.fill"
     }
 }

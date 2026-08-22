@@ -25,6 +25,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.PropaneTank
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.LocalDrink
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.FamilyRestroom
@@ -606,6 +613,15 @@ fun categoryIcon(categoryName: String, storedIcon: String? = null): ImageVector 
         "payments" -> Icons.Filled.Payments
         "trending_up" -> Icons.Filled.TrendingUp
         "autorenew" -> Icons.Filled.Autorenew
+        // India / Tamil Nadu staples. A wrong Material name fails the build, so these are
+        // self-checking — unlike the SF Symbol side, where a typo renders an empty frame.
+        "eco" -> Icons.Filled.Eco
+        "local_drink" -> Icons.Filled.LocalDrink
+        "water_drop" -> Icons.Filled.WaterDrop
+        "local_gas_station" -> Icons.Filled.LocalGasStation
+        "bolt" -> Icons.Filled.Bolt
+        "propane_tank" -> Icons.Filled.PropaneTank
+        "wifi" -> Icons.Filled.Wifi
         else -> Icons.Filled.MoreHoriz
     }
 

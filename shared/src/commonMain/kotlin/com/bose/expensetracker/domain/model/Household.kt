@@ -16,5 +16,13 @@ data class Household(
     /** Non-owner members: uid -> "member" | "guest". The owner is deliberately absent. */
     val roles: Map<String, String> = emptyMap(),
     val inviteCode: String,
-    val createdAt: Long
+    val createdAt: Long,
+    /**
+     * Catalogue version this household was last seeded at.
+     *
+     * 0 means "never topped up", which is also what a household written before this field
+     * existed reads as — so it gets the gap-fill once and then stops. Without the stamp,
+     * seeding by name would resurrect every preset the owner deleted on each app open.
+     */
+    val presetVersion: Int = 0
 )

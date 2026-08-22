@@ -6,6 +6,7 @@ import com.bose.expensetracker.data.mapper.toDomain
 import com.bose.expensetracker.data.mapper.toEntity
 import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.Category
+import com.bose.expensetracker.domain.model.CategoryPresets
 import com.bose.expensetracker.domain.repository.CategoryRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,13 +62,32 @@ class CategoryRepositoryImpl @Inject constructor(
         } catch (_: Exception) { }
     }
 
-    private fun presetId(householdId: String, name: String): String =
-        "preset_${householdId}_${name.lowercase().replace("/", "_").replace(" ", "_")}"
-
+    /**
+     * Seeds the categories a household is missing, once per catalogue version.
+     *
+     * Previously all-or-nothing — `if (existing.any { it.isPreset }) return` — so a household
+     * that had ever been seeded never saw a newly added category. That mattered: a third of one
+     * real household's expenses had piled into "Misc" for want of a better bucket.
+     *
+     * Two things keep this from misbehaving:
+     *
+     * Matching is by **name, including custom categories**, so a category the owner created by
+     * hand (this household had a hand-made "Medical") is recognised rather than duplicated
+     * under a preset id.
+     *
+     * The **version stamp** makes it one-shot per bump. Gap-filling on name alone would
+     * resurrect any preset the owner deleted on every single app open — seeding fighting the
+     * user, which is worse than a missing category.
+     *
+     * Owner-only: the security rules reject category writes from members, so on a member's
+     * device this is a no-op (silent on iOS, where those writes are wrapped in `try?`).
+     */
     override suspend fun seedPresetCategories(householdId: String) {
         val existing = categoryDao.getAllCategoriesOnce(householdId)
 
-        // Clean up duplicates: keep first occurrence per name, delete the rest
+        // Clean up duplicates: keep first occurrence per name, delete the rest. Still worth
+        // doing — households seeded by both platforms before the id schemes were unified have
+        // two documents per category.
         existing.groupBy { it.name }.forEach { (_, dupes) ->
             if (dupes.size > 1) {
                 dupes.drop(1).forEach { dup ->
@@ -77,25 +97,33 @@ class CategoryRepositoryImpl @Inject constructor(
             }
         }
 
-        // Guard: don't re-seed if presets already exist
-        if (existing.any { it.isPreset }) return
+        val household = firestoreDataSource.getHousehold(householdId)
+        if (household != null && household.presetVersion >= CategoryPresets.VERSION) return
 
-        val presets = listOf(
-            Category(presetId(householdId, "Food"), "Food", "restaurant", 0xFF4CAF50, true, householdId),
-            Category(presetId(householdId, "Groceries"), "Groceries", "shopping_cart", 0xFF8BC34A, true, householdId),
-            Category(presetId(householdId, "Transport"), "Transport", "directions_car", 0xFF2196F3, true, householdId),
-            Category(presetId(householdId, "Rent/Home Loan"), "Rent/Home Loan", "home", 0xFFFF9800, true, householdId),
-            Category(presetId(householdId, "Bills"), "Bills", "receipt_long", 0xFFF44336, true, householdId),
-            Category(presetId(householdId, "Family"), "Family", "family_restroom", 0xFFE91E63, true, householdId),
-            Category(presetId(householdId, "Entertainment"), "Entertainment", "movie", 0xFF9C27B0, true, householdId),
-            Category(presetId(householdId, "Misc"), "Misc", "more_horiz", 0xFF607D8B, true, householdId)
-        )
-        presets.forEach { category ->
+        val haveNames = existing.map { it.name.trim().lowercase() }.toSet()
+        val missing = CategoryPresets.all.filter { it.name.trim().lowercase() !in haveNames }
+
+        missing.forEach { preset ->
+            val category = Category(
+                id = CategoryPresets.idFor(householdId, preset.name),
+                name = preset.name,
+                icon = preset.iconKey,
+                color = preset.color,
+                isPreset = true,
+                householdId = householdId
+            )
             categoryDao.insert(category.toEntity(SyncStatus.PENDING_CREATE))
             try {
                 firestoreDataSource.addCategory(householdId, category)
                 categoryDao.updateSyncStatus(category.id, SyncStatus.SYNCED)
             } catch (_: Exception) { }
+        }
+
+        // Stamped even when nothing was missing, so the check above short-circuits next launch.
+        try {
+            firestoreDataSource.setHouseholdPresetVersion(householdId, CategoryPresets.VERSION)
+        } catch (_: Exception) {
+            // Owner-only write. A member reaching here simply tries again next time.
         }
     }
 

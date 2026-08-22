@@ -437,7 +437,10 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
             ownerUid: d["ownerUid"] as? String ?? "",
             roles: d["roles"] as? [String: String] ?? [:],
             inviteCode: d["inviteCode"] as? String ?? "",
-            createdAt: Self.decodeMillis(d["createdAt"]) ?? Date()
+            createdAt: Self.decodeMillis(d["createdAt"]) ?? Date(),
+            // Absent reads as 0, i.e. "never topped up", which is what a household written
+            // before the catalogue existed should mean.
+            presetVersion: (d["presetVersion"] as? NSNumber)?.int32Value ?? 0
         )
     }
 

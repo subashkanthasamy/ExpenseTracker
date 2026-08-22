@@ -132,12 +132,14 @@ extension Household {
         ownerUid: String = "",
         roles: [String: String] = [:],
         inviteCode: String,
-        createdAt: Date
+        createdAt: Date,
+        presetVersion: Int32 = 0
     ) {
         self.init(
             id: id, name: name, memberUids: memberUids,
             ownerUid: ownerUid, roles: roles,
-            inviteCode: inviteCode, createdAt: createdAt.epochMillis
+            inviteCode: inviteCode, createdAt: createdAt.epochMillis,
+            presetVersion: presetVersion
         )
     }
 }
