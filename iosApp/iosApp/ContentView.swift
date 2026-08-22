@@ -237,9 +237,12 @@ struct MoreView: View {
                     ReminderView(notifications: notifications)
                 } label: { Label("Reminders", systemImage: "bell.badge") }
 
-                NavigationLink {
-                    FinancialCoachView(viewModel: FinancialCoachViewModel(authService: authService, firestoreService: firestoreService))
-                } label: { Label("Financial Coach", systemImage: "brain.head.profile") }
+                // Held back for a later release — see FeatureFlags.
+                if FeatureFlags.shared.FINANCIAL_COACH_ENABLED {
+                    NavigationLink {
+                        FinancialCoachView(viewModel: FinancialCoachViewModel(authService: authService, firestoreService: firestoreService))
+                    } label: { Label("Financial Coach", systemImage: "brain.head.profile") }
+                }
             }
 
             Section("App") {

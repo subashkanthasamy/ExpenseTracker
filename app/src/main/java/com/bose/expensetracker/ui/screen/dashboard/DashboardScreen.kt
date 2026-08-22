@@ -46,6 +46,7 @@ import com.bose.expensetracker.ui.components.SectionHeader
 import com.bose.expensetracker.ui.components.SmartInsightCard
 import com.bose.expensetracker.ui.components.formatCurrency
 import com.bose.expensetracker.ui.components.categoryIcon
+import com.bose.expensetracker.util.FeatureFlags
 import com.bose.expensetracker.ui.theme.AccentPurple
 import com.bose.expensetracker.ui.theme.ExpenseRed
 import com.bose.expensetracker.ui.theme.IncomeGreen
@@ -387,8 +388,8 @@ fun DashboardScreen(
                     }
                 }
 
-                // Financial Coach card
-                item {
+                // Financial Coach card. Held back for a later release — see FeatureFlags.
+                if (FeatureFlags.FINANCIAL_COACH_ENABLED) item {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
