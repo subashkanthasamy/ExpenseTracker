@@ -240,11 +240,13 @@ fun SmartInsightsScreen(
                     }
                 }
 
-                // Predictive AI section
+                // Month-end projection
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "PREDICTIVE AI",
+                        // Not "PREDICTIVE AI": this is a run-rate extrapolation, and calling
+                        // arithmetic AI is the second misrepresentation after the claim itself.
+                        "PROJECTION",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.5.sp
@@ -265,18 +267,43 @@ fun SmartInsightsScreen(
                                 .padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            // This card was previously a hardcoded sentence promising "surplus
+                            // for investments" to every user regardless of their data — a
+                            // financial claim attributed to AI that read no data at all. It now
+                            // shows a run-rate projection, or says why it cannot.
+                            val projected = uiState.periodSummary.projectedTotal
                             Text(
-                                "Next month projection",
+                                if (projected == null) "Not enough data to project"
+                                else "Projected by month end",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Based on your current trajectory, we estimate you will have surplus for investments if your spending returns to normal levels.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
+                            if (projected != null) {
+                                Text(
+                                    formatCurrency(projected),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AccentPurple
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "At ${formatCurrency(uiState.periodSummary.averageDailySpend)} " +
+                                        "per day over ${uiState.periodSummary.daysElapsed} days. " +
+                                        "Shared spending only.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            } else {
+                                Text(
+                                    "A few more days of spending are needed before a monthly " +
+                                        "estimate means anything.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
                                 onClick = onNavigateToBudget,

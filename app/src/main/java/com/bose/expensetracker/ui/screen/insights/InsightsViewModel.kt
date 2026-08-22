@@ -27,6 +27,9 @@ import javax.inject.Inject
 
 enum class SummaryPeriod(val label: String) { WEEK("Week"), MONTH("Month"), YEAR("Year") }
 
+/** Below this many elapsed days a run-rate projection is too noisy to show. */
+private const val MIN_DAYS_TO_PROJECT = 7
+
 data class PeriodSummary(
     val totalSpent: Double = 0.0,
     val previousPeriodSpent: Double = 0.0,
@@ -34,7 +37,18 @@ data class PeriodSummary(
     val topCategory: String = "",
     val topCategoryAmount: Double = 0.0,
     val averageDailySpend: Double = 0.0,
-    val daysInPeriod: Int = 1
+    val daysInPeriod: Int = 1,
+    /** Days of the period that have actually happened. Drives the projection below. */
+    val daysElapsed: Int = 0,
+    /**
+     * Run-rate estimate for the full period, or null when it would be meaningless.
+     *
+     * Null for the first [MIN_DAYS_TO_PROJECT] days on purpose. Extrapolating from two days is
+     * arithmetically valid and practically nonsense: pay rent on the 2nd and a naive run rate
+     * projects fifteen times the rent for the month. A number that looks measured but is not
+     * meaningful is the same class of defect as the hardcoded ones this replaced.
+     */
+    val projectedTotal: Double? = null
 )
 
 data class InsightsUiState(
@@ -96,6 +110,18 @@ class InsightsViewModel @Inject constructor(
         val pctChange = if (prevTotal > 0) ((totalSpent - prevTotal) / prevTotal * 100) else 0.0
         val days = ((currentEnd - currentStart) / 86400000L).coerceAtLeast(1).toInt()
 
+        // Elapsed, capped at the period length so a completed period projects to its actual.
+        val nowMillis = System.currentTimeMillis()
+        val elapsed = (((nowMillis - currentStart) / 86400000L) + 1)
+            .coerceIn(1L, days.toLong())
+            .toInt()
+        val projected = when {
+            totalSpent <= 0.0 -> null
+            elapsed >= days -> totalSpent          // period over: the projection *is* the total
+            elapsed < MIN_DAYS_TO_PROJECT -> null  // too early to extrapolate honestly
+            else -> totalSpent / elapsed * days
+        }
+
         val topCat = currentExpenses.groupBy { it.categoryName }
             .maxByOrNull { (_, e) -> e.sumOf { it.amount } }
 
@@ -116,8 +142,12 @@ class InsightsViewModel @Inject constructor(
                     percentChange = pctChange,
                     topCategory = topCat?.key ?: "",
                     topCategoryAmount = topCat?.value?.sumOf { e -> e.amount } ?: 0.0,
-                    averageDailySpend = totalSpent / days,
-                    daysInPeriod = days
+                    // Per elapsed day, not per period day: dividing by 30 on the 5th of the
+                    // month understates the rate by six times.
+                    averageDailySpend = totalSpent / elapsed,
+                    daysInPeriod = days,
+                    daysElapsed = elapsed,
+                    projectedTotal = projected
                 ),
                 categoryBreakdown = categoryBreakdown,
                 dailySpending = dailySpending,
