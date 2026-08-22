@@ -66,9 +66,19 @@ fun SmartInsightsScreen(
         } else {
             val totalSpent = uiState.periodSummary.totalSpent
             val prevSpent = uiState.periodSummary.previousPeriodSpent
-            val savingsRate = if (prevSpent > 0) {
-                ((1 - (totalSpent / prevSpent)) * 100).toFloat().coerceIn(0f, 100f)
-            } else if (totalSpent > 0) 50f else 0f
+
+            // This used to be presented as a "savings rate", which this app cannot compute: a
+            // savings rate is (income - spending) / income, and Expense has no income field —
+            // every row is an outflow. The old formula was really month-over-month spending
+            // change, it was clamped to 0..100 so spending MORE showed as 0% "saved", and when
+            // there was no previous month it fell back to a hardcoded 50%. So a single rent
+            // payment could render as "50% SAVINGS RATE" over the amount just spent.
+            //
+            // Null means there is nothing to compare against yet; say so rather than invent it.
+            val changePct: Float? = if (prevSpent > 0) {
+                (((totalSpent - prevSpent) / prevSpent) * 100).toFloat()
+            } else null
+            val spentLess = (changePct ?: 0f) < 0f
 
             LazyColumn(
                 modifier = Modifier
@@ -122,15 +132,25 @@ fun SmartInsightsScreen(
                                 .padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            // The arc shows magnitude only; the sign lives in the text, because
+                            // a ring cannot express "more" versus "less".
                             CircularProgressRing(
-                                percentage = savingsRate,
-                                centerText = "${savingsRate.toInt()}%",
+                                percentage = changePct?.let { kotlin.math.abs(it).coerceIn(0f, 100f) } ?: 0f,
+                                centerText = changePct?.let {
+                                    "${if (it >= 0) "+" else "-"}${kotlin.math.abs(it).toInt()}%"
+                                } ?: "—",
                                 ringSize = 140.dp,
-                                strokeWidth = 12.dp
+                                strokeWidth = 12.dp,
+                                progressColor = if (changePct == null) AccentPurple
+                                else if (spentLess) SavingsGreen else OverBudgetRed
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "SAVINGS RATE",
+                                when {
+                                    changePct == null -> "NO PREVIOUS MONTH TO COMPARE"
+                                    spentLess -> "LESS THAN LAST MONTH"
+                                    else -> "MORE THAN LAST MONTH"
+                                },
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 letterSpacing = 1.5.sp
@@ -142,7 +162,8 @@ fun SmartInsightsScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "of total expenses",
+                                "spent this month" +
+                                    if (prevSpent > 0) " • ${formatCurrency(prevSpent)} last month" else "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -156,12 +177,12 @@ fun SmartInsightsScreen(
                         val (icon, badgeLabel, badgeColor) = when (insight.type) {
                             InsightType.TREND_UP -> Triple(
                                 Icons.Filled.TrendingUp,
-                                "OVER BUDGET",
+                                "SPENT MORE",
                                 OverBudgetRed
                             )
                             InsightType.TREND_DOWN -> Triple(
                                 Icons.Filled.Payments,
-                                "SAVINGS",
+                                "SPENT LESS",
                                 SavingsGreen
                             )
                             InsightType.ANOMALY -> Triple(

@@ -159,12 +159,9 @@ fun InsightsScreen(
                                     style = MaterialTheme.typography.headlineLarge,
                                     fontWeight = FontWeight.Bold
                                 )
-                                Text(
-                                    "75%",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AccentPurple
-                                )
+                                // A hardcoded "75%" used to sit here, presented as a stat. There
+                                // is nothing to put in its place: the only percentage this data
+                                // supports is the period-over-period change shown just below.
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
