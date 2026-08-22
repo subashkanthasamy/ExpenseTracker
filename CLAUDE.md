@@ -4,7 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Expense Tracker is a **Kotlin Multiplatform (KMP)** app targeting Android and iOS. The Android app is built with Kotlin and Jetpack Compose (Material 3). The iOS app is SwiftUI with its own Firebase integration.
+Expense Tracker is a **Kotlin Multiplatform (KMP)** app targeting Android, iOS and the web. The
+Android app is built with Kotlin and Jetpack Compose (Material 3). The iOS app is SwiftUI with
+its own Firebase integration. The web app is React + TypeScript consuming `shared/` compiled to
+Kotlin/JS.
 
 **Important:** Android is the reference implementation and is far ahead in *features*. Both
 platforms now share the **same domain models** from `shared/` — iOS consumes them through
@@ -16,7 +19,7 @@ a real gap, not an assumption.
 - **Min SDK (Android):** 24 | **Target/Compile SDK:** 36
 - **Java compatibility:** 11
 - **Build system:** Gradle with Kotlin DSL (`.kts`) and version catalog (`gradle/libs.versions.toml`)
-- **KMP targets:** Android, iosX64, iosArm64, iosSimulatorArm64
+- **KMP targets:** Android, iosX64, iosArm64, iosSimulatorArm64, js(IR)
 
 ## Project Structure
 
@@ -25,11 +28,17 @@ a real gap, not an assumption.
 ├── shared/                 # KMP shared module
 │   ├── src/commonMain/     # Shared code (domain, data interfaces, UI state, utils)
 │   ├── src/androidMain/    # Android platform code
-│   └── src/iosMain/        # iOS platform code
+│   ├── src/iosMain/        # iOS platform code
+│   └── src/jsMain/         # Web platform code — the @JsExport bridge (web/WebBridge.kt)
 ├── iosApp/                 # iOS app (SwiftUI + Firebase)
 │   ├── iosApp.xcodeproj    # Open this (no workspace — Firebase comes via SPM, not CocoaPods)
 │   ├── Info.plist          # CFBundleURLTypes for the Google Sign-In callback
 │   └── iosApp/             # Swift sources (auto-included via synchronized folder)
+├── web/                    # Web app (React + TypeScript + Firebase JS SDK) — see web/README.md
+│   ├── src/shared.ts       # Typed facade over the Kotlin/JS bridge
+│   ├── src/data/           # Firestore access, incl. the two-query expense read
+│   └── src/pages/          # Screens
+├── kotlin-js-store/        # yarn.lock for the JS target — committed, keep it in step
 └── gradle/libs.versions.toml
 ```
 
@@ -73,6 +82,13 @@ a real gap, not an assumption.
 ./gradlew :app:testDebugUnitTest                  # Android unit tests
 ./gradlew connectedAndroidTest                    # Run instrumented tests
 ./gradlew clean                                   # Clean build outputs
+
+# Web
+./gradlew :shared:jsBrowserProductionLibraryDistribution  # Build the npm package web/ consumes
+./gradlew :shared:jsNodeTest                      # The 63 shared tests, on Node (runs on Linux)
+./gradlew kotlinUpgradeYarnLock                   # After changing shared/ dependencies
+cd web && npm install && npm run dev              # Dev server
+cd web && npm run typecheck && npm run build      # Verify the web app
 ```
 
 
@@ -87,6 +103,12 @@ a real gap, not an assumption.
   Before claiming a build passes, use `--rerun-tasks` (or `clean`) if the change might have
   exposed something outside the files you edited. A CI failure that you cannot reproduce
   locally is usually this.
+- **The JS target has its own two gotchas.** `:shared:allTests` now includes `jsNodeTest`, which
+  is good news — those 63 tests run on Linux, unlike the Kotlin/Native ones. But changing a
+  `shared/` dependency changes `kotlin-js-store/yarn.lock`, and the build fails with "Lock file
+  was changed" until you run `./gradlew kotlinUpgradeYarnLock` and commit it. Also note
+  `rootProject.name` is `expense-tracker`, not `Expense Tracker`: the Kotlin/JS plugin uses it
+  verbatim as an npm package name and yarn rejects a name containing a space.
 
 ## Architecture
 
@@ -122,6 +144,31 @@ Other gotchas:
 - Types that legitimately stay Swift-only live in `Models/AppModels.swift`: `Reminder` (no
   shared counterpart), and `ChatMessage`/`InlineStat`/`CategoryBreakdown` (carry SwiftUI
   presentation state such as `Color`).
+
+### Using shared code from TypeScript (`shared/src/jsMain/.../web/WebBridge.kt`)
+
+Kotlin/JS has the same class of sharp edges as the Obj-C export, plus one that is worse.
+**Read the bridge before touching model code.**
+
+1. **`Long`, `commonMain` data classes and `List` are all non-exportable** — and the compiler
+   reports each as a **warning**, then emits the module anyway with the type degraded to `any`
+   in the `.d.ts`. Unlike the Swift side, where a wrong type is a compile error, here the build
+   goes green while the TypeScript contract is silently broken. `shared/build.gradle.kts` sets
+   `allWarningsAsErrors` on the JS target specifically to convert that back into a failure.
+2. **`@JsExport` cannot be applied to anything in `commonMain`** — the annotation lives in
+   `kotlin.js`. So the bridge is the only exported surface, and it takes and returns **plain JS
+   objects** (`dynamic`), which is also exactly what the Firestore JS SDK hands back.
+3. **Dates cross as `Double` epoch millis.** JS numbers hold integers exactly to 2^53, which is
+   about ±285,000 years in millis, so nothing is lost.
+
+`web/src/shared.ts` is the typed facade: it re-declares each bridge function with the real
+TypeScript interfaces so no `any` escapes into the app.
+
+Two conventions worth keeping:
+- Colours are returned **both** as the ARGB number the Firestore document stores and as a CSS
+  `#rrggbb`. Returning only the hex would make a web-seeded category unreadable to Android.
+- The canonical icon key **is** the Material Symbols ligature name, so the web renders it
+  directly with no mapping table — the step iOS needs for SF Symbols.
 
 ### iOS ↔ shared framework wiring
 
@@ -170,9 +217,13 @@ only ever *write* millis. `tools/migrate-timestamps.js` normalises legacy docume
 ## Key Dependencies
 
 ### Shared (KMP)
-- Koin (DI), Ktor (HTTP), kotlinx-serialization, kotlinx-datetime
+- Koin (DI), kotlinx-serialization, kotlinx-datetime
 - kotlinx-coroutines, multiplatform-settings
-- Room runtime + SQLite bundled (for future KMP Room migration)
+- **No Room, and no Ktor.** This section used to claim both. Room was never a `shared/`
+  dependency (it lives in `app/`), and Ktor was declared but had zero references in the whole
+  module — it has been removed, which also dropped 14 `ktor-*` modules from the web bundle.
+  Every remaining dependency has a Kotlin/JS target, which is what made the web client possible
+  without touching the domain layer.
 
 ### Android-only
 - Jetpack Compose (Material 3), Navigation Compose
@@ -295,28 +346,31 @@ Accents (`DS.accent`, `expense`, `income`, `ctaGradient`) are deliberately share
 
 ## Platform parity (Android = reference)
 
-Rough scale: ~11.7k lines of Android UI vs ~2.8k lines of Swift, so even the shipped iOS
-screens are thinner than their Android counterparts.
+Rough scale: ~13k lines of Android UI vs ~2.6k lines of Swift vs ~3.5k lines of TypeScript, so
+both the iOS and web screens are thinner than their Android counterparts.
 
-Domain models are shared; the gap is features and platform plumbing.
+Domain models *and the domain logic* are shared — all three clients run the same `Permissions`,
+`ExpenseFilter`, `CategoryPresets`, `CategoryIcons`, split calculators and currency formatting.
+The gap is features and platform plumbing.
 
-| Area | Android | iOS |
-|---|---|---|
-| Dashboard, Expenses, Categories, Budgets, Savings, Net Worth, Household, Insights, Coach | ✅ | ✅ (thinner) |
-| Email/password auth | ✅ | ✅ |
-| Google Sign-In | ✅ | ✅ |
-| Phone (OTP) auth | ✅ | ❌ |
-| Settings (theme, biometric, export, toggles) | ✅ | ✅ theme, biometric, export/import, reset |
-| Notifications / reminders | ✅ | ✅ daily + bill (local notifications) |
-| Recurring expenses | ✅ WorkManager (today-only) | ✅ launch catch-up (better) |
-| Receipt scanner (OCR) | ✅ CameraX + ML Kit | ✅ Vision (shared heuristics) |
-| Voice expense entry | ✅ | ✅ SFSpeechRecognizer (shared parser) |
-| Export / import | ✅ | ✅ CSV + PDF export, CSV import |
-| Offline cache | ✅ Room | ❌ Firestore only |
-| Domain models | ✅ `shared/` | ✅ `shared/` via Shared.framework |
-| Budgets / goals / recurring storage | ✅ Firestore | ✅ Firestore (same collections) |
-| Sandbox / demo mode | ✅ | ❌ |
-| **SMS transaction import** | ✅ automatic | ⚠️ manual paste only — automatic is impossible |
+| Area | Android | iOS | Web |
+|---|---|---|---|
+| Dashboard, Expenses, Categories, Budgets, Savings, Net Worth, Household, Insights | ✅ | ✅ (thinner) | ✅ (thinner) |
+| Financial Coach | 🚩 flag off | 🚩 flag off | ❌ not built |
+| Email/password auth | ✅ | ✅ | ✅ |
+| Google Sign-In | ✅ | ✅ | ✅ popup |
+| Phone (OTP) auth | ✅ | ❌ | ❌ |
+| Settings (theme, biometric, export, toggles) | ✅ | ✅ theme, biometric, export/import, reset | ✅ theme, CSV export |
+| Notifications / reminders | ✅ | ✅ daily + bill (local notifications) | ❌ needs Web Push + a service worker |
+| Recurring expenses | ✅ WorkManager (today-only) | ✅ launch catch-up (better) | ⚠️ manages rules, deliberately does not generate |
+| Receipt scanner (OCR) | ✅ CameraX + ML Kit | ✅ Vision (shared heuristics) | ❌ not built |
+| Voice expense entry | ✅ | ✅ SFSpeechRecognizer (shared parser) | ❌ not built |
+| Export / import | ✅ | ✅ CSV + PDF export, CSV import | ✅ CSV export |
+| Offline cache | ✅ Room | ❌ Firestore only | ✅ Firestore IndexedDB persistence (free) |
+| Domain models **and logic** | ✅ `shared/` | ✅ `shared/` via Shared.framework | ✅ `shared/` via Kotlin/JS |
+| Budgets / goals / recurring storage | ✅ Firestore | ✅ Firestore (same collections) | ✅ Firestore (same collections) |
+| Sandbox / demo mode | ✅ | ❌ | ❌ |
+| **SMS transaction import** | ✅ automatic | ⚠️ manual paste only — automatic is impossible | ⚠️ manual paste only — automatic is impossible |
 
 ### SMS import cannot be ported
 
@@ -338,7 +392,10 @@ aggregator API (RBI Account Aggregator).
   belongs to the device showing it.
 - **Recurring generation is shared.** `RecurringScheduleCalculator` in `shared/` decides
   which days are due and both platforms call it — required for correctness now that they
-  read and write the same `lastGeneratedDate`. Both catch up on missed days.
+  read and write the same `lastGeneratedDate`. Both catch up on missed days. **The web client deliberately
+  does not generate**, only manages the rules: a third writer racing the two mobile clients
+  against the same `lastGeneratedDate` would duplicate rows, and a browser tab is the least
+  reliable of the three schedulers.
 - **Budget alerts are dead code on Android** — `NotificationHelper.showBudgetAlertNotification`
   has no callers. Nothing to port until it is built or specified. On iOS a spending-threshold
   check cannot run in the background; it would fire on app open, or need Cloud Functions + FCM.
@@ -372,6 +429,8 @@ aggregator API (RBI Account Aggregator).
 - Android debug builds must have the debug keystore SHA-1 registered in Firebase or Google
   Sign-In fails with a misleading "cancelled".
 - Room stays in `app/` due to AGP 9.x KSP compatibility issues with KMP plugin.
-- Compose Multiplatform not yet integrated (AGP 9.x compatibility). Shared module is pure Kotlin.
+- Compose Multiplatform not yet integrated (AGP 9.x compatibility). Shared module is pure Kotlin
+  — which is exactly why it compiles to Kotlin/JS unchanged. The web client supplies its own
+  React UI rather than sharing Compose.
 - `System.currentTimeMillis()` replaced with `kotlinx.datetime.Clock` in shared code.
 - `String.format()` not available in Kotlin/Native; use manual formatting in shared code.
