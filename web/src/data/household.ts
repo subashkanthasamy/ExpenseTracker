@@ -21,12 +21,8 @@ import {
   deleteDoc,
   doc,
   getDoc,
-  getDocs,
-  query,
   setDoc,
   updateDoc,
-  where,
-  documentId,
 } from 'firebase/firestore'
 
 import { db } from '../firebase'
@@ -138,6 +134,15 @@ export async function joinHousehold(inviteCode: string, uid: string): Promise<st
       memberUids: arrayUnion(uid),
       [`roles.${uid}`]: 'member',
     })
+    // Mirror the membership onto the joiner's own profile, as Android's join does. Without it
+    // nobody else in the household can read this person's display name — the profile read rule
+    // requires the two `users` documents to share a household id — so they would appear in
+    // everyone's member list as a shortened uid.
+    await setDoc(
+      doc(db, 'users', uid),
+      { householdIds: arrayUnion(householdId), activeHouseholdId: householdId },
+      { merge: true },
+    ).catch(() => {})
   } catch {
     // The most likely cause by far, and the rules cannot distinguish it for us.
     throw new JoinError(
@@ -228,31 +233,36 @@ export interface Member {
 /**
  * The member list, with display names read from `users/{uid}`.
  *
- * Reading another member's profile is permitted only when your own `users` document shares a
- * household id with theirs, so a uid that cannot be resolved falls back to a shortened id
- * rather than failing the whole list.
+ * **One `get` per member, never a query.** The `users` rule is `allow list: if false` — the
+ * collection deliberately cannot be enumerated — so a `where(documentId(), 'in', ...)` query is
+ * a `list` and is rejected outright, which made every name fall back to a masked uid. Android
+ * reads the same way, one document at a time (`HouseholdRepositoryImpl.getHouseholdMembers`).
+ *
+ * Reading *another* member's profile additionally requires your own `users` document to share a
+ * household id with theirs, so a single unreadable profile degrades to a shortened uid instead
+ * of failing the list.
  */
 export async function getMembers(household: Household): Promise<Member[]> {
   const owner = household.ownerUid || household.memberUids[0] || ''
-  const names = new Map<string, { displayName: string; email: string }>()
 
-  // `documentId() in [...]` is capped at 30 values per query; households are capped at 20
-  // members by the rules, so one query always suffices.
-  if (household.memberUids.length > 0) {
-    try {
-      const snapshot = await getDocs(
-        query(collection(db, 'users'), where(documentId(), 'in', household.memberUids)),
-      )
-      snapshot.docs.forEach((d) =>
-        names.set(d.id, {
-          displayName: (d.data().displayName as string) ?? '',
-          email: (d.data().email as string) ?? '',
-        }),
-      )
-    } catch {
-      /* Fall through to uid-only rendering. */
-    }
-  }
+  const profiles = await Promise.all(
+    household.memberUids.map(async (uid) => {
+      try {
+        const snapshot = await getDoc(doc(db, 'users', uid))
+        if (!snapshot.exists()) return null
+        const data = snapshot.data()
+        return {
+          uid,
+          displayName: (data.displayName as string) ?? '',
+          email: (data.email as string) ?? '',
+        }
+      } catch {
+        return null
+      }
+    }),
+  )
+
+  const names = new Map(profiles.filter((p) => p != null).map((p) => [p!.uid, p!]))
 
   return household.memberUids.map((uid) => {
     const profile = names.get(uid)

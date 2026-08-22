@@ -116,7 +116,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
       unsubscribeHousehold = onSnapshot(
         householdsQuery,
-        (snapshot) => {
+        async (snapshot) => {
           if (snapshot.empty) {
             setState({ status: 'noHousehold', user, isAdmin })
             return
@@ -129,18 +129,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           const household = households[0]!
           const role = roleOf(household, user.uid, isAdmin)
 
-          // `users/{uid}.householdIds` is what lets this account read its peers' profiles:
-          // the rule permits a profile read only when the two documents share a household id.
-          // Without this the household member list renders as bare uids.
+          // `users/{uid}.householdIds` is what lets this account read its peers' profiles: the
+          // rule permits a profile read only when the two documents share a household id.
+          // Without it the household member list renders as bare uids.
+          //
+          // Awaited, not fire-and-forget, and before the session is published: the household
+          // screen reads member profiles as soon as it mounts, so leaving this in flight makes
+          // the names resolve or not depending on which write lands first.
           if (!householdIdsWritten.has(household.id)) {
             householdIdsWritten.add(household.id)
-            void setDoc(
-              doc(db, 'users', user.uid),
-              { householdIds: arrayUnion(household.id), activeHouseholdId: household.id },
-              { merge: true },
-            ).catch(() => {
-              /* Non-fatal: the member list degrades to uids. */
-            })
+            try {
+              await setDoc(
+                doc(db, 'users', user.uid),
+                { householdIds: arrayUnion(household.id), activeHouseholdId: household.id },
+                { merge: true },
+              )
+            } catch {
+              /* Non-fatal: the member list degrades to shortened uids. */
+            }
           }
 
           setState({
