@@ -143,7 +143,7 @@ fun InsightsScreen(
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
                             Text(
-                                "SAVINGS RATE",
+                                "SHARED SPENDING",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 letterSpacing = 1.sp
@@ -166,6 +166,12 @@ fun InsightsScreen(
                                     color = AccentPurple
                                 )
                             }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Personal expenses are not counted here",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
                             val pctChange = summary.percentChange
                             val changeColor = if (pctChange <= 0) IncomeGreen else ExpenseRed

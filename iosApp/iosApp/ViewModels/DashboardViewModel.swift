@@ -14,7 +14,11 @@ class DashboardViewModel {
 
     private let authService: AuthService
     private let firestoreService: FirestoreService
-    private var listener: ListenerRegistration?
+    /// Members get two listeners, managers one — see FirestoreService.observeExpenses.
+    private var listeners: [ListenerRegistration] = []
+    /// Set before `load()`; selects the query shape. Defaults to the restricted path so a
+    /// missing role can only under-fetch, never trigger a rejected unfiltered query.
+    var canReadAllExpenses = false
 
     private let categoryColors: [Color] = [
         AppColors.accentPurple, AppColors.accentOrange, AppColors.incomeGreen,
@@ -34,7 +38,12 @@ class DashboardViewModel {
             return
         }
         print("Dashboard: Loading expenses for household \(hid)")
-        listener = firestoreService.observeExpenses(householdId: hid) { [weak self] expenses in
+        let uid = authService.currentUserId ?? ""
+        listeners = firestoreService.observeExpenses(
+            householdId: hid,
+            canReadAll: canReadAllExpenses,
+            uid: uid
+        ) { [weak self] expenses in
             Task { @MainActor in
                 print("Dashboard: Received \(expenses.count) expenses")
                 self?.processExpenses(expenses)
@@ -75,5 +84,8 @@ class DashboardViewModel {
         isLoading = false
     }
 
-    func cleanup() { listener?.remove() }
+    func cleanup() {
+        listeners.forEach { $0.remove() }
+        listeners = []
+    }
 }

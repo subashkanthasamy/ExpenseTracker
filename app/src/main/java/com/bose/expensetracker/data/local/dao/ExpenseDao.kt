@@ -52,7 +52,39 @@ interface ExpenseDao {
     @Query("DELETE FROM expenses WHERE householdId = :householdId")
     suspend fun deleteAllForHousehold(householdId: String)
 
-    @Query("SELECT categoryId, SUM(amount) as total FROM expenses WHERE householdId = :householdId AND date BETWEEN :startDate AND :endDate AND syncStatus != ${SyncStatus.PENDING_DELETE} GROUP BY categoryId")
+    /**
+     * Drops cached rows the server no longer serves us.
+     *
+     * The realtime sync used to only insert, so a row that became invisible — someone marked
+     * their expense personal, or our role was reduced — stayed in the cache and kept rendering.
+     * The UI reads Room, so that was a stale read of data we are no longer allowed to see.
+     *
+     * Restricted to SYNCED rows: anything PENDING_* has local work that has not reached the
+     * server yet and must survive.
+     */
+    @Query(
+        "DELETE FROM expenses WHERE householdId = :householdId " +
+            "AND syncStatus = ${SyncStatus.SYNCED} AND id NOT IN (:servedIds)"
+    )
+    suspend fun deleteSyncedNotIn(householdId: String, servedIds: List<String>)
+
+    /**
+     * Per-category spend for a period, **shared rows only**.
+     *
+     * A budget is a shared commitment, so personal spending must not consume it — and since a
+     * member cannot see peers' personal rows, counting them would make the same budget read
+     * differently depending on who is looking.
+     *
+     * `scope = ''` is included deliberately: that is what rows written before scopes existed
+     * carry, and `ExpenseScope.fromWire` maps a blank to SHARED. Filtering on `= 'shared'` alone
+     * would silently drop every legacy expense from budget totals.
+     */
+    @Query(
+        "SELECT categoryId, SUM(amount) as total FROM expenses " +
+            "WHERE householdId = :householdId AND date BETWEEN :startDate AND :endDate " +
+            "AND syncStatus != ${SyncStatus.PENDING_DELETE} " +
+            "AND (scope = 'shared' OR scope = '') GROUP BY categoryId"
+    )
     suspend fun getCategorySpending(householdId: String, startDate: Long, endDate: Long): List<CategorySpending>
 }
 

@@ -203,12 +203,14 @@ fun HouseholdScreen(
                                         Permissions.label(HouseholdRole.OWNER)
                                     } else {
                                         Permissions.label(
-                                            if (household.roles[member.uid] == Permissions.ROLE_GUEST) {
-                                                HouseholdRole.GUEST
-                                            } else HouseholdRole.MEMBER
+                                            when (household.roles[member.uid]) {
+                                                Permissions.ROLE_ADMIN -> HouseholdRole.ADMIN
+                                                Permissions.ROLE_GUEST -> HouseholdRole.GUEST
+                                                else -> HouseholdRole.MEMBER
+                                            }
                                         )
                                     },
-                                    isGuest = household.roles[member.uid] == Permissions.ROLE_GUEST,
+                                    memberRole = household.roles[member.uid],
                                     // Nobody may change the owner's role, including the owner:
                                     // the rules pin ownerUid, so the control would only fail.
                                     canManage = Permissions.canManageMembers(uiState.role) && !isOwner,
@@ -443,7 +445,8 @@ private fun MemberRow(
     name: String,
     email: String,
     roleLabel: String,
-    isGuest: Boolean,
+    /** Raw `roles` value: null for a pre-roles member, otherwise member/admin/guest. */
+    memberRole: String?,
     canManage: Boolean,
     onSetRole: (String) -> Unit,
     onRemove: () -> Unit
@@ -488,15 +491,35 @@ private fun MemberRow(
                     )
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(if (isGuest) "Make member" else "Make guest") },
-                        onClick = {
-                            menuOpen = false
-                            onSetRole(
-                                if (isGuest) Permissions.ROLE_MEMBER else Permissions.ROLE_GUEST
-                            )
-                        }
-                    )
+                    // Admin is a co-manager: everything the owner can do except delete the
+                    // household. Offered as a promotion from member, and a demotion back.
+                    if (memberRole != Permissions.ROLE_ADMIN) {
+                        DropdownMenuItem(
+                            text = { Text("Make admin") },
+                            onClick = {
+                                menuOpen = false
+                                onSetRole(Permissions.ROLE_ADMIN)
+                            }
+                        )
+                    }
+                    if (memberRole != Permissions.ROLE_MEMBER) {
+                        DropdownMenuItem(
+                            text = { Text("Make member") },
+                            onClick = {
+                                menuOpen = false
+                                onSetRole(Permissions.ROLE_MEMBER)
+                            }
+                        )
+                    }
+                    if (memberRole != Permissions.ROLE_GUEST) {
+                        DropdownMenuItem(
+                            text = { Text("Make guest") },
+                            onClick = {
+                                menuOpen = false
+                                onSetRole(Permissions.ROLE_GUEST)
+                            }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text("Remove from household", color = ExpenseRed) },
                         onClick = {

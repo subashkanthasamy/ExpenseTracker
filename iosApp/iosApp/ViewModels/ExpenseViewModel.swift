@@ -18,7 +18,8 @@ class ExpenseListViewModel {
 
     private let authService: AuthService
     private let firestoreService: FirestoreService
-    private var listener: ListenerRegistration?
+    /// Members get two listeners, managers one — see FirestoreService.observeExpenses.
+    private var listeners: [ListenerRegistration] = []
 
     init(authService: AuthService, firestoreService: FirestoreService) {
         self.authService = authService
@@ -77,10 +78,14 @@ class ExpenseListViewModel {
         dateRange = .all
     }
 
+    /// Set before `load()`; decides the query shape. Defaults to the restricted path, so a
+    /// missing role can only under-fetch, never trigger a rejected unfiltered query.
+    var canReadAllExpenses = false
+
     func load() async {
         // The view model outlives the view inside a TabView, so `.task` runs again on every
         // reappearance. Without this guard each one attached another snapshot listener.
-        guard listener == nil else { return }
+        guard listeners.isEmpty else { return }
 
         guard let hid = await authService.getActiveHouseholdId() else {
             print("ExpenseList: No household ID")
@@ -88,7 +93,12 @@ class ExpenseListViewModel {
             return
         }
         print("ExpenseList: Observing expenses for \(hid)")
-        listener = firestoreService.observeExpenses(householdId: hid) { [weak self] expenses in
+        let uid = authService.currentUserId ?? ""
+        listeners = firestoreService.observeExpenses(
+            householdId: hid,
+            canReadAll: canReadAllExpenses,
+            uid: uid
+        ) { [weak self] expenses in
             Task { @MainActor in
                 self?.expenses = expenses
                 self?.isLoading = false
@@ -102,8 +112,8 @@ class ExpenseListViewModel {
     }
 
     func cleanup() {
-        listener?.remove()
-        listener = nil
+        listeners.forEach { $0.remove() }
+        listeners = []
     }
 }
 
@@ -115,6 +125,7 @@ class AddEditExpenseViewModel {
     var date = Date()
     var notes = ""
     var paymentMethod: PaymentMethod = AddEditExpenseViewModel.defaultPaymentMethod()
+    var scope: ExpenseScope = ExpenseScope.shared
     var isEditing = false
     var isLoading = false
     var error: String?
@@ -172,6 +183,7 @@ class AddEditExpenseViewModel {
                 // Keep an unspecified row unspecified: editing an old expense shouldn't
                 // silently stamp it with the default method.
                 paymentMethod = expense.paymentMethod
+                scope = expense.scope
             }
         }
     }
@@ -194,7 +206,8 @@ class AddEditExpenseViewModel {
             amount: amt, categoryId: cat.id, categoryName: cat.name, date: date,
             notes: notes, addedBy: uid, addedByName: authService.currentUserDisplayName ?? "User",
             createdAt: isEditing ? date : Date(), updatedAt: Date(),
-            paymentMethod: paymentMethod
+            paymentMethod: paymentMethod,
+            scope: scope
         )
         do {
             if isEditing {

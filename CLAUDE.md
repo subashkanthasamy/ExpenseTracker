@@ -208,18 +208,27 @@ only ever *write* millis. `tools/migrate-timestamps.js` normalises legacy docume
 end user's credentials, so `Permissions` in `shared/domain/usecase/access/` exists to grey out
 buttons, not to secure anything. Change the two together.
 
-| | admin | owner | member | guest |
+| | owner | admin | member | guest |
 |---|---|---|---|---|
 | read household | ✅ | ✅ | ✅ | ✅ |
-| delete / rename household, manage members, invite codes | ✅ | ✅ | ❌ | ❌ |
+| **delete household** | ✅ | ❌ | ❌ | ❌ |
+| rename household, manage members, invite codes | ✅ | ✅ | ❌ | ❌ |
 | shared config (categories, budgets, goals, recurring, assets) | ✅ | ✅ | ❌ | ❌ |
 | own expenses | ✅ | ✅ | ✅ | ❌ |
-| others' expenses | ✅ | ✅ | ❌ | ❌ |
+| others' **shared** expenses | ✅ | ✅ | read | read |
+| others' **personal** expenses | ✅ | ✅ | ❌ | ❌ |
 
-- **`admin` is a Firebase custom claim, never a field.** `users/{uid}` is self-writable, so a
-  role field there would be self-grantable. Set it with
-  `admin.auth().setCustomUserClaims(uid, { admin: true })`; it reaches the client on the next
-  ID token refresh.
+- **`admin` is now a household role** (`roles.<uid> == "admin"`) — a co-manager the owner
+  appoints. It is everything the owner can do except delete the household, which is deliberately
+  not delegable since there is no ownership transfer.
+- **The global `admin` custom claim is support access and maps to OWNER**, not to the household
+  admin role. Mapping it to ADMIN would mean granting support access *removed* the ability to
+  delete. Set it with `admin.auth().setCustomUserClaims(uid, { admin: true })`; it reaches the
+  client on the next ID token refresh.
+- **No role ever lives on `users/{uid}`.** That document is self-writable, so a role field there
+  would be self-grantable and the whole model would collapse. Household roles live on the
+  household document (which the holder cannot write); support access lives in a custom claim
+  (which only the Admin SDK can set).
 - **`ownerUid` is the creator and is immutable.** There is deliberately no ownership transfer:
   it would let a compromised session hand the household away permanently.
 - **`memberUids` is an index, `roles` is the authority.** They must stay in step — the rules
@@ -235,6 +244,33 @@ buttons, not to secure anything. Change the two together.
 - **Category seeding is owner-only** now. A member calling `seedPresetCategories` is denied;
   on iOS those writes are wrapped in `try?`, so it fails silently and they see an empty
   category list until the owner has opened the app once.
+
+### Expense visibility (personal vs shared)
+
+`Expense.scope` is `shared` or `personal`. Personal rows are visible only to their author and to
+the owner/admins, and are excluded from every household figure.
+
+- **`scope` is required on the wire.** The read rule tests `resource.data.scope` literally, so a
+  row without the field is unreadable to members — it silently disappears rather than erroring.
+  Run `tools/backfill-expense-scope.js` **before** publishing rules, and after shipping a client
+  that writes the field. The literal test is deliberate: with `.get(key, default)` Firestore's
+  query prover may refuse `where scope == 'shared'` as unprovable, and an unproven query is
+  rejected outright.
+- **Members read expenses with TWO queries, merged by document id** — `where scope == 'shared'`
+  and `where addedBy == <uid>`. An unfiltered list is *rejected* for them, not filtered, so the
+  whole list breaks rather than returning a subset. Owner/admin keep the single unfiltered
+  listener. Merging by id matters: your own shared rows come back in both.
+- **No `orderBy` on either query**, so they stay equality-only and need no composite index —
+  which is why `firestore.indexes.json` can remain absent. Both clients already sort locally.
+- **The Android sync reconciles deletions** (`ExpenseDao.deleteSyncedNotIn`). The UI reads Room,
+  and the sync used to only insert, so a row that became invisible — flipped to personal by its
+  author — would keep rendering from the cache forever.
+- **Totals are viewer-dependent by design.** The owner sees more than a member, so the same label
+  can legitimately show different numbers. Everything household-level runs through
+  `Permissions.sharedOnly`, and the figures say "shared" so the difference reads as a rule rather
+  than a bug.
+- **`getCategorySpending` filters `scope = 'shared' OR scope = ''`.** The blank is legacy rows,
+  which `fromWire` maps to shared; filtering on `= 'shared'` alone would drop them from budgets.
 
 Member ejection is available to the owner. Household deletion is owner-only but still does not
 cascade — Firestore orphans the subcollections, so a Cloud Function remains the right home for

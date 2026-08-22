@@ -8,6 +8,7 @@ import com.bose.expensetracker.domain.model.RecurringFrequency
 import com.bose.expensetracker.domain.model.SavingsGoal
 import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.model.ExpenseScope
 import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.model.Household
 import com.bose.expensetracker.domain.model.Liability
@@ -364,7 +365,8 @@ class FirestoreDataSource @Inject constructor(
                     "addedByName" to expense.addedByName,
                     "createdAt" to expense.createdAt,
                     "updatedAt" to expense.updatedAt,
-                    "paymentMethod" to expense.paymentMethod.wire
+                    "paymentMethod" to expense.paymentMethod.wire,
+                    "scope" to expense.scope.wire
                 )
             ).await()
     }
@@ -382,7 +384,8 @@ class FirestoreDataSource @Inject constructor(
                     "addedByName" to expense.addedByName,
                     "createdAt" to expense.createdAt,
                     "updatedAt" to expense.updatedAt,
-                    "paymentMethod" to expense.paymentMethod.wire
+                    "paymentMethod" to expense.paymentMethod.wire,
+                    "scope" to expense.scope.wire
                 )
             ).await()
     }
@@ -404,15 +407,38 @@ class FirestoreDataSource @Inject constructor(
         }
     }
 
-    fun observeExpenses(householdId: String): Flow<List<Expense>> = callbackFlow {
-        val listener = firestore.collection("households").document(householdId)
+    /**
+     * Live expenses for a household, scoped to what the caller may read.
+     *
+     * [canReadAll] must be true only for the owner and admins. It decides the query shape, and
+     * that is not cosmetic: the security rule lets a member read shared rows plus their own, and
+     * Firestore authorises a query by proving every document it could return satisfies the rule.
+     * An unfiltered query cannot be proven, so for a member it is **rejected outright** — the
+     * listener errors and the list goes empty rather than returning a subset. Members therefore
+     * get two constrained queries, merged here.
+     *
+     * Neither query carries an `orderBy`. That keeps them equality-only, which the automatic
+     * single-field index already covers, so no composite index (and no firestore.indexes.json)
+     * is needed. Both platforms already sort client-side.
+     */
+    fun observeExpenses(
+        householdId: String,
+        canReadAll: Boolean,
+        uid: String
+    ): Flow<List<Expense>> = callbackFlow {
+        val collection = firestore.collection("households").document(householdId)
             .collection("expenses")
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    return@addSnapshotListener
-                }
-                val expenses = snapshot?.documents?.mapNotNull { doc ->
-                    Expense(
+
+        // Merge by document id, not by appending: a member's own *shared* rows satisfy both
+        // queries, and concatenating would list them twice.
+        val bySource = mutableMapOf<String, Map<String, Expense>>()
+
+        fun emitMerged() {
+            trySend(bySource.values.flatMap { it.values })
+        }
+
+        fun decode(doc: com.google.firebase.firestore.DocumentSnapshot): Expense? =
+            if (!doc.exists()) null else Expense(
                         id = doc.id,
                         householdId = householdId,
                         amount = doc.getDouble("amount") ?: 0.0,
@@ -423,14 +449,43 @@ class FirestoreDataSource @Inject constructor(
                         addedBy = doc.getString("addedBy") ?: "",
                         addedByName = doc.getString("addedByName") ?: "",
                         paymentMethod = PaymentMethod.fromWire(doc.getString("paymentMethod")),
+                        scope = ExpenseScope.fromWire(doc.getString("scope")),
                         createdAt = doc.getEpochMillis("createdAt") ?: 0L,
                         updatedAt = doc.getEpochMillis("updatedAt") ?: 0L,
                         isSynced = true
                     )
-                } ?: emptyList()
-                trySend(expenses)
-            }
-        awaitClose { listener.remove() }
+
+        val listeners = if (canReadAll) {
+            // Owner / admin: everything satisfies the rule, so one unfiltered listener is
+            // provable and stays the cheapest option.
+            listOf(
+                "all" to collection.addSnapshotListener { snap, error ->
+                    if (error != null) return@addSnapshotListener
+                    bySource["all"] = snap?.documents?.mapNotNull(::decode)?.associateBy { it.id }
+                        ?: emptyMap()
+                    emitMerged()
+                }
+            )
+        } else {
+            listOf(
+                "shared" to collection.whereEqualTo("scope", ExpenseScope.SHARED.wire)
+                    .addSnapshotListener { snap, error ->
+                        if (error != null) return@addSnapshotListener
+                        bySource["shared"] =
+                            snap?.documents?.mapNotNull(::decode)?.associateBy { it.id } ?: emptyMap()
+                        emitMerged()
+                    },
+                "mine" to collection.whereEqualTo("addedBy", uid)
+                    .addSnapshotListener { snap, error ->
+                        if (error != null) return@addSnapshotListener
+                        bySource["mine"] =
+                            snap?.documents?.mapNotNull(::decode)?.associateBy { it.id } ?: emptyMap()
+                        emitMerged()
+                    }
+            )
+        }
+
+        awaitClose { listeners.forEach { (_, registration) -> registration.remove() } }
     }
 
     // --- Budgets / Savings goals / Recurring expenses ---

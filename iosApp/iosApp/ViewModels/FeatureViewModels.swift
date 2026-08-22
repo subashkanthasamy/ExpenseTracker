@@ -87,7 +87,12 @@ class BudgetViewModel {
             let expenses = try await firestoreService.getExpenses(householdId: hid)
             let cal = Calendar.current
             let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: Date()))!
-            let thisMonthExpenses = expenses.filter { $0.dateValue >= monthStart }
+            // A budget is a shared commitment, so it is measured against shared spending only.
+            // Counting personal rows would also make the same budget read differently for the
+            // owner and for a member.
+            let thisMonthExpenses = Permissions.shared.sharedOnly(
+                expenses: expenses.filter { $0.dateValue >= monthStart }
+            )
             budgets = b.map { budget in
                 let spent = thisMonthExpenses
                     .filter { $0.categoryId == budget.categoryId }
@@ -282,8 +287,15 @@ class InsightsViewModel {
             let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: now))!
             let lastMonthStart = cal.date(byAdding: .month, value: -1, to: monthStart)!
 
-            let thisMonth = expenses.filter { $0.dateValue >= monthStart }
-            let lastMonth = expenses.filter { $0.dateValue >= lastMonthStart && $0.dateValue < monthStart }
+            // Shared only for every household-level figure: a member cannot see peers'
+            // personal rows, so including them would make the same label mean different numbers
+            // depending on who is looking. Both periods, or the comparison is meaningless.
+            let thisMonth = Permissions.shared.sharedOnly(
+                expenses: expenses.filter { $0.dateValue >= monthStart }
+            )
+            let lastMonth = Permissions.shared.sharedOnly(
+                expenses: expenses.filter { $0.dateValue >= lastMonthStart && $0.dateValue < monthStart }
+            )
 
             var catMap: [String: Double] = [:]
             for e in thisMonth { catMap[e.categoryName, default: 0] += e.amount }

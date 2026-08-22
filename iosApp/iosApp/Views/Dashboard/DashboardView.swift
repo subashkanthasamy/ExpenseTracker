@@ -126,8 +126,17 @@ struct ExpenseRow: View {
                 .frame(width: 44, height: 44)
                 .background(Color.purple.opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-            VStack(alignment: .leading) {
-                Text(expense.categoryName).font(.subheadline).bold()
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(expense.categoryName).font(.subheadline).bold()
+                    // Only the author and managers ever see a personal row, so the lock is a
+                    // reassurance about who else can see it, not a disclosure.
+                    if expense.scope == ExpenseScope.personal {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundStyle(DS.textSecondary)
+                    }
+                }
                 Text(expense.notes.isEmpty ? expense.addedByName : expense.notes)
                     .font(.caption).foregroundStyle(DS.textSecondary)
             }

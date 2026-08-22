@@ -10,8 +10,11 @@ struct InsightsView: View {
             VStack(spacing: 20) {
                 // Summary Card
                 VStack(spacing: 8) {
-                    Text("This Month").font(.subheadline).foregroundStyle(DS.textSecondary)
+                    Text("Shared this month").font(.subheadline).foregroundStyle(DS.textSecondary)
                     Text(formatCurrency(viewModel.totalSpent)).font(.title).bold()
+                    Text("Personal expenses are not counted here")
+                        .font(.caption2)
+                        .foregroundStyle(DS.textSecondary)
                     if viewModel.lastPeriodSpent > 0 {
                         let diff = viewModel.totalSpent - viewModel.lastPeriodSpent
                         let pct = diff / viewModel.lastPeriodSpent * 100

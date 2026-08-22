@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.bose.expensetracker.data.local.ExpenseTrackerDatabase
 import com.bose.expensetracker.data.local.MIGRATION_7_8
+import com.bose.expensetracker.data.local.MIGRATION_8_9
 import com.bose.expensetracker.data.local.dao.AssetDao
 import com.bose.expensetracker.data.local.dao.BudgetDao
 import com.bose.expensetracker.data.local.dao.CategoryDao
@@ -57,7 +58,7 @@ object AppModule {
             ExpenseTrackerDatabase::class.java,
             "expense_tracker.db"
         )
-            .addMigrations(MIGRATION_7_8)
+            .addMigrations(MIGRATION_7_8, MIGRATION_8_9)
             // Backstop only. With an explicit path for 7->8 this will not fire,
             // and it must not: it drops unsynced offline rows.
             .fallbackToDestructiveMigration()

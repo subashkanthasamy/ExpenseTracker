@@ -38,7 +38,7 @@ import com.bose.expensetracker.data.local.entity.SavingsGoalEntity
         RecurringExpenseEntity::class,
         SavingsGoalEntity::class
 ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 abstract class ExpenseTrackerDatabase : RoomDatabase() {
@@ -70,3 +70,20 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
     }
 }
 
+/**
+ * Adds `expenses.scope`.
+ *
+ * A separate step rather than an edit to [MIGRATION_7_8], because v8 is already committed and
+ * may be installed. Room chains migrations, so a device on 7 runs 7->8 then 8->9 while one on 8
+ * runs only 8->9; folding this into v8 would corrupt the latter.
+ *
+ * Written out rather than left to `fallbackToDestructiveMigration()`, which drops the table —
+ * and with it any row still marked PENDING_CREATE, i.e. expenses added offline and not yet
+ * pushed. That is data loss only for users who happened to be offline at upgrade time, which is
+ * exactly the kind that never shows up in testing.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE expenses ADD COLUMN scope TEXT NOT NULL DEFAULT ''")
+    }
+}

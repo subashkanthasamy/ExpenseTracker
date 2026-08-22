@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.data.preferences.PaymentMethodPreferences
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.model.ExpenseScope
 import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
@@ -32,6 +33,7 @@ data class AddEditExpenseUiState(
     val notes: String = "",
     val addedByName: String = "",
     val paymentMethod: PaymentMethod = PaymentMethod.UPI,
+    val scope: ExpenseScope = ExpenseScope.SHARED,
     val isEditing: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null
@@ -126,6 +128,7 @@ class AddEditExpenseViewModel @Inject constructor(
                             // Keep an unspecified row unspecified: editing an old expense
                             // shouldn't silently stamp it with the default method.
                             paymentMethod = expense.paymentMethod,
+                            scope = expense.scope,
                             isEditing = true
                         )
                     }
@@ -213,6 +216,10 @@ class AddEditExpenseViewModel @Inject constructor(
         }
     }
 
+    fun setScope(scope: ExpenseScope) {
+        _uiState.update { it.copy(scope = scope) }
+    }
+
     fun setPaymentMethod(method: PaymentMethod) {
         _uiState.update { it.copy(paymentMethod = method) }
     }
@@ -256,7 +263,8 @@ class AddEditExpenseViewModel @Inject constructor(
                 addedByName = state.addedByName.ifBlank { userDisplayName ?: "Unknown" },
                 createdAt = if (state.isEditing) (originalCreatedAt ?: now) else now,
                 updatedAt = now,
-                paymentMethod = state.paymentMethod
+                paymentMethod = state.paymentMethod,
+                scope = state.scope
             )
 
             val result = if (state.isEditing) {

@@ -1,5 +1,7 @@
 package com.bose.expensetracker.data.repository
 
+import com.bose.expensetracker.data.access.SessionRoleProvider
+import com.bose.expensetracker.domain.usecase.access.Permissions
 import com.bose.expensetracker.data.local.dao.ExpenseDao
 import com.bose.expensetracker.data.local.entity.SyncStatus
 import com.bose.expensetracker.data.mapper.toDomain
@@ -19,7 +21,8 @@ import javax.inject.Singleton
 @Singleton
 class ExpenseRepositoryImpl @Inject constructor(
     private val expenseDao: ExpenseDao,
-    private val firestoreDataSource: FirestoreDataSource
+    private val firestoreDataSource: FirestoreDataSource,
+    private val sessionRoleProvider: SessionRoleProvider
 ) : ExpenseRepository {
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -125,7 +128,14 @@ class ExpenseRepositoryImpl @Inject constructor(
         currentSyncHouseholdId = householdId
         syncRefCount = 1
         syncJob = scope.launch {
-            firestoreDataSource.observeExpenses(householdId).collect { expenses ->
+            // Decides the query shape, and getting it wrong is not cosmetic: a member issuing an
+            // unfiltered query has it rejected by the rules, not filtered. Resolved once per
+            // sync; a role change needs invalidate() plus a restart to take effect.
+            val role = sessionRoleProvider.currentRole()
+            val canReadAll = Permissions.canReadAllExpenses(role)
+            val uid = sessionRoleProvider.currentUid()
+
+            firestoreDataSource.observeExpenses(householdId, canReadAll, uid).collect { expenses ->
                 val pendingIds = expenseDao.getPendingSyncExpenses().map { it.id }.toSet()
                 val safeToInsert = expenses
                     .filter { it.id !in pendingIds }
@@ -133,6 +143,10 @@ class ExpenseRepositoryImpl @Inject constructor(
                 if (safeToInsert.isNotEmpty()) {
                     expenseDao.insertAll(safeToInsert)
                 }
+                // Reconcile removals. The UI reads Room, so without this a row that stopped
+                // being visible — flipped to personal by its author — would keep rendering from
+                // the cache indefinitely.
+                expenseDao.deleteSyncedNotIn(householdId, expenses.map { it.id })
             }
         }
     }

@@ -119,13 +119,18 @@ private struct MemberRow: View {
     @State private var confirmRemove = false
 
     private var isOwner: Bool { member.uid == household.ownerUid }
-    private var isGuest: Bool { household.roles[member.uid] == Permissions.shared.ROLE_GUEST }
+    /// Raw `roles` value: nil for a pre-roles member, otherwise member/admin/guest.
+    private var memberRole: String? { household.roles[member.uid] }
 
     private var roleLabel: String {
         // The owner has no `roles` entry — they are identified by ownerUid — so their label
         // comes from that, not the map.
         if isOwner { return Permissions.shared.label(role: HouseholdRole.owner) }
-        return Permissions.shared.label(role: isGuest ? HouseholdRole.guest : HouseholdRole.member)
+        switch memberRole {
+        case Permissions.shared.ROLE_ADMIN: return Permissions.shared.label(role: HouseholdRole.admin)
+        case Permissions.shared.ROLE_GUEST: return Permissions.shared.label(role: HouseholdRole.guest)
+        default: return Permissions.shared.label(role: HouseholdRole.member)
+        }
     }
 
     var body: some View {
@@ -140,8 +145,16 @@ private struct MemberRow: View {
                 .foregroundStyle(DS.accent)
             if canManage {
                 Menu {
-                    Button(isGuest ? "Make member" : "Make guest") {
-                        onSetRole(isGuest ? Permissions.shared.ROLE_MEMBER : Permissions.shared.ROLE_GUEST)
+                    // Admin is a co-manager: everything the owner can do except delete the
+                    // household.
+                    if memberRole != Permissions.shared.ROLE_ADMIN {
+                        Button("Make admin") { onSetRole(Permissions.shared.ROLE_ADMIN) }
+                    }
+                    if memberRole != Permissions.shared.ROLE_MEMBER {
+                        Button("Make member") { onSetRole(Permissions.shared.ROLE_MEMBER) }
+                    }
+                    if memberRole != Permissions.shared.ROLE_GUEST {
+                        Button("Make guest") { onSetRole(Permissions.shared.ROLE_GUEST) }
                     }
                     Button("Remove from household", role: .destructive) { confirmRemove = true }
                 } label: {

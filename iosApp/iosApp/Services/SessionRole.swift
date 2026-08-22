@@ -28,6 +28,9 @@ class SessionRole {
     var isOwner: Bool { Permissions.shared.canManageMembers(role: role) }
     var canManageSharedConfig: Bool { Permissions.shared.canManageSharedConfig(role: role) }
     var canAddExpense: Bool { Permissions.shared.canAddExpense(role: role) }
+    /// Selects the Firestore query shape, not just a UI affordance — an unfiltered
+    /// query from a role that cannot read all is rejected, emptying the list.
+    var canReadAllExpenses: Bool { Permissions.shared.canReadAllExpenses(role: role) }
 
     func canEdit(_ expense: Expense) -> Bool {
         Permissions.shared.canEditExpense(role: role, expense: expense, uid: uid)

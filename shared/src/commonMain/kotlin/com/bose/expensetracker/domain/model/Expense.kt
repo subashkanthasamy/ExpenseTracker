@@ -18,5 +18,10 @@ data class Expense(
      * [PaymentMethod.UNSPECIFIED] rather than being guessed at.
      */
     val paymentMethod: PaymentMethod = PaymentMethod.UNSPECIFIED,
+    /**
+     * Visibility. Defaults to [ExpenseScope.SHARED] so existing construction sites compile and
+     * so a row can never become invisible by omission.
+     */
+    val scope: ExpenseScope = ExpenseScope.SHARED,
     val isSynced: Boolean = false
 )

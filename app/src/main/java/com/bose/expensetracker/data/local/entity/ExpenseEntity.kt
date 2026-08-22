@@ -18,6 +18,8 @@ data class ExpenseEntity(
     val updatedAt: Long,
     /** PaymentMethod.wire; "" for rows written before payment methods existed. */
     val paymentMethod: String = "",
+    /** ExpenseScope.wire; "" for rows written before scopes existed, which decode as shared. */
+    val scope: String = "",
     val syncStatus: Int = SyncStatus.SYNCED
 )
 

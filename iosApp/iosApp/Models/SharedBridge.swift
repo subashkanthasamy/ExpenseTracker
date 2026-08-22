@@ -101,6 +101,7 @@ extension Expense {
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         paymentMethod: PaymentMethod = PaymentMethod.unspecified,
+        scope: ExpenseScope = ExpenseScope.shared,
         isSynced: Bool = false
     ) {
         self.init(
@@ -116,6 +117,7 @@ extension Expense {
             createdAt: createdAt.epochMillis,
             updatedAt: updatedAt.epochMillis,
             paymentMethod: paymentMethod,
+            scope: scope,
             isSynced: isSynced
         )
     }

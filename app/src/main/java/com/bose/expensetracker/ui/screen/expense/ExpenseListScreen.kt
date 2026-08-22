@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.model.ExpenseScope
 import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.usecase.access.Permissions
 import com.bose.expensetracker.ui.components.DateGroupHeader
@@ -216,7 +217,16 @@ fun ExpenseListScreen(
                             TimelineItem(
                                 icon = categoryIcon(expense.categoryName),
                                 title = expense.notes.ifBlank { expense.categoryName },
-                                subtitle = "${expense.categoryName} • $timeStr",
+                                subtitle = buildString {
+                                    append(expense.categoryName)
+                                    append(" • ")
+                                    append(timeStr)
+                                    // Only the author and managers ever see a personal row, so
+                                    // the tag is a reassurance rather than a disclosure.
+                                    if (expense.scope == ExpenseScope.PERSONAL) {
+                                        append(" • 🔒 Personal")
+                                    }
+                                },
                                 amount = -expense.amount,
                                 isLast = index == expenses.lastIndex,
                                 // Members may only touch their own rows; the rules reject the

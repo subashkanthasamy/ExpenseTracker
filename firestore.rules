@@ -13,10 +13,19 @@ rules_version = '2';
 // Change the two together.
 //
 // Roles
-//   admin   — global, every household. Granted by the `admin` custom claim on the ID token.
-//   owner   — the creator of one household (households/{hid}.ownerUid).
+//   owner   — the creator of one household (households/{hid}.ownerUid). Only role that may
+//             delete the household; there is deliberately no ownership transfer.
+//   admin   — co-manager the owner appoints (roles.<uid> == 'admin'). Everything the owner can
+//             do except delete. NOT the same as the global support claim below.
 //   member  — may add and edit their OWN expenses. Nothing else that writes.
 //   guest   — read-only.
+//
+// Expense scope
+//   shared    — everyone in the household reads it; counts toward shared totals.
+//   personal  — only the author, the owner and admins read it.
+//
+// The global `admin` custom claim is SUPPORT access and is treated as owner-equivalent, not as
+// the household 'admin' role — otherwise granting it would take away the ability to delete.
 //
 // Why admin is a custom claim and not a field: `users/{uid}` is self-writable (see below), so
 // a role field there would be self-grantable. Set it with the Admin SDK:
@@ -60,7 +69,8 @@ service cloud.firestore {
     // Role of the caller within a household document's data.
     function roleIn(h) {
       return isAdmin()
-        ? 'admin'
+        // Support access is owner-equivalent, so granting the claim never removes a capability.
+        ? 'owner'
         : (uid() == ownerOf(h)
             ? 'owner'
             : (uid() in h.memberUids
@@ -70,7 +80,10 @@ service cloud.firestore {
                 : 'none'));
     }
 
-    function isOwnerOf(h) { return roleIn(h) in ['admin', 'owner']; }
+    // Owner or admin: manages the household and its shared configuration.
+    function isManagerOf(h) { return roleIn(h) in ['admin', 'owner']; }
+    // Creator only. Deleting the household cannot be delegated.
+    function isOwnerOnly(h) { return roleIn(h) == 'owner'; }
     function canWriteIn(h) { return roleIn(h) in ['admin', 'owner', 'member']; }
     function canReadIn(h) { return roleIn(h) != 'none'; }
 
@@ -141,10 +154,10 @@ service cloud.firestore {
         && request.resource.data.householdId.size() <= 128
         && request.resource.data.householdName is string
         && request.resource.data.householdName.size() <= 100
-        && isOwnerOf(householdData(request.resource.data.householdId));
+        && isManagerOf(householdData(request.resource.data.householdId));
 
       allow update, delete: if isSignedIn()
-        && isOwnerOf(householdData(resource.data.householdId));
+        && isManagerOf(householdData(resource.data.householdId));
     }
 
     // ---- Households -------------------------------------------------------
@@ -177,7 +190,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         // --- Owner / admin: rename, admit, eject, change roles ---------------
         (
-          isOwnerOf(resource.data)
+          isManagerOf(resource.data)
           // Identity is immutable. Ownership transfer is deliberately not expressible here:
           // it would let a compromised session hand the household to an attacker permanently.
           && request.resource.data.ownerUid == ownerOf(resource.data)
@@ -227,35 +240,52 @@ service cloud.firestore {
         )
       );
 
-      // Only the creator (or an admin) may delete. Firestore does not cascade, so the
-      // subcollections are orphaned rather than removed — see the deployment notes.
-      allow delete: if isSignedIn() && isOwnerOf(resource.data);
+      // Creator only — an admin manages the household but cannot destroy it. Firestore does
+      // not cascade, so the subcollections are orphaned rather than removed — see the notes.
+      allow delete: if isSignedIn() && isOwnerOnly(resource.data);
 
       // ---- Expenses: members own their own rows ---------------------------
 
       match /expenses/{docId} {
-        allow read: if canReadIn(householdData(hid));
+        // Owner and admin read everything; everyone else reads shared rows plus their own.
+        //
+        // NOTE FOR CLIENTS: this makes an unfiltered list() unauthorised for members. Firestore
+        // authorises a query by proving every document it could return satisfies the rule, and
+        // an unfiltered query cannot be proven — it is REJECTED, not filtered, so the whole
+        // expense list fails rather than returning a subset. A member must issue two constrained
+        // queries and merge them client-side:
+        //     where scope == 'shared'      and      where addedBy == <uid>
+        // `resource.data.scope` is tested literally rather than via .get(key, default) because
+        // the query prover is conservative about defaults; every row therefore needs the field,
+        // which is what tools/backfill-expense-scope.js is for.
+        allow read: if isManagerOf(householdData(hid))
+          || resource.data.scope == 'shared'
+          || resource.data.addedBy == uid();
 
         // Guests cannot add. `addedBy` must be the caller — without this a member could file
         // an expense against someone else, which also poisons the per-member spending split.
         allow create: if canWriteIn(householdData(hid))
           && request.resource.data.addedBy == uid()
+          && request.resource.data.scope in ['shared', 'personal']
           && (!('householdId' in request.resource.data)
               || request.resource.data.householdId == hid)
           && request.resource.data.keys().size() <= 40;
 
-        // Your own rows, or anyone's if you own the household. Reassignment is blocked so a
-        // row cannot be edited out of your ownership and then edited freely.
+        // Your own rows, or anyone's if you manage the household. Reassignment is blocked so a
+        // row cannot be edited out of your ownership and then edited freely. `scope` is
+        // deliberately mutable — moving your own purchase from personal to shared is a normal
+        // correction — but only on rows you could already edit.
         allow update: if (
-            isOwnerOf(householdData(hid))
+            isManagerOf(householdData(hid))
             || (canWriteIn(householdData(hid)) && resource.data.addedBy == uid())
           )
           && request.resource.data.addedBy == resource.data.addedBy
+          && request.resource.data.scope in ['shared', 'personal']
           && (!('householdId' in request.resource.data)
               || request.resource.data.householdId == hid)
           && request.resource.data.keys().size() <= 40;
 
-        allow delete: if isOwnerOf(householdData(hid))
+        allow delete: if isManagerOf(householdData(hid))
           || (canWriteIn(householdData(hid)) && resource.data.addedBy == uid());
       }
 
@@ -268,12 +298,12 @@ service cloud.firestore {
       match /{collection}/{docId} {
         allow read: if canReadIn(householdData(hid));
 
-        allow create, update: if isOwnerOf(householdData(hid))
+        allow create, update: if isManagerOf(householdData(hid))
           && (!('householdId' in request.resource.data)
               || request.resource.data.householdId == hid)
           && request.resource.data.keys().size() <= 40;
 
-        allow delete: if isOwnerOf(householdData(hid));
+        allow delete: if isManagerOf(householdData(hid));
       }
     }
   }
@@ -281,7 +311,18 @@ service cloud.firestore {
 
 // ---- Deployment notes -------------------------------------------------------
 //
-// ORDER MATTERS. Run tools/backfill-household-roles.js BEFORE deploying these rules on a
+// ORDER MATTERS, TWICE OVER.
+//
+// 1. Ship a client that WRITES `scope` on every expense and can read via the split path below.
+// 2. Run tools/backfill-expense-scope.js --apply so no row is missing `scope`. The read rule
+//    tests it literally, so a row without the field is unreadable to members — it would vanish
+//    from their list rather than error.
+// 3. Only then publish these rules.
+//
+// Deploying before step 2 hides existing expenses from every member. Deploying before step 1
+// means new expenses are rejected, because create now requires `scope`.
+//
+// Also: run tools/backfill-household-roles.js BEFORE deploying these rules on a
 // database that already has households. The rules tolerate a missing `ownerUid` by falling
 // back to memberUids[0], so a skipped backfill is not fatal — but a household whose creator
 // has since left would be owned by whoever now sits at index 0, which is not what you want.
@@ -295,6 +336,11 @@ service cloud.firestore {
 //   1. Create writes ownerUid = the creator and roles = {}.
 //   2. Join writes memberUids arrayUnion(uid) AND roles.<uid> = 'member' in one update.
 //      Writing only memberUids now fails the join branch.
+//   2b. Members and guests read expenses with TWO constrained queries merged by document id —
+//      `where scope == 'shared'` and `where addedBy == <uid>`. Merging by id matters: your own
+//      shared rows come back in both, and appending would double them. Owner/admin keep the
+//      single unfiltered listener. Neither query carries an orderBy, so no composite index is
+//      required and firestore.indexes.json can stay absent; both clients already sort locally.
 //   3. Only the owner's client should attempt category seeding — a member calling
 //      seedPresetCategories will be denied. iOS wraps those writes in `try?`, so it fails
 //      silently and the member sees an empty category list rather than an error.

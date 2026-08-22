@@ -54,6 +54,7 @@ struct AddEditExpenseView: View {
                     amountField
                     categoryGrid
                     paymentMethodRow
+                    scopeRow
                     noteField
                     dateField
 
@@ -192,6 +193,36 @@ struct AddEditExpenseView: View {
                     }
                     .buttonStyle(.plain)
                 }
+            }
+        }
+    }
+
+    /// Adjacent to the payment method because both describe the transaction rather than the
+    /// thing bought.
+    private var scopeRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            DSSectionLabel(text: "Visibility")
+            HStack(spacing: 8) {
+                ForEach(ExpenseScope.companion.selectable, id: \.self) { scope in
+                    let selected = viewModel.scope == scope
+                    Button { viewModel.scope = scope } label: {
+                        Text(scope.label)
+                            .font(.subheadline.weight(selected ? .semibold : .regular))
+                            .foregroundStyle(selected ? .white : DS.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                selected ? AnyShapeStyle(DS.accent) : AnyShapeStyle(DS.elevated),
+                                in: RoundedRectangle(cornerRadius: DS.tileRadius)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            if viewModel.scope == ExpenseScope.personal {
+                Text("Only you and the household owner can see this. It is left out of shared totals.")
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
             }
         }
     }

@@ -8,6 +8,7 @@ import com.bose.expensetracker.domain.model.SpendingInsight
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
+import com.bose.expensetracker.domain.usecase.access.Permissions
 import com.bose.expensetracker.domain.usecase.insights.PaymentMethodSplitCalculator
 import com.bose.expensetracker.domain.usecase.insights.SpendingSlice
 import com.bose.expensetracker.domain.usecase.insights.SpendingSplitCalculator
@@ -79,8 +80,16 @@ class InsightsViewModel @Inject constructor(
         }
         val (prevStart, prevEnd) = periodRange(prevCal, period)
 
-        val currentExpenses = allExpenses.filter { it.date in currentStart until currentEnd }
-        val prevExpenses = allExpenses.filter { it.date in prevStart until prevEnd }
+        // Shared only for every household-level figure: a member cannot see peers' personal
+        // rows, so including them would make the same label mean different numbers depending on
+        // who is looking.
+        val currentExpenses = Permissions.sharedOnly(
+            allExpenses.filter { it.date in currentStart until currentEnd }
+        )
+        // Also shared-only, or the period-over-period percentage compares two different things.
+        val prevExpenses = Permissions.sharedOnly(
+            allExpenses.filter { it.date in prevStart until prevEnd }
+        )
 
         val totalSpent = currentExpenses.sumOf { it.amount }
         val prevTotal = prevExpenses.sumOf { it.amount }

@@ -191,11 +191,48 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
         try await expensesCollection(householdId).document(expenseId).delete()
     }
 
-    func observeExpenses(householdId: String, onChange: @escaping ([Expense]) -> Void) -> ListenerRegistration {
-        expensesCollection(householdId).order(by: "date", descending: true).addSnapshotListener { snap, _ in
-            let expenses = snap?.documents.compactMap { self.decodeExpense($0) } ?? []
-            onChange(expenses)
+    /// Live expenses, scoped to what the caller may read.
+    ///
+    /// `canReadAll` must be true only for the owner and admins. It selects the query shape, and
+    /// that is not cosmetic: the rules let a member read shared rows plus their own, and
+    /// Firestore authorises a query by proving every document it could return satisfies the
+    /// rule. An unfiltered query cannot be proven, so for a member it is **rejected outright** —
+    /// the listener errors and the list goes empty rather than returning a subset.
+    ///
+    /// No `orderBy` on either query: equality-only queries are covered by the automatic
+    /// single-field index, so no composite index is required. `groupedExpenses` already sorts.
+    func observeExpenses(
+        householdId: String,
+        canReadAll: Bool,
+        uid: String,
+        onChange: @escaping ([Expense]) -> Void
+    ) -> [ListenerRegistration] {
+        let collection = expensesCollection(householdId)
+
+        // Merged by document id rather than appended: a member's own *shared* rows satisfy both
+        // queries, and concatenating would list them twice.
+        final class Merged {
+            var bySource: [String: [String: Expense]] = [:]
         }
+        let merged = Merged()
+
+        func apply(_ source: String, _ snap: QuerySnapshot?) {
+            let rows = snap?.documents.compactMap { self.decodeExpense($0) } ?? []
+            merged.bySource[source] = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
+            onChange(merged.bySource.values.flatMap { $0.values })
+        }
+
+        if canReadAll {
+            return [
+                collection.addSnapshotListener { snap, _ in apply("all", snap) }
+            ]
+        }
+        return [
+            collection.whereField("scope", isEqualTo: ExpenseScope.shared.wire)
+                .addSnapshotListener { snap, _ in apply("shared", snap) },
+            collection.whereField("addedBy", isEqualTo: uid)
+                .addSnapshotListener { snap, _ in apply("mine", snap) },
+        ]
     }
 
     // MARK: - Categories
@@ -418,7 +455,8 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
             addedByName: d["addedByName"] as? String ?? "",
             createdAt: Self.decodeMillis(d["createdAt"]) ?? Date(),
             updatedAt: Self.decodeMillis(d["updatedAt"]) ?? Date(),
-            paymentMethod: PaymentMethod.companion.fromWire(value: d["paymentMethod"] as? String)
+            paymentMethod: PaymentMethod.companion.fromWire(value: d["paymentMethod"] as? String),
+            scope: ExpenseScope.companion.fromWire(value: d["scope"] as? String)
         )
     }
 
@@ -427,7 +465,8 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
          "categoryName": e.categoryName, "date": e.date, "notes": e.notes,
          "addedBy": e.addedBy, "addedByName": e.addedByName,
          "createdAt": e.createdAt, "updatedAt": e.updatedAt,
-         "paymentMethod": e.paymentMethod.wire]
+         "paymentMethod": e.paymentMethod.wire,
+         "scope": e.scope.wire]
     }
 
     private func decodeCategory(_ doc: DocumentSnapshot) -> Shared.Category? {

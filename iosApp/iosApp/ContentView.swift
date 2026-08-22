@@ -160,8 +160,14 @@ struct MainTabView: View {
             await roles.refresh()
             sessionRole = roles
 
-            dashboardVM = DashboardViewModel(authService: authService, firestoreService: firestoreService)
-            expenseListVM = ExpenseListViewModel(authService: authService, firestoreService: firestoreService)
+            let dashVM = DashboardViewModel(authService: authService, firestoreService: firestoreService)
+            dashVM.canReadAllExpenses = roles.canReadAllExpenses
+            dashboardVM = dashVM
+            let listVM = ExpenseListViewModel(authService: authService, firestoreService: firestoreService)
+            // Set before the list's .task fires, or it would subscribe with the restricted
+            // query shape and a manager would silently miss other members' personal rows.
+            listVM.canReadAllExpenses = roles.canReadAllExpenses
+            expenseListVM = listVM
             insightsVM = InsightsViewModel(authService: authService, firestoreService: firestoreService)
             netWorthVM = NetWorthViewModel(authService: authService, firestoreService: firestoreService)
 

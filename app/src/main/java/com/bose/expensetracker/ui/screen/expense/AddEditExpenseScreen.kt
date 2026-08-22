@@ -59,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bose.expensetracker.domain.model.ExpenseScope
 import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.ui.components.CategoryIconTile
 import com.bose.expensetracker.ui.components.categoryIcon
@@ -369,6 +370,56 @@ fun AddEditExpenseScreen(
                         )
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Visibility. Adjacent to the payment method because both describe the transaction
+            // rather than the thing bought.
+            Text(
+                "VISIBILITY",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                letterSpacing = 1.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExpenseScope.selectable.forEach { scope ->
+                    val selected = uiState.scope == scope
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .then(
+                                if (selected) Modifier.background(AccentPurple)
+                                else Modifier.border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outline,
+                                    RoundedCornerShape(12.dp)
+                                )
+                            )
+                            .clickable { viewModel.setScope(scope) }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            scope.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (selected) Color.White
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+            if (uiState.scope == ExpenseScope.PERSONAL) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "Only you and the household owner can see this. It is left out of shared totals.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
