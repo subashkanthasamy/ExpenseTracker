@@ -9,10 +9,10 @@ Android app is built with Kotlin and Jetpack Compose (Material 3). The iOS app i
 its own Firebase integration. The web app is React + TypeScript consuming `shared/` compiled to
 Kotlin/JS.
 
-**Important:** Android is the reference implementation and is far ahead in *features*. Both
-platforms now share the **same domain models** from `shared/` — iOS consumes them through
-`Shared.framework` (see `iosApp/iosApp/Models/SharedBridge.swift`). iOS still has its own
-SwiftUI views and ViewModels. See "Platform parity" below; treat any behaviour difference as
+**Important:** Android is the reference implementation and is far ahead in *features*. All
+three clients share the **same domain models and domain logic** from `shared/` — iOS through
+`Shared.framework` (see `iosApp/iosApp/Models/SharedBridge.swift`), the web through Kotlin/JS
+(see `web/src/shared.ts`). Each still supplies its own views and view models. See "Platform parity" below; treat any behaviour difference as
 a real gap, not an assumption.
 
 - **Package namespace:** `com.bose.expensetracker`
@@ -74,7 +74,7 @@ a real gap, not an assumption.
 ## Build & Test Commands
 
 ```bash
-./gradlew :shared:allTests                        # The 63 shared tests — macOS only, see below
+./gradlew :shared:allTests                        # The 63 shared tests, on Native AND Node
 ./gradlew assembleDebug                           # Build debug Android APK
 ./gradlew :shared:allMetadataJar                  # Compile shared commonMain
 ./gradlew :shared:compileKotlinIosArm64           # Compile shared for iOS
@@ -92,21 +92,21 @@ cd web && npm run typecheck && npm run build      # Verify the web app
 ```
 
 
-### Two traps when verifying a change
+### Three traps when verifying a change
 
-- **`./gradlew test` does not run the shared tests.** It resolves to `:app` only. The shared
-  tests are Kotlin/Native (`iosSimulatorArm64`, `iosX64`), so `:shared:allTests` is the task —
-  and it is a **no-op on Linux**, where those targets are disabled. CI therefore runs them in a
-  separate macOS job.
+- **`./gradlew test` does not run the shared tests.** It resolves to `:app` only;
+  `:shared:allTests` is the task. That runs them twice over — on Kotlin/Native
+  (`iosSimulatorArm64`, `iosX64`), which needs macOS, and on Node (`jsNodeTest`), which does
+  not. So the Native half is a no-op on Linux while the JS half still gives you all 63, which
+  is why CI can check the shared logic on Ubuntu and keep the macOS job for the iOS build.
 - **A green incremental build can hide a broken file.** Gradle skips compiling sources your
   change did not touch, so pre-existing errors elsewhere stay invisible until a clean build.
   Before claiming a build passes, use `--rerun-tasks` (or `clean`) if the change might have
   exposed something outside the files you edited. A CI failure that you cannot reproduce
   locally is usually this.
-- **The JS target has its own two gotchas.** `:shared:allTests` now includes `jsNodeTest`, which
-  is good news — those 63 tests run on Linux, unlike the Kotlin/Native ones. But changing a
-  `shared/` dependency changes `kotlin-js-store/yarn.lock`, and the build fails with "Lock file
-  was changed" until you run `./gradlew kotlinUpgradeYarnLock` and commit it. Also note
+- **The JS target has two gotchas of its own.** Changing a `shared/` dependency changes
+  `kotlin-js-store/yarn.lock`, and the build fails with "Lock file was changed" until you run
+  `./gradlew kotlinUpgradeYarnLock` and commit it. Also note
   `rootProject.name` is `expense-tracker`, not `Expense Tracker`: the Kotlin/JS plugin uses it
   verbatim as an npm package name and yarn rejects a name containing a space.
 
@@ -196,9 +196,15 @@ This bit us hard: iOS used to write `Timestamp`, which crashed Android with
 `Field 'date' is not a java.lang.Number`, and in reverse silently decoded every
 Android-written date as "now". Affected fields: `date`, `createdAt`, `updatedAt`, `targetDate`.
 
-Both platforms now *read* either representation for backward compatibility
-(`FirestoreDataSource.getEpochMillis()`, `FirestoreService.decodeMillis()`), but both must
-only ever *write* millis. `tools/migrate-timestamps.js` normalises legacy documents.
+All three clients *read* either representation for backward compatibility —
+`FirestoreDataSource.getEpochMillis()` on Android, `FirestoreService.decodeMillis()` on iOS,
+`web/src/data/wire.ts` on the web — but all three must only ever *write* millis.
+`tools/migrate-timestamps.js` normalises legacy documents.
+
+The web reader was missing at first, and its failure mode is the one to remember:
+`Number(someTimestamp)` is `NaN`, and every comparison against `NaN` is false. So a legacy row
+did not error — it went **quietly absent**, still counted in a list's length but dropped from
+every date range. That surfaced as an expense list of 59 beside a dashboard of 58.
 
 ## Error handling rules (learned the hard way)
 
@@ -255,8 +261,8 @@ only ever *write* millis. `tools/migrate-timestamps.js` normalises legacy docume
 
 ### Roles and permissions
 
-`firestore.rules` is the **only** enforcement. Both apps talk to Firestore directly with the
-end user's credentials, so `Permissions` in `shared/domain/usecase/access/` exists to grey out
+`firestore.rules` is the **only** enforcement. All three clients talk to Firestore directly
+with the end user's credentials, so `Permissions` in `shared/domain/usecase/access/` exists to grey out
 buttons, not to secure anything. Change the two together.
 
 | | owner | admin | member | guest |
@@ -346,8 +352,10 @@ Accents (`DS.accent`, `expense`, `income`, `ctaGradient`) are deliberately share
 
 ## Platform parity (Android = reference)
 
-Rough scale: ~13k lines of Android UI vs ~2.6k lines of Swift vs ~3.5k lines of TypeScript, so
-both the iOS and web screens are thinner than their Android counterparts.
+Rough scale of the UI layers: ~13k lines of Compose vs ~2.6k of SwiftUI vs ~3.7k of React, so
+both the iOS and web screens are thinner than their Android counterparts. Whole-client totals:
+17.8k Kotlin in `app/`, 6.3k Swift, 5.6k TypeScript — over a shared core of 2.3k covered by 63
+tests.
 
 Domain models *and the domain logic* are shared — all three clients run the same `Permissions`,
 `ExpenseFilter`, `CategoryPresets`, `CategoryIcons`, split calculators and currency formatting.
