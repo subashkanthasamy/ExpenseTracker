@@ -73,9 +73,13 @@ export function Expenses() {
       <PageHead
         title="Expenses"
         subtitle={
+          // Explicitly "all time": this sums the rows actually listed, which is every expense
+          // ever rather than the current month, and unlike the dashboard it includes personal
+          // rows. Left unqualified it invites comparison with the dashboard headline, which
+          // measures something different on purpose.
           active
-            ? `${visible.length} of ${expenses.length} · ${money(total)}`
-            : `${expenses.length} expenses · ${money(total)}`
+            ? `${visible.length} of ${expenses.length} shown · ${money(total)}`
+            : `${expenses.length} expenses · ${money(total)} all time`
         }
       >
         {session.allows('addExpense') && (

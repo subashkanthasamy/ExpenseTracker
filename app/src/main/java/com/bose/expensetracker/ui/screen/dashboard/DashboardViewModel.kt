@@ -7,6 +7,7 @@ import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
+import com.bose.expensetracker.domain.usecase.access.Permissions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -124,12 +125,23 @@ class DashboardViewModel @Inject constructor(
                     allExpenses
                 }
 
-                val thisMonthExpenses = filteredExpenses.filter { expense ->
+                // Household figures exclude personal rows. A member cannot see their peers'
+                // personal expenses, so counting them here would make the same label show a
+                // different number to the owner than to a member. The headline says "shared"
+                // for exactly that reason.
+                //
+                // `recentExpenses` below is deliberately NOT filtered: it is a list of rows the
+                // viewer is entitled to see, not a household figure, and hiding an expense you
+                // just added would be worse. It carries a "Personal" marker instead, so a row
+                // that is not in the total above says so.
+                val sharedExpenses = Permissions.sharedOnly(filteredExpenses)
+
+                val thisMonthExpenses = sharedExpenses.filter { expense ->
                     expenseCal.timeInMillis = expense.date
                     expenseCal.get(Calendar.MONTH) == currentMonth && expenseCal.get(Calendar.YEAR) == currentYear
                 }
 
-                val lastMonthExpenses = filteredExpenses.filter { expense ->
+                val lastMonthExpenses = sharedExpenses.filter { expense ->
                     expenseCal.timeInMillis = expense.date
                     expenseCal.get(Calendar.MONTH) == lastMonth && expenseCal.get(Calendar.YEAR) == lastMonthYear
                 }

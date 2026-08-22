@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bose.expensetracker.domain.model.ExpenseScope
 import com.bose.expensetracker.ui.components.GradientCard
 import com.bose.expensetracker.ui.components.SectionHeader
 import com.bose.expensetracker.ui.components.SmartInsightCard
@@ -173,7 +174,9 @@ fun DashboardScreen(
                     GradientCard {
                         Column {
                             Text(
-                                "TOTAL BALANCE",
+                                // Not a balance — this is the month's shared spending, and it
+                                // excludes personal rows, so the label has to say which.
+                                "SHARED THIS MONTH",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White.copy(alpha = 0.7f),
                                 letterSpacing = 1.5.sp
@@ -331,7 +334,12 @@ fun DashboardScreen(
 
                     items(uiState.recentExpenses.take(5)) { expense ->
                         val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
-                        val subtitle = "${expense.categoryName} • ${timeFormat.format(Date(expense.date))}"
+                        // Recent lists rows, not the household figure, so a personal expense
+                        // still appears — marked, so it is clear why it is not in the total.
+                        val personalMark =
+                            if (expense.scope == ExpenseScope.PERSONAL) " • 🔒 Personal" else ""
+                        val subtitle =
+                            "${expense.categoryName} • ${timeFormat.format(Date(expense.date))}$personalMark"
 
                         Card(
                             modifier = Modifier

@@ -50,12 +50,21 @@ export function Dashboard() {
       (e) => e.addedBy === session.uid && e.date >= startOfThis && e.date < startOfNext,
     )
 
+    // Everything personal this viewer can see. For a member that is only their own rows; for
+    // the owner and admins it is everyone's. Surfacing it is what stops the headline looking
+    // wrong: the shared figure is deliberately smaller than the raw month total, and without
+    // the difference stated the number reads as a miscalculation.
+    const personalVisible = expenses.filter(
+      (e) => e.scope === 'personal' && e.date >= startOfThis && e.date < startOfNext,
+    )
+
     return {
       thisMonthTotal: sum(thisMonth),
       lastMonthTotal: sum(lastMonth),
       count: thisMonth.length,
       topCategories: [...byCategory.values()].sort((a, b) => b.amount - a.amount).slice(0, 5),
       myTotal: sum(mine),
+      excludedPersonal: sum(personalVisible),
       personalTotal: sum(
         expenses.filter(
           (e) => e.scope === 'personal' && e.addedBy === session.uid && e.date >= startOfThis && e.date < startOfNext,
@@ -99,9 +108,17 @@ export function Dashboard() {
           label="Shared this month"
           value={money(stats.thisMonthTotal)}
           sub={
-            change == null
-              ? `${stats.count} expenses`
-              : `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(0)}% vs last month`
+            <>
+              {change == null
+                ? `${stats.count} expenses`
+                : `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(0)}% vs last month`}
+              {stats.excludedPersonal > 0 && (
+                <>
+                  <br />
+                  Excludes {money(stats.excludedPersonal)} personal
+                </>
+              )}
+            </>
           }
         />
         <Stat label="Last month" value={money(stats.lastMonthTotal)} sub="Shared only" />

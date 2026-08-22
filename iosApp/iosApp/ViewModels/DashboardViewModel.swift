@@ -69,12 +69,20 @@ class DashboardViewModel {
             return m == currentMonth - 1 && y == currentYear
         }
 
-        monthTotal = thisMonth.reduce(0) { $0 + $1.amount }
-        lastMonthTotal = lastMonth.reduce(0) { $0 + $1.amount }
+        // Household figures exclude personal rows. A member cannot see their peers' personal
+        // expenses, so counting them would make the same label show a different number to the
+        // owner than to a member — which is why the headline says "shared".
+        let thisMonthShared = Permissions.shared.sharedOnly(expenses: thisMonth)
+        let lastMonthShared = Permissions.shared.sharedOnly(expenses: lastMonth)
+
+        monthTotal = thisMonthShared.reduce(0) { $0 + $1.amount }
+        lastMonthTotal = lastMonthShared.reduce(0) { $0 + $1.amount }
+        // Recent lists rows rather than a household figure, so a personal expense still shows;
+        // ExpenseRow marks it with a lock, so it is clear why it is not in the total above.
         recentExpenses = Array(thisMonth.sorted { $0.date > $1.date }.prefix(5))
 
         var catMap: [String: Double] = [:]
-        for e in thisMonth { catMap[e.categoryName, default: 0] += e.amount }
+        for e in thisMonthShared { catMap[e.categoryName, default: 0] += e.amount }
         let total = max(monthTotal, 1)
         categoryBreakdown = catMap.sorted { $0.value > $1.value }.prefix(6).enumerated().map { i, kv in
             CategoryBreakdown(categoryName: kv.key, amount: kv.value,

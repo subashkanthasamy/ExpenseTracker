@@ -28,7 +28,8 @@ struct DashboardView: View {
 
                 // Balance Card
                 VStack(spacing: 12) {
-                    Text("This Month").font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                    // "Shared", because the figure excludes personal rows.
+                    Text("Shared This Month").font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     Text(formatCurrency(viewModel.monthTotal))
                         .font(.system(size: 36, weight: .bold))
                         .foregroundStyle(.white)
