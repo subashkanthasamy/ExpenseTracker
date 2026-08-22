@@ -17,6 +17,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { onAuthStateChanged, type User } from 'firebase/auth'
 import { arrayUnion, collection, doc, onSnapshot, query, setDoc, where } from 'firebase/firestore'
 
+import { millis } from '../data/wire'
 import { auth, db } from '../firebase'
 import { can as sharedCan, roleOf, type Capability } from '../shared'
 import type { Household, RoleWire } from '../types'
@@ -52,7 +53,7 @@ function decodeHousehold(id: string, data: Record<string, unknown>): Household {
     ownerUid: (data.ownerUid as string) ?? '',
     roles: (data.roles as Record<string, string>) ?? {},
     inviteCode: (data.inviteCode as string) ?? '',
-    createdAt: Number(data.createdAt ?? 0),
+    createdAt: millis(data.createdAt),
     presetVersion: Number(data.presetVersion ?? 0),
   }
 }

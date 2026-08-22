@@ -15,6 +15,7 @@ import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firesto
 import { db } from '../firebase'
 import type { PaymentWire, RecurringExpense, RecurringFrequency } from '../types'
 import type { Unsubscribe } from './expenses'
+import { millis, millisOrNull } from './wire'
 
 const recurringCollection = (householdId: string) =>
   collection(db, 'households', householdId, 'recurring')
@@ -27,8 +28,6 @@ export const FREQUENCY_LABELS: Record<RecurringFrequency, string> = {
 }
 
 function decode(householdId: string, id: string, data: Record<string, unknown>): RecurringExpense {
-  const optionalNumber = (value: unknown): number | null =>
-    value == null ? null : Number(value)
   return {
     id,
     householdId,
@@ -40,15 +39,15 @@ function decode(householdId: string, id: string, data: Record<string, unknown>):
     addedByName: (data.addedByName as string) ?? '',
     // Stored as the enum ordinal; 2 (Monthly) is the fallback all three clients use.
     frequency: (Number(data.frequency ?? 2) as RecurringFrequency),
-    dayOfWeek: optionalNumber(data.dayOfWeek),
-    dayOfMonth: optionalNumber(data.dayOfMonth),
-    monthOfYear: optionalNumber(data.monthOfYear),
-    startDate: Number(data.startDate ?? 0),
-    endDate: optionalNumber(data.endDate),
-    lastGeneratedDate: optionalNumber(data.lastGeneratedDate),
+    dayOfWeek: data.dayOfWeek == null ? null : Number(data.dayOfWeek),
+    dayOfMonth: data.dayOfMonth == null ? null : Number(data.dayOfMonth),
+    monthOfYear: data.monthOfYear == null ? null : Number(data.monthOfYear),
+    startDate: millis(data.startDate),
+    endDate: millisOrNull(data.endDate),
+    lastGeneratedDate: millisOrNull(data.lastGeneratedDate),
     isActive: data.isActive !== false,
     paymentMethod: ((data.paymentMethod as PaymentWire) ?? '') as PaymentWire,
-    createdAt: Number(data.createdAt ?? 0),
+    createdAt: millis(data.createdAt),
   }
 }
 

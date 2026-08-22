@@ -25,6 +25,7 @@ import {
 
 import { db } from '../firebase'
 import type { Expense, PaymentWire, ScopeWire } from '../types'
+import { millis } from './wire'
 
 const expensesCollection = (householdId: string) =>
   collection(db, 'households', householdId, 'expenses')
@@ -42,12 +43,12 @@ function decode(householdId: string, id: string, data: Record<string, unknown>):
     amount: Number(data.amount ?? 0),
     categoryId: (data.categoryId as string) ?? '',
     categoryName: (data.categoryName as string) ?? '',
-    date: Number(data.date ?? 0),
+    date: millis(data.date),
     notes: (data.notes as string) ?? '',
     addedBy: (data.addedBy as string) ?? '',
     addedByName: (data.addedByName as string) ?? '',
-    createdAt: Number(data.createdAt ?? 0),
-    updatedAt: Number(data.updatedAt ?? 0),
+    createdAt: millis(data.createdAt),
+    updatedAt: millis(data.updatedAt),
     paymentMethod: ((data.paymentMethod as PaymentWire) ?? '') as PaymentWire,
     // Absent means a row written before scope existed. Failing open to 'shared' matches
     // `ExpenseScope.fromWire`: a typo or version skew must not hide a row from the household.

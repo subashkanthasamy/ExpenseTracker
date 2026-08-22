@@ -4,6 +4,7 @@ import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firesto
 import { db } from '../firebase'
 import type { Asset, Liability } from '../types'
 import type { Unsubscribe } from './expenses'
+import { millis } from './wire'
 
 const assetsCollection = (householdId: string) =>
   collection(db, 'households', householdId, 'assets')
@@ -26,7 +27,7 @@ export function observeAssets(
           name: (d.data().name as string) ?? '',
           value: Number(d.data().value ?? 0),
           type: (d.data().type as string) ?? '',
-          date: Number(d.data().date ?? 0),
+          date: millis(d.data().date),
           addedBy: (d.data().addedBy as string) ?? '',
         })),
       ),
@@ -49,7 +50,7 @@ export function observeLiabilities(
           name: (d.data().name as string) ?? '',
           amount: Number(d.data().amount ?? 0),
           type: (d.data().type as string) ?? '',
-          date: Number(d.data().date ?? 0),
+          date: millis(d.data().date),
           addedBy: (d.data().addedBy as string) ?? '',
         })),
       ),

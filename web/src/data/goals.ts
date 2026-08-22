@@ -4,6 +4,7 @@ import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firesto
 import { db } from '../firebase'
 import type { SavingsGoal } from '../types'
 import type { Unsubscribe } from './expenses'
+import { millis, millisOrNull } from './wire'
 
 const goalsCollection = (householdId: string) =>
   collection(db, 'households', householdId, 'savingsGoals')
@@ -28,8 +29,8 @@ export function observeGoals(
               currentAmount: Number(data.currentAmount ?? 0),
               icon: (data.icon as string) ?? '🎯',
               // Optional on the wire — the mobile clients omit the key rather than writing null.
-              targetDate: data.targetDate == null ? null : Number(data.targetDate),
-              createdAt: Number(data.createdAt ?? 0),
+              targetDate: millisOrNull(data.targetDate),
+              createdAt: millis(data.createdAt),
             }
           })
           .sort((a, b) => a.createdAt - b.createdAt),
