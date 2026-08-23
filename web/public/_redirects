@@ -1,0 +1,8 @@
+# Netlify SPA fallback.
+#
+# The app uses BrowserRouter, so /expenses is a client-side route with no file behind it.
+# Without this, a reload or a shared deep link returns Netlify's own 404 page.
+#
+# Vite copies public/ into dist/ verbatim, so this travels with the build whichever way it is
+# deployed. It is inert on Firebase Hosting, which has its own rewrite in firebase.json.
+/*  /index.html  200

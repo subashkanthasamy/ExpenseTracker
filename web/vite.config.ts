@@ -3,7 +3,13 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  build: { outDir: 'dist', sourcemap: true },
+  build: {
+    outDir: 'dist',
+    // No source maps in the deployed bundle. Vite embeds `sourcesContent`, so a map is the
+    // complete readable TypeScript of this client — 4.5MB of it — served to anyone who opens
+    // devtools. Flip to true temporarily to debug a production problem.
+    sourcemap: false,
+  },
   resolve: {
     // The shared module is a `file:` dependency, so npm symlinks it to
     // shared/build/dist/js/productionLibrary. By default Vite resolves imports from a module's

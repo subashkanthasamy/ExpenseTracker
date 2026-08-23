@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy": "(cd .. && ./gradlew :shared:jsBrowserProductionLibraryDistribution) && npm run build && netlify deploy --prod --dir=dist",
+    "deploy:draft": "(cd .. && ./gradlew :shared:jsBrowserProductionLibraryDistribution) && npm run build && netlify deploy --dir=dist"
   },
   "dependencies": {
     "@js-joda/core": "3.2.0",

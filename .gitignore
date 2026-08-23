@@ -115,3 +115,6 @@ tools/package.json
 # Design source: the "-1" PDFs are re-exports of the same frames (they differ only in
 # metadata), so only the canonical file of each pair is tracked.
 docs/Expense Tracker/*-1.pdf
+
+# Local Netlify folder
+.netlify
