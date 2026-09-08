@@ -1,17 +1,17 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
-import { PageHead } from '../components/Layout'
 import { ExpenseForm } from '../components/ExpenseForm'
+import { PageHead } from '../components/Layout'
 import {
-  Card,
   CategoryIcon,
   Empty,
   Icon,
   Modal,
   Notice,
   Segmented,
-  Spinner,
+  TableSkeleton,
   formatDate,
+  useConfirmAction,
 } from '../components/ui'
 import { deleteExpense } from '../data/expenses'
 import { useHouseholdData } from '../data/HouseholdData'
@@ -27,46 +27,69 @@ import {
   paymentMethods,
   personOptions,
 } from '../shared'
-import { EMPTY_CRITERIA, type DateRangeWire, type Expense, type FilterCriteria, type PaymentWire } from '../types'
+import type { DateRangeWire, Expense, PaymentWire } from '../types'
+import { useExpenseParams, useUrlDialog, type SortKey } from '../urlState'
+
+/** Columns that carry the sort. The rest are read-only detail. */
+const SORTABLE: Array<{ key: SortKey; label: string; numeric?: boolean; optional?: boolean }> = [
+  { key: 'date', label: 'Date' },
+  { key: 'category', label: 'Category' },
+  { key: 'person', label: 'Added by', optional: true },
+]
 
 export function Expenses() {
   const session = useSession()
   const { expenses, categories, loading, error, canReadAll } = useHouseholdData()
 
-  const [criteria, setCriteria] = useState<FilterCriteria>(EMPTY_CRITERIA)
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [editing, setEditing] = useState<Expense | null>(null)
-  const [adding, setAdding] = useState(false)
-  const [busyId, setBusyId] = useState<string | null>(null)
+  // Filters, sort and the open dialog all live in the query string, so this list is linkable
+  // and Back does what a browser user expects. See `urlState.ts`.
+  const { criteria, setCriteria, clearCriteria, active, sort, toggleSort } = useExpenseParams()
+  const filters = useUrlDialog('filters')
+  const adding = useUrlDialog('new')
+  const editing = useUrlDialog('edit')
+  const destructive = useConfirmAction()
 
   // The same predicate the Android and iOS expense screens run, so a search that matches on
   // one platform matches here — including matching against the amount.
-  const visible = useMemo(() => filterExpenses(expenses, criteria), [expenses, criteria])
+  const matched = useMemo(() => filterExpenses(expenses, criteria), [expenses, criteria])
+
+  const visible = useMemo(() => {
+    const direction = sort.dir === 'asc' ? 1 : -1
+    // Sorted on a copy: `expenses` comes straight from the Firestore listener and is shared
+    // with every other page through HouseholdData.
+    return [...matched].sort((a, b) => {
+      switch (sort.key) {
+        case 'amount':
+          return (a.amount - b.amount) * direction
+        case 'category':
+          return a.categoryName.localeCompare(b.categoryName) * direction
+        case 'person':
+          return a.addedByName.localeCompare(b.addedByName) * direction
+        case 'date':
+          // Ties broken by creation order, so a day's rows do not shuffle between renders.
+          return (a.date - b.date || a.createdAt - b.createdAt) * direction
+      }
+    })
+  }, [matched, sort])
 
   const categoryChoices = useMemo(() => categoryOptions(expenses), [expenses])
   const personChoices = useMemo(() => personOptions(expenses), [expenses])
   const total = useMemo(() => visible.reduce((sum, e) => sum + e.amount, 0), [visible])
 
-  const active =
-    criteria.searchQuery.trim() !== '' ||
-    criteria.personFilter != null ||
-    criteria.categoryFilter != null ||
-    criteria.paymentMethodFilter != null ||
-    criteria.dateRange !== 'all'
+  // `?edit=<id>` can name a row that has since been deleted, or that this viewer cannot see.
+  const editingExpense = editing.value != null ? expenses.find((e) => e.id === editing.value) : undefined
 
-  const remove = async (expense: Expense) => {
-    if (!window.confirm('Delete this expense? This cannot be undone.')) return
-    setBusyId(expense.id)
-    try {
-      await deleteExpense(session.household.id, expense.id)
-    } catch (caught) {
-      window.alert((caught as Error)?.message ?? 'Could not delete.')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const patch = (next: Partial<FilterCriteria>) => setCriteria({ ...criteria, ...next })
+  const askDelete = (expense: Expense) =>
+    destructive.ask({
+      title: 'Delete this expense?',
+      message: (
+        <>
+          {money(expense.amount)} · {expense.categoryName}
+          {expense.notes.trim() !== '' && <> · {expense.notes}</>}. This cannot be undone.
+        </>
+      ),
+      run: () => deleteExpense(session.household.id, expense.id),
+    })
 
   return (
     <>
@@ -83,21 +106,21 @@ export function Expenses() {
         }
       >
         {session.allows('addExpense') && (
-          <button className="btn primary" type="button" onClick={() => setAdding(true)}>
+          <button className="btn primary" type="button" onClick={() => adding.open()}>
             <Icon name="add" />
-            Add expense
+            New expense
           </button>
         )}
       </PageHead>
 
       {error != null && (
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 'var(--space-4)' }}>
           <Notice kind="error">{error}</Notice>
         </div>
       )}
 
       {!canReadAll && (
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 'var(--space-4)' }}>
           <Notice>
             You are seeing shared expenses plus your own. Other members' personal expenses are
             not shown.
@@ -105,37 +128,48 @@ export function Expenses() {
         </div>
       )}
 
-      <div className="row wrap" style={{ marginBottom: 16 }}>
+      {/* One filter row above the table, so every figure below agrees with it. */}
+      <div className="toolbar">
         <div className="search">
           <Icon name="search" />
           <input
             value={criteria.searchQuery}
-            onChange={(event) => patch({ searchQuery: event.target.value })}
+            onChange={(event) => setCriteria({ searchQuery: event.target.value })}
             placeholder="Search notes, category, person or amount"
+            aria-label="Search expenses"
           />
           {criteria.searchQuery !== '' && (
-            <button className="btn ghost icon" type="button" onClick={() => patch({ searchQuery: '' })}>
+            <button
+              className="btn ghost icon"
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setCriteria({ searchQuery: '' })}
+            >
               <Icon name="close" size={18} />
             </button>
           )}
         </div>
-        <button className="btn" type="button" onClick={() => setSheetOpen(true)}>
+        <button className="btn" type="button" onClick={() => filters.open()}>
           <Icon name="tune" />
           Filters
         </button>
         {active && (
-          <button className="btn ghost" type="button" onClick={() => setCriteria(EMPTY_CRITERIA)}>
+          <button className="btn ghost" type="button" onClick={clearCriteria}>
             Clear all
           </button>
         )}
       </div>
 
       {active && (
-        <div className="row wrap" style={{ marginBottom: 16, gap: 8 }}>
+        <div className="row wrap" style={{ marginBottom: 'var(--space-4)', gap: 8 }}>
           {criteria.dateRange !== 'all' && (
             <span className="chip">
               {dateRangeOptions().find((o) => o.id === criteria.dateRange)?.label}
-              <button type="button" onClick={() => patch({ dateRange: 'all' })}>
+              <button
+                type="button"
+                aria-label="Remove the date filter"
+                onClick={() => setCriteria({ dateRange: 'all' })}
+              >
                 <Icon name="close" />
               </button>
             </span>
@@ -143,7 +177,11 @@ export function Expenses() {
           {criteria.categoryFilter != null && (
             <span className="chip">
               {categoryChoices.find((o) => o.id === criteria.categoryFilter)?.label ?? 'Category'}
-              <button type="button" onClick={() => patch({ categoryFilter: null })}>
+              <button
+                type="button"
+                aria-label="Remove the category filter"
+                onClick={() => setCriteria({ categoryFilter: null })}
+              >
                 <Icon name="close" />
               </button>
             </span>
@@ -151,7 +189,11 @@ export function Expenses() {
           {criteria.personFilter != null && (
             <span className="chip">
               {personChoices.find((o) => o.id === criteria.personFilter)?.label ?? 'Person'}
-              <button type="button" onClick={() => patch({ personFilter: null })}>
+              <button
+                type="button"
+                aria-label="Remove the person filter"
+                onClick={() => setCriteria({ personFilter: null })}
+              >
                 <Icon name="close" />
               </button>
             </span>
@@ -159,7 +201,11 @@ export function Expenses() {
           {criteria.paymentMethodFilter != null && (
             <span className="chip">
               {paymentMethodLabel(criteria.paymentMethodFilter)}
-              <button type="button" onClick={() => patch({ paymentMethodFilter: null })}>
+              <button
+                type="button"
+                aria-label="Remove the payment method filter"
+                onClick={() => setCriteria({ paymentMethodFilter: null })}
+              >
                 <Icon name="close" />
               </button>
             </span>
@@ -167,14 +213,14 @@ export function Expenses() {
         </div>
       )}
 
-      <Card>
-        {loading ? (
-          <Spinner label="Loading expenses…" />
-        ) : visible.length === 0 ? (
-          // The two empty states are genuinely different: nothing recorded yet, versus a
-          // filter that excludes everything. Showing "add your first expense" to someone with
-          // 60 rows and a narrow filter reads as data loss.
-          expenses.length === 0 ? (
+      {loading ? (
+        <TableSkeleton rows={8} />
+      ) : visible.length === 0 ? (
+        <div className="panel">
+          {/* The two empty states are genuinely different: nothing recorded yet, versus a
+              filter that excludes everything. Showing "add your first expense" to someone
+              with 60 rows and a narrow filter reads as data loss. */}
+          {expenses.length === 0 ? (
             <Empty icon="receipt_long" title="No expenses yet">
               Expenses added on Android, iOS or here all show up in this list.
             </Empty>
@@ -183,82 +229,148 @@ export function Expenses() {
               icon="filter_alt_off"
               title="Nothing matches those filters"
               action={
-                <button className="btn" type="button" onClick={() => setCriteria(EMPTY_CRITERIA)}>
+                <button className="btn" type="button" onClick={clearCriteria}>
                   Clear filters
                 </button>
               }
             >
-              {expenses.length} expenses are hidden by the current filters.
+              {expenses.length} expenses are recorded, but none of them match.
             </Empty>
-          )
-        ) : (
-          <div className="list">
-            {visible.map((expense) => {
-              const category = categories.find((c) => c.id === expense.categoryId)
-              const editable = canEditExpense(session.role, expense, session.uid)
-              return (
-                <div className="list-row" key={expense.id}>
-                  <CategoryIcon
-                    name={expense.categoryName}
-                    icon={category?.icon}
-                    color={category ? colorOf(category) : undefined}
-                  />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div className="title">
-                      {expense.notes.trim() !== '' ? expense.notes : expense.categoryName}
-                    </div>
-                    <div className="meta">
-                      <span>{formatDate(expense.date)}</span>
-                      <span>·</span>
-                      <span>{expense.categoryName}</span>
-                      {expense.addedByName.trim() !== '' && (
-                        <>
-                          <span>·</span>
-                          <span>{expense.addedByName}</span>
-                        </>
+          )}
+        </div>
+      ) : (
+        /*
+         * A real <table>, not a stack of divs.
+         *
+         * This is tabular data, and the element buys three things a div list cannot: columns
+         * that actually align, a header row that carries the sort affordance and announces it
+         * through aria-sort, and a copy-paste that pastes as a table into a spreadsheet.
+         */
+        <div className="table-scroll panel">
+          <table className="data-table">
+            <caption className="sr-only">
+              {visible.length} expenses, sorted by {sort.key}, {sort.dir === 'asc' ? 'ascending' : 'descending'}
+            </caption>
+            <thead>
+              <tr>
+                {SORTABLE.map((column) => (
+                  <th
+                    key={column.key}
+                    scope="col"
+                    className={column.optional ? 'col-optional' : undefined}
+                    aria-sort={sort.key === column.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  >
+                    <button type="button" className="th-sort" onClick={() => toggleSort(column.key)}>
+                      {column.label}
+                      <Icon
+                        name={
+                          sort.key === column.key
+                            ? sort.dir === 'asc'
+                              ? 'arrow_upward'
+                              : 'arrow_downward'
+                            : 'unfold_more'
+                        }
+                        size={15}
+                      />
+                    </button>
+                  </th>
+                ))}
+                <th scope="col" className="col-optional">
+                  Method
+                </th>
+                <th scope="col" className="num-col" aria-sort={sort.key === 'amount' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button type="button" className="th-sort end" onClick={() => toggleSort('amount')}>
+                    Amount
+                    <Icon
+                      name={
+                        sort.key === 'amount'
+                          ? sort.dir === 'asc'
+                            ? 'arrow_upward'
+                            : 'arrow_downward'
+                          : 'unfold_more'
+                      }
+                      size={15}
+                    />
+                  </button>
+                </th>
+                {/* Header for the action column. Empty visually, named for a screen reader. */}
+                <th scope="col" className="actions-col">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((expense) => {
+                const category = categories.find((c) => c.id === expense.categoryId)
+                const editable = canEditExpense(session.role, expense, session.uid)
+                return (
+                  <tr key={expense.id}>
+                    <td className="nowrap t-secondary">{formatDate(expense.date)}</td>
+                    <td>
+                      <div className="cell-primary">
+                        <CategoryIcon
+                          name={expense.categoryName}
+                          icon={category?.icon}
+                          color={category ? colorOf(category) : undefined}
+                          size={26}
+                        />
+                        <div style={{ minWidth: 0 }}>
+                          <div className="t-strong">{expense.categoryName}</div>
+                          {expense.notes.trim() !== '' && (
+                            <div className="t-xs t-secondary ellipsis">{expense.notes}</div>
+                          )}
+                        </div>
+                        {expense.scope === 'personal' && <span className="badge personal">Personal</span>}
+                      </div>
+                    </td>
+                    <td className="col-optional t-secondary nowrap">{expense.addedByName || '—'}</td>
+                    <td className="col-optional t-secondary nowrap">
+                      {expense.paymentMethod !== '' ? paymentMethodLabel(expense.paymentMethod) : '—'}
+                    </td>
+                    <td className="num-col num t-strong nowrap">{money(expense.amount)}</td>
+                    <td className="actions-col">
+                      {editable && (
+                        <div className="actions">
+                          {/* Icon is aria-hidden, so without aria-label these buttons have no
+                              accessible name at all. */}
+                          <button
+                            className="btn ghost icon"
+                            type="button"
+                            aria-label={`Edit ${expense.categoryName} expense of ${money(expense.amount)}`}
+                            onClick={() => editing.open(expense.id)}
+                          >
+                            <Icon name="edit" size={17} />
+                          </button>
+                          <button
+                            className="btn ghost icon"
+                            type="button"
+                            aria-label={`Delete ${expense.categoryName} expense of ${money(expense.amount)}`}
+                            onClick={() => askDelete(expense)}
+                          >
+                            <Icon name="delete" size={17} />
+                          </button>
+                        </div>
                       )}
-                      {expense.paymentMethod !== '' && (
-                        <>
-                          <span>·</span>
-                          <span>{paymentMethodLabel(expense.paymentMethod)}</span>
-                        </>
-                      )}
-                      {expense.scope === 'personal' && <span className="badge personal">Personal</span>}
-                    </div>
-                  </div>
-                  <div className="amount">{money(expense.amount)}</div>
-                  {editable && (
-                    <div className="actions">
-                      <button className="btn ghost" type="button" onClick={() => setEditing(expense)}>
-                        <Icon name="edit" size={17} />
-                      </button>
-                      <button
-                        className="btn ghost"
-                        type="button"
-                        disabled={busyId === expense.id}
-                        onClick={() => void remove(expense)}
-                      >
-                        <Icon name="delete" size={17} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </Card>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {sheetOpen && (
+      {filters.isOpen && (
         <Modal
           title="Filters"
-          onClose={() => setSheetOpen(false)}
+          subtitle="These narrow the list only. Nothing here changes what is stored."
+          onClose={filters.close}
           actions={
             <>
-              <button className="btn ghost" type="button" onClick={() => setCriteria(EMPTY_CRITERIA)}>
-                Reset
+              <button className="btn ghost" type="button" onClick={clearCriteria}>
+                Clear all
               </button>
-              <button className="btn primary" type="button" onClick={() => setSheetOpen(false)}>
+              <button className="btn primary" type="button" onClick={filters.close}>
                 Done
               </button>
             </>
@@ -267,21 +379,24 @@ export function Expenses() {
           <div className="field">
             <span>Date range</span>
             <Segmented
-              options={dateRangeOptions().map((o) => ({ value: o.id as DateRangeWire, label: o.label }))}
+              options={dateRangeOptions().map((option) => ({
+                value: option.id as DateRangeWire,
+                label: option.label,
+              }))}
               value={criteria.dateRange}
-              onChange={(dateRange) => patch({ dateRange })}
+              onChange={(value) => setCriteria({ dateRange: value })}
             />
           </div>
 
           <div className="field">
             <span>Payment method</span>
-            <Segmented<PaymentWire | null>
+            <Segmented
               options={[
                 { value: null, label: 'Any' },
-                ...paymentMethods().map((m) => ({ value: m.wire as PaymentWire | null, label: m.label })),
+                ...paymentMethods().map((option) => ({ value: option.wire, label: option.label })),
               ]}
-              value={criteria.paymentMethodFilter}
-              onChange={(paymentMethodFilter) => patch({ paymentMethodFilter })}
+              value={criteria.paymentMethodFilter as PaymentWire | null}
+              onChange={(value) => setCriteria({ paymentMethodFilter: value })}
             />
           </div>
 
@@ -289,7 +404,7 @@ export function Expenses() {
             <span>Category</span>
             <select
               value={criteria.categoryFilter ?? ''}
-              onChange={(event) => patch({ categoryFilter: event.target.value || null })}
+              onChange={(event) => setCriteria({ categoryFilter: event.target.value || null })}
             >
               <option value="">Any category</option>
               {categoryChoices.map((option) => (
@@ -304,7 +419,7 @@ export function Expenses() {
             <span>Person</span>
             <select
               value={criteria.personFilter ?? ''}
-              onChange={(event) => patch({ personFilter: event.target.value || null })}
+              onChange={(event) => setCriteria({ personFilter: event.target.value || null })}
             >
               <option value="">Anyone</option>
               {personChoices.map((option) => (
@@ -317,14 +432,15 @@ export function Expenses() {
         </Modal>
       )}
 
-      {adding && <ExpenseForm categories={categories} onClose={() => setAdding(false)} />}
-      {editing != null && (
-        <ExpenseForm
-          categories={categories}
-          existing={editing}
-          onClose={() => setEditing(null)}
-        />
+      {adding.isOpen && <ExpenseForm categories={categories} onClose={adding.close} />}
+
+      {/* A stale `?edit=<id>` — a shared link to a row since deleted, or one this viewer
+          cannot see — falls through to nothing rather than rendering a blank form. */}
+      {editingExpense != null && (
+        <ExpenseForm categories={categories} existing={editingExpense} onClose={editing.close} />
       )}
+
+      {destructive.node}
     </>
   )
 }

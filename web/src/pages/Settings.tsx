@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { PageHead } from '../components/Layout'
-import { Card, Icon, Notice, Segmented, formatDate } from '../components/ui'
+import { Card, CardHeader, Icon, Notice, Segmented, formatDate } from '../components/ui'
 import { useHouseholdData } from '../data/HouseholdData'
 import { signOut } from '../session/auth'
 import { useSession } from '../session/SessionProvider'
@@ -59,10 +59,7 @@ export function Settings() {
 
       <div className="grid cols-2">
         <Card>
-          <strong style={{ fontSize: 15, display: 'block', marginBottom: 4 }}>Appearance</strong>
-          <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-secondary)' }}>
-            Follows your system unless you pick one.
-          </p>
+          <CardHeader title="Appearance" sub="Follows your system unless you pick one." />
           <Segmented
             options={[
               { value: 'system' as ThemeChoice, label: 'System' },
@@ -75,11 +72,10 @@ export function Settings() {
         </Card>
 
         <Card>
-          <strong style={{ fontSize: 15, display: 'block', marginBottom: 4 }}>Export</strong>
-          <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-secondary)' }}>
-            {expenses.length} expenses · {money(total)}. Only what you can see is exported, so a
-            member's file will not contain other people's personal expenses.
-          </p>
+          <CardHeader
+            title="Export"
+            sub={`${expenses.length} expenses · ${money(total)}. Only what you can see is exported, so a member's file will not contain other people's personal expenses.`}
+          />
           <button className="btn" type="button" onClick={download} disabled={expenses.length === 0}>
             <Icon name="download" />
             Download CSV
@@ -87,8 +83,8 @@ export function Settings() {
         </Card>
 
         <Card>
-          <strong style={{ fontSize: 15, display: 'block', marginBottom: 10 }}>Account</strong>
-          <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+          <CardHeader title="Account" />
+          <div className="t-sm" style={{ lineHeight: 1.7 }}>
             <div>
               <span style={{ color: 'var(--text-secondary)' }}>Signed in as </span>
               {session.displayName}
@@ -122,9 +118,7 @@ export function Settings() {
         </Card>
 
         <Card>
-          <strong style={{ fontSize: 15, display: 'block', marginBottom: 10 }}>
-            Not available on the web
-          </strong>
+          <CardHeader title="Not available on the web" />
           <ul
             style={{
               margin: 0,

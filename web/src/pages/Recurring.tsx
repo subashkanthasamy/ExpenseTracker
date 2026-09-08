@@ -1,7 +1,21 @@
 import { useCallback, useState } from 'react'
 
 import { PageHead } from '../components/Layout'
-import { Card, Empty, Field, Icon, Modal, Notice, Segmented, Spinner, formatDate, fromDateInput, toDateInput } from '../components/ui'
+import {
+  Card,
+  Empty,
+  Field,
+  Icon,
+  ListSkeleton,
+  Modal,
+  Notice,
+  Segmented,
+  formatDate,
+  fromDateInput,
+  toDateInput,
+  useConfirmAction,
+  useErrorToast,
+} from '../components/ui'
 import { useCollection, useHouseholdData } from '../data/HouseholdData'
 import { FREQUENCY_LABELS, deleteRecurring, observeRecurring, upsertRecurring } from '../data/recurring'
 import { useSession } from '../session/SessionProvider'
@@ -23,12 +37,15 @@ export function Recurring() {
 
   const [editing, setEditing] = useState<RecurringExpense | null>(null)
   const [creating, setCreating] = useState(false)
+  const destructive = useConfirmAction()
+  // Pausing has no confirmation step, so it needs the toast on its own.
+  const errorToast = useErrorToast()
 
   const toggleActive = async (rule: RecurringExpense) => {
     try {
       await upsertRecurring({ ...rule, isActive: !rule.isActive })
     } catch (caught) {
-      window.alert((caught as Error)?.message ?? 'Could not update.')
+      errorToast.show(caught)
     }
   }
 
@@ -67,7 +84,7 @@ export function Recurring() {
 
       {loading ? (
         <Card>
-          <Spinner label="Loading rules…" />
+          <ListSkeleton rows={3} />
         </Card>
       ) : rows.length === 0 ? (
         <Card>
@@ -116,19 +133,33 @@ export function Recurring() {
                 <div className="amount">{money(rule.amount)}</div>
                 {canManage && (
                   <div className="actions">
-                    <button className="btn ghost" type="button" onClick={() => void toggleActive(rule)}>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      aria-label={`${rule.isActive ? 'Pause' : 'Resume'} the ${rule.categoryName} rule`}
+                      onClick={() => void toggleActive(rule)}
+                    >
                       <Icon name={rule.isActive ? 'pause' : 'play_arrow'} size={17} />
                     </button>
-                    <button className="btn ghost" type="button" onClick={() => setEditing(rule)}>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      aria-label={`Edit the ${rule.categoryName} rule`}
+                      onClick={() => setEditing(rule)}
+                    >
                       <Icon name="edit" size={17} />
                     </button>
                     <button
                       className="btn ghost"
                       type="button"
-                      onClick={() => {
-                        if (window.confirm('Delete this rule? Expenses it already created stay.'))
-                          void deleteRecurring(householdId, rule.id)
-                      }}
+                      aria-label={`Delete the ${rule.categoryName} rule`}
+                      onClick={() =>
+                        destructive.ask({
+                          title: 'Delete this rule?',
+                          message: `${money(rule.amount)} · ${rule.categoryName}. Expenses the rule has already created stay where they are; it just stops creating new ones.`,
+                          run: () => deleteRecurring(householdId, rule.id),
+                        })
+                      }
                     >
                       <Icon name="delete" size={17} />
                     </button>
@@ -153,6 +184,9 @@ export function Recurring() {
           }}
         />
       )}
+
+      {destructive.node}
+      {errorToast.node}
     </>
   )
 }

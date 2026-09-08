@@ -1,7 +1,21 @@
 import { useCallback, useState } from 'react'
 
 import { PageHead } from '../components/Layout'
-import { Card, Empty, Field, Icon, Modal, Notice, Progress, Spinner, Stat, formatDate, fromDateInput, toDateInput } from '../components/ui'
+import {
+  Card,
+  Empty,
+  Field,
+  Icon,
+  ListSkeleton,
+  Modal,
+  Notice,
+  Progress,
+  Stat,
+  formatDate,
+  fromDateInput,
+  toDateInput,
+  useConfirmAction,
+} from '../components/ui'
 import { deleteGoal, observeGoals, upsertGoal } from '../data/goals'
 import { useCollection } from '../data/HouseholdData'
 import { useSession } from '../session/SessionProvider'
@@ -22,18 +36,17 @@ export function Savings() {
 
   const [editing, setEditing] = useState<SavingsGoal | null>(null)
   const [creating, setCreating] = useState(false)
+  const destructive = useConfirmAction()
 
   const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount, 0)
   const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount, 0)
 
-  const remove = async (goal: SavingsGoal) => {
-    if (!window.confirm(`Delete the goal "${goal.name}"?`)) return
-    try {
-      await deleteGoal(householdId, goal.id)
-    } catch (caught) {
-      window.alert((caught as Error)?.message ?? 'Could not delete.')
-    }
-  }
+  const remove = (goal: SavingsGoal) =>
+    destructive.ask({
+      title: `Delete "${goal.name}"?`,
+      message: `${money(goal.currentAmount)} of ${money(goal.targetAmount)} saved. Deleting the goal does not touch any expense.`,
+      run: () => deleteGoal(householdId, goal.id),
+    })
 
   return (
     <>
@@ -60,7 +73,7 @@ export function Savings() {
 
       {goals.length > 0 && (
         <div className="grid cols-3" style={{ marginBottom: 20 }}>
-          <Stat label="Saved so far" value={money(totalSaved)} accent="var(--income)" />
+          <Stat label="Saved so far" value={money(totalSaved)} accent="var(--income-text)" />
           <Stat label="Total target" value={money(totalTarget)} />
           <Stat
             label="Still to go"
@@ -71,9 +84,14 @@ export function Savings() {
       )}
 
       {loading ? (
-        <Card>
-          <Spinner label="Loading goals…" />
-        </Card>
+        <div className="grid cols-2">
+          <Card>
+            <ListSkeleton rows={2} />
+          </Card>
+          <Card>
+            <ListSkeleton rows={2} />
+          </Card>
+        </div>
       ) : goals.length === 0 ? (
         <Card>
           <Empty
@@ -101,7 +119,7 @@ export function Savings() {
                   <div className="row" style={{ gap: 10 }}>
                     <span style={{ fontSize: 22 }}>{goal.icon}</span>
                     <div>
-                      <strong style={{ fontSize: 15 }}>{goal.name}</strong>
+                      <strong className="t-lg">{goal.name}</strong>
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
                         {money(goal.currentAmount)} of {money(goal.targetAmount)}
                       </div>
@@ -152,6 +170,8 @@ export function Savings() {
           }}
         />
       )}
+
+      {destructive.node}
     </>
   )
 }

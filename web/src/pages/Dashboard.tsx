@@ -1,23 +1,29 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
+import { Sparkline, TrendChart } from '../components/charts'
 import { PageHead } from '../components/Layout'
-import { Card, CategoryIcon, Empty, Icon, Notice, Progress, Spinner, Stat, formatDate } from '../components/ui'
+import {
+  Card,
+  CardHeader,
+  CategoryIcon,
+  ChartSkeleton,
+  Empty,
+  Icon,
+  ListSkeleton,
+  Notice,
+  Progress,
+  Stat,
+  StatSkeleton,
+  formatDate,
+} from '../components/ui'
 import { useHouseholdData } from '../data/HouseholdData'
+import { categorySlices, dailyCumulative, monthBounds, monthlySeries } from '../data/series'
 import { useSession } from '../session/SessionProvider'
 import { colorOf, money, moneyShort, sharedOnly } from '../shared'
-import type { Expense } from '../types'
 
-/** Epoch bounds of the month containing `reference`, and of the month before it. */
-function monthBounds(reference: number) {
-  const date = new Date(reference)
-  const startOfThis = new Date(date.getFullYear(), date.getMonth(), 1).getTime()
-  const startOfNext = new Date(date.getFullYear(), date.getMonth() + 1, 1).getTime()
-  const startOfPrevious = new Date(date.getFullYear(), date.getMonth() - 1, 1).getTime()
-  return { startOfPrevious, startOfThis, startOfNext }
-}
-
-const sum = (expenses: Expense[]) => expenses.reduce((total, e) => total + e.amount, 0)
+/** How far the trend card looks back. Six fits the card without the columns going hairline. */
+const TREND_MONTHS = 6
 
 export function Dashboard() {
   const session = useSession()
@@ -33,19 +39,6 @@ export function Dashboard() {
     const thisMonth = shared.filter((e) => e.date >= startOfThis && e.date < startOfNext)
     const lastMonth = shared.filter((e) => e.date >= startOfPrevious && e.date < startOfThis)
 
-    const byCategory = new Map<string, { name: string; amount: number; categoryId: string }>()
-    thisMonth.forEach((expense) => {
-      const key = expense.categoryId || expense.categoryName
-      const existing = byCategory.get(key)
-      if (existing) existing.amount += expense.amount
-      else
-        byCategory.set(key, {
-          name: expense.categoryName || 'Uncategorised',
-          amount: expense.amount,
-          categoryId: expense.categoryId,
-        })
-    })
-
     const mine = expenses.filter(
       (e) => e.addedBy === session.uid && e.date >= startOfThis && e.date < startOfNext,
     )
@@ -58,19 +51,33 @@ export function Dashboard() {
       (e) => e.scope === 'personal' && e.date >= startOfThis && e.date < startOfNext,
     )
 
+    const total = thisMonth.reduce((sum, e) => sum + e.amount, 0)
+
     return {
-      thisMonthTotal: sum(thisMonth),
-      lastMonthTotal: sum(lastMonth),
+      thisMonthTotal: total,
+      lastMonthTotal: lastMonth.reduce((sum, e) => sum + e.amount, 0),
       count: thisMonth.length,
-      topCategories: [...byCategory.values()].sort((a, b) => b.amount - a.amount).slice(0, 5),
-      myTotal: sum(mine),
-      excludedPersonal: sum(personalVisible),
-      personalTotal: sum(
-        expenses.filter(
-          (e) => e.scope === 'personal' && e.addedBy === session.uid && e.date >= startOfThis && e.date < startOfNext,
-        ),
-      ),
+      // Top five by amount, each row directly labelled with its name and value — which is
+      // what makes the category tint decoration rather than the identity channel. See the
+      // note on DonutChart for why that distinction is load-bearing in this app.
+      topCategories: categorySlices(thisMonth).slice(0, 5),
+      myTotal: mine.reduce((sum, e) => sum + e.amount, 0),
+      excludedPersonal: personalVisible.reduce((sum, e) => sum + e.amount, 0),
+      personalTotal: expenses
+        .filter(
+          (e) =>
+            e.scope === 'personal' &&
+            e.addedBy === session.uid &&
+            e.date >= startOfThis &&
+            e.date < startOfNext,
+        )
+        .reduce((sum, e) => sum + e.amount, 0),
       recent: shared.slice(0, 6),
+      // Running total across the days elapsed so far, so the tile answers "on track or not"
+      // without a second number.
+      pace: dailyCumulative(thisMonth, startOfThis),
+      lastMonthPace: dailyCumulative(lastMonth, startOfPrevious),
+      trend: monthlySeries(shared, TREND_MONTHS),
     }
   }, [expenses, session.uid])
 
@@ -79,31 +86,42 @@ export function Dashboard() {
       ? ((stats.thisMonthTotal - stats.lastMonthTotal) / stats.lastMonthTotal) * 100
       : null
 
+  const greeting = `Hello, ${session.displayName.split(' ')[0]}`
+
   if (loading) {
     return (
       <>
-        <PageHead title={`Hello, ${session.displayName.split(' ')[0]}`} />
-        <Card>
-          <Spinner label="Loading your household…" />
+        <PageHead title={greeting} subtitle={`${session.household.name} · this month so far`} />
+        <StatSkeleton />
+        <Card style={{ marginBottom: 'var(--space-5)' }}>
+          <CardHeader title={`Last ${TREND_MONTHS} months`} />
+          <ChartSkeleton />
         </Card>
+        <div className="grid cols-2">
+          <Card>
+            <CardHeader title="Top categories" />
+            <ListSkeleton rows={5} />
+          </Card>
+          <Card>
+            <CardHeader title="Recent shared expenses" />
+            <ListSkeleton rows={5} />
+          </Card>
+        </div>
       </>
     )
   }
 
   return (
     <>
-      <PageHead
-        title={`Hello, ${session.displayName.split(' ')[0]}`}
-        subtitle={`${session.household.name} · this month so far`}
-      />
+      <PageHead title={greeting} subtitle={`${session.household.name} · this month so far`} />
 
       {error != null && (
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 'var(--space-4)' }}>
           <Notice kind="error">{error}</Notice>
         </div>
       )}
 
-      <div className="grid cols-4" style={{ marginBottom: 20 }}>
+      <div className="grid cols-4" style={{ marginBottom: 'var(--space-5)' }}>
         <Stat
           label="Shared this month"
           value={money(stats.thisMonthTotal)}
@@ -120,26 +138,53 @@ export function Dashboard() {
               )}
             </>
           }
+          trend={<Sparkline values={stats.pace} />}
         />
-        <Stat label="Last month" value={money(stats.lastMonthTotal)} sub="Shared only" />
+        <Stat
+          label="Last month"
+          value={money(stats.lastMonthTotal)}
+          sub="Shared only"
+          trend={<Sparkline values={stats.lastMonthPace} accent="var(--text-tertiary)" />}
+        />
         <Stat label="Added by you" value={money(stats.myTotal)} sub="This month, all scopes" />
         <Stat
           label="Your personal"
           value={money(stats.personalTotal)}
           sub="Not in shared totals"
-          accent="var(--accent-orange)"
+          accent="var(--accent-orange-text)"
         />
       </div>
 
-      <div className="grid cols-2">
-        <Card>
-          <div className="row between" style={{ marginBottom: 14 }}>
-            <strong style={{ fontSize: 15 }}>Top categories</strong>
-            <Link to="/insights" className="btn ghost" style={{ fontSize: 13 }}>
+      {/*
+        The one thing the web client showed nowhere before: change over time. One series, so
+        the colour job is sequential and there is no legend — the heading already names what
+        is plotted.
+      */}
+      <Card style={{ marginBottom: 'var(--space-5)' }}>
+        <CardHeader
+          title={`Last ${TREND_MONTHS} months`}
+          sub="Shared spending per calendar month. The current month is partial."
+          action={
+            <Link to="/insights" className="btn ghost t-sm">
               Insights
               <Icon name="chevron_right" size={17} />
             </Link>
-          </div>
+          }
+        />
+        <TrendChart points={stats.trend} />
+      </Card>
+
+      <div className="grid cols-2">
+        <Card>
+          <CardHeader
+            title="Top categories"
+            action={
+              <Link to="/insights" className="btn ghost t-sm">
+                Insights
+                <Icon name="chevron_right" size={17} />
+              </Link>
+            }
+          />
 
           {stats.topCategories.length === 0 ? (
             <Empty icon="donut_small" title="Nothing this month yet">
@@ -149,7 +194,6 @@ export function Dashboard() {
             <div className="list">
               {stats.topCategories.map((entry) => {
                 const category = categories.find((c) => c.id === entry.categoryId)
-                const share = stats.thisMonthTotal > 0 ? entry.amount / stats.thisMonthTotal : 0
                 return (
                   <div key={entry.categoryId || entry.name} style={{ padding: '9px 0' }}>
                     <div className="row" style={{ gap: 10, marginBottom: 6 }}>
@@ -159,15 +203,13 @@ export function Dashboard() {
                         color={category ? colorOf(category) : undefined}
                         size={30}
                       />
-                      <span style={{ fontSize: 14, fontWeight: 500, flex: 1 }}>{entry.name}</span>
-                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                        {(share * 100).toFixed(0)}%
+                      <span className="t-md t-strong" style={{ flex: 1, minWidth: 0 }}>
+                        {entry.name}
                       </span>
-                      <strong style={{ fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
-                        {moneyShort(entry.amount)}
-                      </strong>
+                      <span className="t-sm t-secondary">{(entry.share * 100).toFixed(0)}%</span>
+                      <strong className="t-md num">{moneyShort(entry.amount)}</strong>
                     </div>
-                    <Progress value={share} />
+                    <Progress value={entry.share} />
                   </div>
                 )
               })}
@@ -176,13 +218,15 @@ export function Dashboard() {
         </Card>
 
         <Card>
-          <div className="row between" style={{ marginBottom: 14 }}>
-            <strong style={{ fontSize: 15 }}>Recent shared expenses</strong>
-            <Link to="/expenses" className="btn ghost" style={{ fontSize: 13 }}>
-              All
-              <Icon name="chevron_right" size={17} />
-            </Link>
-          </div>
+          <CardHeader
+            title="Recent shared expenses"
+            action={
+              <Link to="/expenses" className="btn ghost t-sm">
+                All
+                <Icon name="chevron_right" size={17} />
+              </Link>
+            }
+          />
 
           {stats.recent.length === 0 ? (
             <Empty icon="receipt_long" title="No expenses yet">

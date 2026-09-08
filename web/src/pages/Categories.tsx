@@ -1,7 +1,18 @@
 import { useState } from 'react'
 
 import { PageHead } from '../components/Layout'
-import { Card, CategoryIcon, Empty, Field, Icon, Modal, Notice, Spinner } from '../components/ui'
+import {
+  Card,
+  CardHeader,
+  CategoryIcon,
+  Empty,
+  Field,
+  Icon,
+  Modal,
+  Notice,
+  Skeleton,
+  useConfirmAction,
+} from '../components/ui'
 import { deleteCategory, topUpPresetCategories, upsertCategory } from '../data/categories'
 import { useHouseholdData } from '../data/HouseholdData'
 import { useSession } from '../session/SessionProvider'
@@ -20,6 +31,7 @@ export function Categories() {
   const [creating, setCreating] = useState(false)
   const [toppingUp, setToppingUp] = useState(false)
   const [message, setMessage] = useState('')
+  const destructive = useConfirmAction()
 
   const presets = categories.filter((c) => c.isPreset)
   const custom = categories.filter((c) => !c.isPreset)
@@ -41,19 +53,13 @@ export function Categories() {
     }
   }
 
-  const remove = async (category: Category) => {
-    if (
-      !window.confirm(
-        `Delete "${category.name}"? Existing expenses keep the name they were filed under.`,
-      )
-    )
-      return
-    try {
-      await deleteCategory(session.household.id, category.id)
-    } catch (caught) {
-      window.alert((caught as Error)?.message ?? 'Could not delete.')
-    }
-  }
+  const remove = (category: Category) =>
+    destructive.ask({
+      title: `Delete "${category.name}"?`,
+      message:
+        'Existing expenses keep the name they were filed under, so nothing disappears from your history — the category just stops being offered.',
+      run: () => deleteCategory(session.household.id, category.id),
+    })
 
   return (
     <>
@@ -92,9 +98,17 @@ export function Categories() {
       )}
 
       {loading ? (
-        <Card>
-          <Spinner label="Loading categories…" />
-        </Card>
+        // Placeholder tiles at the real tile size, so the grid does not reflow on arrival.
+        <div className="grid cols-4">
+          {Array.from({ length: 8 }, (_, index) => (
+            <Card key={index}>
+              <Skeleton height={38} width={38} radius={11} />
+              <div style={{ marginTop: 12 }}>
+                <Skeleton height={13} width="70%" />
+              </div>
+            </Card>
+          ))}
+        </div>
       ) : categories.length === 0 ? (
         <Card>
           <Empty
@@ -115,9 +129,7 @@ export function Categories() {
         <>
           {custom.length > 0 && (
             <Card style={{ marginBottom: 20 }}>
-              <strong style={{ fontSize: 15, display: 'block', marginBottom: 12 }}>
-                Your own
-              </strong>
+              <CardHeader title="Your own" />
               <CategoryGrid
                 categories={custom}
                 canManage={canManage}
@@ -128,11 +140,10 @@ export function Categories() {
           )}
 
           <Card>
-            <strong style={{ fontSize: 15, display: 'block', marginBottom: 4 }}>Presets</strong>
-            <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-secondary)' }}>
-              Seeded from the shared catalogue, so Android, iOS and the web agree. Deleting one
-              is remembered — it will not come back on the next load.
-            </p>
+            <CardHeader
+              title="Presets"
+              sub="Seeded from the shared catalogue, so Android, iOS and the web agree. Deleting one is remembered — it will not come back on the next load."
+            />
             <CategoryGrid
               categories={presets}
               canManage={canManage}
@@ -153,6 +164,8 @@ export function Categories() {
           }}
         />
       )}
+
+      {destructive.node}
     </>
   )
 }

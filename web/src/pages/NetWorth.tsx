@@ -1,7 +1,19 @@
 import { useCallback, useState } from 'react'
 
 import { PageHead } from '../components/Layout'
-import { Card, Empty, Field, Icon, Modal, Notice, Spinner, Stat, formatDate } from '../components/ui'
+import {
+  Card,
+  CardHeader,
+  Empty,
+  Field,
+  Icon,
+  ListSkeleton,
+  Modal,
+  Notice,
+  Stat,
+  formatDate,
+  useConfirmAction,
+} from '../components/ui'
 import { useCollection } from '../data/HouseholdData'
 import {
   deleteAsset,
@@ -36,6 +48,8 @@ export function NetWorth() {
 
   const assets = useCollection<Asset>(subscribeAssets, [householdId])
   const liabilities = useCollection<Liability>(subscribeLiabilities, [householdId])
+
+  const destructive = useConfirmAction()
 
   const [editing, setEditing] = useState<
     { kind: 'asset'; row?: Asset } | { kind: 'liability'; row?: Liability } | null
@@ -77,23 +91,30 @@ export function NetWorth() {
       )}
 
       <div className="grid cols-3" style={{ marginBottom: 20 }}>
-        <Stat label="Assets" value={money(totalAssets)} accent="var(--income)" />
-        <Stat label="Liabilities" value={money(totalLiabilities)} accent="var(--expense)" />
+        <Stat label="Assets" value={money(totalAssets)} accent="var(--income-text)" />
+        <Stat label="Liabilities" value={money(totalLiabilities)} accent="var(--expense-text)" />
         <Stat
           label="Net worth"
           value={money(net)}
-          accent={net >= 0 ? 'var(--income)' : 'var(--expense)'}
+          accent={net >= 0 ? 'var(--income-text)' : 'var(--expense-text)'}
         />
       </div>
 
       {assets.loading || liabilities.loading ? (
-        <Card>
-          <Spinner label="Loading…" />
-        </Card>
+        <div className="grid cols-2">
+          <Card>
+            <CardHeader title="Assets" />
+            <ListSkeleton rows={3} />
+          </Card>
+          <Card>
+            <CardHeader title="Liabilities" />
+            <ListSkeleton rows={3} />
+          </Card>
+        </div>
       ) : (
         <div className="grid cols-2">
           <Card>
-            <strong style={{ fontSize: 15, display: 'block', marginBottom: 12 }}>Assets</strong>
+            <CardHeader title="Assets" />
             {assets.rows.length === 0 ? (
               <Empty icon="account_balance_wallet" title="No assets recorded" />
             ) : (
@@ -108,7 +129,7 @@ export function NetWorth() {
                         <span>{formatDate(asset.date)}</span>
                       </div>
                     </div>
-                    <div className="amount" style={{ color: 'var(--income)' }}>
+                    <div className="amount" style={{ color: 'var(--income-text)' }}>
                       {money(asset.value)}
                     </div>
                     {canManage && (
@@ -116,6 +137,7 @@ export function NetWorth() {
                         <button
                           className="btn ghost"
                           type="button"
+                          aria-label={`Edit ${asset.name}`}
                           onClick={() => setEditing({ kind: 'asset', row: asset })}
                         >
                           <Icon name="edit" size={17} />
@@ -123,9 +145,15 @@ export function NetWorth() {
                         <button
                           className="btn ghost"
                           type="button"
-                          onClick={() => {
-                            if (window.confirm(`Remove ${asset.name}?`)) void deleteAsset(householdId, asset.id)
-                          }}
+                          aria-label={`Remove ${asset.name}`}
+                          onClick={() =>
+                            destructive.ask({
+                              title: `Remove ${asset.name}?`,
+                              message: `${money(asset.value)} will stop counting towards net worth.`,
+                              confirmLabel: 'Remove',
+                              run: () => deleteAsset(householdId, asset.id),
+                            })
+                          }
                         >
                           <Icon name="delete" size={17} />
                         </button>
@@ -138,7 +166,7 @@ export function NetWorth() {
           </Card>
 
           <Card>
-            <strong style={{ fontSize: 15, display: 'block', marginBottom: 12 }}>Liabilities</strong>
+            <CardHeader title="Liabilities" />
             {liabilities.rows.length === 0 ? (
               <Empty icon="credit_card_off" title="No liabilities recorded" />
             ) : (
@@ -153,7 +181,7 @@ export function NetWorth() {
                         <span>{formatDate(liability.date)}</span>
                       </div>
                     </div>
-                    <div className="amount" style={{ color: 'var(--expense)' }}>
+                    <div className="amount" style={{ color: 'var(--expense-text)' }}>
                       {money(liability.amount)}
                     </div>
                     {canManage && (
@@ -161,6 +189,7 @@ export function NetWorth() {
                         <button
                           className="btn ghost"
                           type="button"
+                          aria-label={`Edit ${liability.name}`}
                           onClick={() => setEditing({ kind: 'liability', row: liability })}
                         >
                           <Icon name="edit" size={17} />
@@ -168,10 +197,15 @@ export function NetWorth() {
                         <button
                           className="btn ghost"
                           type="button"
-                          onClick={() => {
-                            if (window.confirm(`Remove ${liability.name}?`))
-                              void deleteLiability(householdId, liability.id)
-                          }}
+                          aria-label={`Remove ${liability.name}`}
+                          onClick={() =>
+                            destructive.ask({
+                              title: `Remove ${liability.name}?`,
+                              message: `${money(liability.amount)} will stop counting against net worth.`,
+                              confirmLabel: 'Remove',
+                              run: () => deleteLiability(householdId, liability.id),
+                            })
+                          }
                         >
                           <Icon name="delete" size={17} />
                         </button>
@@ -194,6 +228,8 @@ export function NetWorth() {
           onClose={() => setEditing(null)}
         />
       )}
+
+      {destructive.node}
     </>
   )
 }

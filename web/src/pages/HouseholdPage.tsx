@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react'
 
 import { PageHead } from '../components/Layout'
-import { Card, Field, Icon, Modal, Notice, Spinner } from '../components/ui'
+import {
+  Card,
+  CardHeader,
+  Field,
+  Icon,
+  ListSkeleton,
+  Modal,
+  Notice,
+  useConfirmAction,
+} from '../components/ui'
 import {
   deleteHousehold,
   ensureInviteCodePublished,
@@ -28,6 +37,9 @@ export function HouseholdPage() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [copied, setCopied] = useState(false)
+  // `act` reports both success and failure through the page's own Notice, so the hook's toast
+  // never fires here — it is used purely for the confirmation step.
+  const destructive = useConfirmAction()
 
   useEffect(() => {
     let cancelled = false
@@ -89,13 +101,10 @@ export function HouseholdPage() {
 
       <div className="grid cols-2">
         <Card>
-          <strong style={{ fontSize: 15, display: 'block', marginBottom: 4 }}>Members</strong>
-          <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--text-secondary)' }}>
-            {household.memberUids.length} of 20
-          </p>
+          <CardHeader title="Members" sub={`${household.memberUids.length} of 20`} />
 
           {members == null ? (
-            <Spinner label="Loading members…" />
+            <ListSkeleton rows={3} />
           ) : (
             <div className="list">
               {members.map((member) => (
@@ -137,17 +146,20 @@ export function HouseholdPage() {
                         className="btn ghost icon"
                         type="button"
                         disabled={busy}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Remove ${member.displayName}? Their expenses stay in the household.`,
-                            )
-                          )
-                            void act(
-                              () => removeMember(household, member.uid),
-                              `${member.displayName} was removed.`,
-                            )
-                        }}
+                        aria-label={`Remove ${member.displayName} from the household`}
+                        onClick={() =>
+                          destructive.ask({
+                            title: `Remove ${member.displayName}?`,
+                            message:
+                              'Their expenses stay in the household and keep their name on them. They can be invited back with a valid code.',
+                            confirmLabel: 'Remove',
+                            run: () =>
+                              act(
+                                () => removeMember(household, member.uid),
+                                `${member.displayName} was removed.`,
+                              ),
+                          })
+                        }
                       >
                         <Icon name="person_remove" size={18} />
                       </button>
@@ -162,10 +174,10 @@ export function HouseholdPage() {
         <div className="grid" style={{ gap: 'var(--gap)', alignContent: 'start' }}>
           {session.allows('manageInviteCode') ? (
             <Card>
-              <strong style={{ fontSize: 15, display: 'block', marginBottom: 4 }}>Invite code</strong>
-              <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-secondary)' }}>
-                Anyone with this code can join as a member. Rotating it stops the old one working.
-              </p>
+              <CardHeader
+                title="Invite code"
+                sub="Anyone with this code can join as a member. Rotating it stops the old one working."
+              />
               <div className="code" style={{ marginBottom: 12 }}>
                 {household.inviteCode || '——————'}
               </div>
@@ -178,10 +190,16 @@ export function HouseholdPage() {
                   className="btn"
                   type="button"
                   disabled={busy}
-                  onClick={() => {
-                    if (window.confirm('Rotate the code? The current one stops working.'))
-                      void act(() => rotateInviteCode(household), 'A new code has been issued.')
-                  }}
+                  onClick={() =>
+                    destructive.ask({
+                      title: 'Rotate the invite code?',
+                      message:
+                        'The current code stops working immediately, including for anyone a member has already passed it on to. Nobody already in the household is affected.',
+                      confirmLabel: 'Rotate',
+                      run: () =>
+                        act(() => rotateInviteCode(household), 'A new code has been issued.'),
+                    })
+                  }
                 >
                   <Icon name="autorenew" />
                   Rotate
@@ -190,31 +208,34 @@ export function HouseholdPage() {
             </Card>
           ) : (
             <Card>
-              <strong style={{ fontSize: 15, display: 'block', marginBottom: 4 }}>Invite code</strong>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
-                Only the household owner can issue or rotate the invite code.
-              </p>
+              <CardHeader
+                title="Invite code"
+                sub="Only the household owner can issue or rotate the invite code."
+              />
             </Card>
           )}
 
           <Card>
-            <strong style={{ fontSize: 15, display: 'block', marginBottom: 4 }}>Your access</strong>
-            <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
-              {roleDescription(role)}
-            </p>
+            <CardHeader title="Your access" sub={roleDescription(role)} />
 
             {session.allows('leaveHousehold') && (
               <button
                 className="btn danger"
                 type="button"
                 disabled={busy}
-                onClick={() => {
-                  if (window.confirm('Leave this household? Your expenses stay behind.'))
-                    void act(async () => {
-                      await leaveHousehold(household, session.uid)
-                      await signOut()
-                    }, 'You have left the household.')
-                }}
+                onClick={() =>
+                  destructive.ask({
+                    title: 'Leave this household?',
+                    message:
+                      'Your expenses stay behind with your name on them, and you will be signed out. Rejoining needs a valid invite code.',
+                    confirmLabel: 'Leave',
+                    run: () =>
+                      act(async () => {
+                        await leaveHousehold(household, session.uid)
+                        await signOut()
+                      }, 'You have left the household.'),
+                  })
+                }
               >
                 <Icon name="logout" />
                 Leave household
@@ -272,6 +293,8 @@ export function HouseholdPage() {
           }
         />
       )}
+
+      {destructive.node}
     </>
   )
 }

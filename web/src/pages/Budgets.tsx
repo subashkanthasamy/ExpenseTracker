@@ -1,7 +1,17 @@
 import { useCallback, useMemo, useState } from 'react'
 
 import { PageHead } from '../components/Layout'
-import { Card, Empty, Field, Icon, Modal, Notice, Progress, Spinner } from '../components/ui'
+import {
+  Card,
+  Empty,
+  Field,
+  Icon,
+  ListSkeleton,
+  Modal,
+  Notice,
+  Progress,
+  useConfirmAction,
+} from '../components/ui'
 import { deleteBudget, observeBudgets, upsertBudget } from '../data/budgets'
 import { useCollection, useHouseholdData } from '../data/HouseholdData'
 import { useSession } from '../session/SessionProvider'
@@ -23,6 +33,7 @@ export function Budgets() {
 
   const [editing, setEditing] = useState<Budget | null>(null)
   const [creating, setCreating] = useState(false)
+  const destructive = useConfirmAction()
 
   /**
    * Spend per category for the current month, from shared rows only.
@@ -43,14 +54,13 @@ export function Budgets() {
     return totals
   }, [expenses])
 
-  const remove = async (budget: Budget) => {
-    if (!window.confirm(`Remove the budget for ${budget.categoryName}?`)) return
-    try {
-      await deleteBudget(householdId, budget.id)
-    } catch (caught) {
-      window.alert((caught as Error)?.message ?? 'Could not delete.')
-    }
-  }
+  const remove = (budget: Budget) =>
+    destructive.ask({
+      title: 'Remove this budget?',
+      message: `${budget.categoryName} will stop being tracked against a monthly limit. The expenses themselves are untouched.`,
+      confirmLabel: 'Remove',
+      run: () => deleteBudget(householdId, budget.id),
+    })
 
   return (
     <>
@@ -78,9 +88,14 @@ export function Budgets() {
       )}
 
       {loading ? (
-        <Card>
-          <Spinner label="Loading budgets…" />
-        </Card>
+        <div className="grid cols-2">
+          <Card>
+            <ListSkeleton rows={2} />
+          </Card>
+          <Card>
+            <ListSkeleton rows={2} />
+          </Card>
+        </div>
       ) : budgets.length === 0 ? (
         <Card>
           <Empty
@@ -108,22 +123,25 @@ export function Budgets() {
               <Card key={budget.id}>
                 <div className="row between" style={{ marginBottom: 10 }}>
                   <div>
-                    <strong style={{ fontSize: 15 }}>{budget.categoryName}</strong>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
+                    <strong className="t-lg">{budget.categoryName}</strong>
+                    <div className="t-xs t-secondary" style={{ marginTop: 3 }}>
                       {money(spent)} of {money(budget.monthlyLimit)}
                     </div>
                   </div>
                   <div className="row" style={{ gap: 6 }}>
+                    {/* The -text tokens, not --expense / --warning / --income: those are
+                        fill colours and measure 1.8-3.7:1 as text on a light surface.
+                        --warning at 1.80 was the worst offender, and it was here. */}
                     <span
+                      className="t-lg t-strong num"
                       style={{
                         fontWeight: 700,
-                        fontSize: 15,
                         color:
                           progress.status === 'exceeded'
-                            ? 'var(--expense)'
+                            ? 'var(--expense-text)'
                             : progress.status === 'warning'
-                              ? 'var(--warning)'
-                              : 'var(--income)',
+                              ? 'var(--warning-text)'
+                              : 'var(--income-text)',
                       }}
                     >
                       {progress.percentage.toFixed(0)}%
@@ -142,7 +160,7 @@ export function Budgets() {
                 </div>
                 <Progress value={progress.percentage / 100} status={progress.status} />
                 {progress.status === 'exceeded' && (
-                  <div style={{ fontSize: 12, color: 'var(--expense)', marginTop: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--expense-text)', marginTop: 8 }}>
                     Over by {money(spent - budget.monthlyLimit)}
                   </div>
                 )}
@@ -164,6 +182,8 @@ export function Budgets() {
           }}
         />
       )}
+
+      {destructive.node}
     </>
   )
 }

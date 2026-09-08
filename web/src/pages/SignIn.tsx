@@ -128,7 +128,7 @@ export function SignIn() {
           <button
             className="btn ghost"
             type="button"
-            style={{ padding: '2px 6px', color: 'var(--accent)' }}
+            style={{ padding: '2px 6px', color: 'var(--accent-text)' }}
             onClick={() => {
               setMode(mode === 'signIn' ? 'signUp' : 'signIn')
               setError('')
