@@ -1,7 +1,12 @@
 package com.bose.expensetracker.ui.screen.settings
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -68,6 +73,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.bose.expensetracker.data.preferences.ThemePreferences
 import com.bose.expensetracker.ui.theme.ExpenseRed
 import com.bose.expensetracker.ui.theme.AccentPurple
@@ -89,15 +96,27 @@ fun SettingsScreen(
     var showExportSheet by remember { mutableStateOf(false) }
     var showResetConfirmDialog by remember { mutableStateOf(false) }
 
+    // Re-read on every resume: the permission can be granted or revoked in system settings
+    // while this screen is in the background, and the saved preference alone would then show
+    // the toggle on while no SMS can ever arrive.
+    var hasSmsPermission by remember { mutableStateOf(isSmsPermissionGranted(context)) }
+    LifecycleResumeEffect(Unit) {
+        hasSmsPermission = isSmsPermissionGranted(context)
+        onPauseOrDispose { }
+    }
+    var showSmsPermissionHelp by remember { mutableStateOf(false) }
+
     val smsPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val smsGranted = permissions[Manifest.permission.RECEIVE_SMS] == true
-        if (smsGranted) {
-            viewModel.setSmsImportEnabled(true)
-        } else {
-            viewModel.setSmsImportEnabled(false)
-        }
+        hasSmsPermission = smsGranted
+        viewModel.setSmsImportEnabled(smsGranted)
+        // A denial used to flip the toggle back with no word of why. It is also what every
+        // tap looks like on Android 13+ for an app installed outside the Play Store: SMS is a
+        // restricted permission there, so the system returns "denied" without ever showing a
+        // prompt, and only App info can unblock it.
+        if (!smsGranted) showSmsPermissionHelp = true
     }
     val exportSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -475,7 +494,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Sms,
                     title = "SMS auto-import",
                     subtitle = "Automatically create expenses from bank SMS",
-                    checked = uiState.smsImportEnabled,
+                    checked = uiState.smsImportEnabled && hasSmsPermission,
                     onCheckedChange = { enabled ->
                         if (enabled) {
                             val permissions = buildList {
@@ -490,6 +509,36 @@ fun SettingsScreen(
                         }
                     }
                 )
+
+                if (showSmsPermissionHelp) {
+                    AlertDialog(
+                        onDismissRequest = { showSmsPermissionHelp = false },
+                        title = { Text("Allow SMS access") },
+                        text = {
+                            Text(
+                                "To add expenses from bank messages, Expense Tracker needs " +
+                                    "permission to receive SMS.\n\n" +
+                                    "Open App info, then Permissions, SMS, Allow. If SMS is " +
+                                    "greyed out or marked as restricted, first tap ⋮ in App " +
+                                    "info and choose Allow restricted settings."
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showSmsPermissionHelp = false
+                                context.startActivity(
+                                    Intent(
+                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                        Uri.fromParts("package", context.packageName, null)
+                                    )
+                                )
+                            }) { Text("Open App info") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showSmsPermissionHelp = false }) { Text("Cancel") }
+                        }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
             }
@@ -867,3 +916,7 @@ private fun ThemeSelectorCard(
         }
     }
 }
+
+private fun isSmsPermissionGranted(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) ==
+        PackageManager.PERMISSION_GRANTED

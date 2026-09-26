@@ -21,6 +21,18 @@ class SmsTransactionParser {
         RegexOption.IGNORE_CASE
     )
 
+    /**
+     * The amount straight after a spending verb, for alerts that print no currency at all —
+     * SBI's UPI debits read "A/C X1234 debited by 20.0 on 26Sep26 trf to …", which the
+     * currency pattern above never matched, so every one of them was ignored. Only used when
+     * there is no currency-marked amount, and only directly after the verb, so an account
+     * or reference number elsewhere in the message is never taken for the amount.
+     */
+    private val verbAmountPattern = Regex(
+        """\b(?:debited|spent|paid|sent|withdrawn|charged|transferred)\s+(?:by|for|of|with)?\s*(\d[\d,]*(?:\.\d+)?)""",
+        RegexOption.IGNORE_CASE
+    )
+
     private val creditKeywords = listOf(
         "credited", "received", "refund", "cashback", "reversed"
     )
@@ -94,14 +106,14 @@ class SmsTransactionParser {
 
     private fun isTransactionalSms(sender: String, body: String): Boolean {
         val lowerBody = body.lowercase()
-        val hasAmount = amountPattern.containsMatchIn(body)
+        val hasAmount = extractAmount(body) != null
         val hasKeyword = debitKeywords.any { lowerBody.contains(it) } ||
                 creditKeywords.any { lowerBody.contains(it) }
         return hasAmount && hasKeyword
     }
 
     private fun extractAmount(body: String): Double? {
-        val match = amountPattern.find(body) ?: return null
+        val match = amountPattern.find(body) ?: verbAmountPattern.find(body) ?: return null
         val amountStr = match.groupValues[1].replace(",", "")
         return amountStr.toDoubleOrNull()?.takeIf { it > 0 }
     }

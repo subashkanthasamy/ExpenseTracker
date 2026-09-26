@@ -9,6 +9,7 @@ import com.bose.expensetracker.data.local.dao.ProcessedSmsDao
 import com.bose.expensetracker.data.local.entity.PendingSmsEntity
 import com.bose.expensetracker.data.local.entity.ProcessedSmsEntity
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.util.NotificationHelper
 import dagger.hilt.EntryPoint
@@ -67,7 +68,10 @@ class SmsActionReceiver : BroadcastReceiver() {
                             addedBy = pending.userId,
                             addedByName = pending.userName,
                             createdAt = now,
-                            updatedAt = now
+                            updatedAt = now,
+                            // Same as confirming from the SMS imports screen; omitting it here
+                            // filed every notification-confirmed expense as "Not recorded".
+                            paymentMethod = PaymentMethod.fromWire(pending.paymentMethod)
                         )
                         val result = entryPoint.expenseRepository().addExpense(expense)
                         if (result.isSuccess) {
