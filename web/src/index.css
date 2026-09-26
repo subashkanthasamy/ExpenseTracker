@@ -1,20 +1,19 @@
 /*
- * Design tokens — Material 3.
+ * Design tokens.
  *
- * Two layers:
+ * The look follows a reference dashboard (a Dribbble shot supplied by the author): a grey
+ * page, the app on one white rounded panel, a slim icon rail, a vivid indigo, pastel icon
+ * tiles and a warm hero card. It is light-only; the dark values keep the same hierarchy.
  *
- * 1. `--md-*` are Material 3 colour ROLES, generated with Google's material-color-utilities
- *    (SchemeFidelity) from the brand purple #7b61ff, the Android app's `AccentPurple`. Fidelity
- *    rather than the default Tonal Spot, because Tonal Spot desaturates the seed to a dusty
- *    #5f5791 and the web would stop matching Android. The container tones are then eased one
- *    step lighter than Fidelity's (which put a saturated #bdb2ff behind every selected nav
- *    item) — each pairing below is re-measured, not assumed.
+ * Two layers, unchanged from the Material 3 pass:
  *
- * 2. The older names (--accent, --card, --border, --text-secondary…) are kept as ALIASES onto
- *    those roles. Every page and a dozen inline styles read them, so remapping them here moves
- *    the whole app onto M3 without touching a page file. New code should prefer the role.
+ * 1. `--md-*` colour ROLES. The names are still the M3 ones because every component reads
+ *    them; only the values changed.
+ * 2. The older names (--accent, --card, --border, --text-secondary…) alias onto the roles.
+ *    Pages and inline styles read those, so re-pointing them here restyles the whole app
+ *    without touching a page file.
  *
- * Only the role values differ between light and dark; the alias map is written once.
+ * Every text-on-fill pairing below is contrast-checked; re-measure if you change a value.
  */
 
 :root {
@@ -28,48 +27,57 @@
   --accent-orange: #ff8a65;
   --cta-gradient: linear-gradient(135deg, #7b61ff, #e040fb 60%, #ff8a65);
 
-  --md-primary: #5b3cdd;
+  --md-primary: #3d1fe0;
   --md-on-primary: #ffffff;
-  --md-primary-container: #e8e2ff;
-  --md-on-primary-container: #1f0a73;
-  --md-secondary-container: #e3dcff;
-  --md-on-secondary-container: #3b3175;
-  --md-error: #ba1a1a;
-  --md-error-container: #ffdad6;
-  --md-on-error-container: #93000a;
-  --md-surface: #fdf8ff;
+  --md-primary-container: #eae6ff;
+  --md-on-primary-container: #22108a;
+  --md-secondary-container: #eeebff;
+  --md-on-secondary-container: #3d1fe0;
+  --md-error: #c4271c;
+  --md-error-container: #fde4e1;
+  --md-on-error-container: #8a1109;
+  --md-surface: #ffffff;
   --md-surface-container-lowest: #ffffff;
-  --md-surface-container-low: #f7f1ff;
-  --md-surface-container: #f1ecf9;
-  --md-surface-container-high: #ebe6f3;
-  --md-surface-container-highest: #e5e0ee;
-  --md-on-surface: #1c1a24;
-  --md-on-surface-variant: #484555;
-  --md-outline: #797587;
-  --md-outline-variant: #c9c4d8;
-  --md-inverse-surface: #312f39;
-  --md-inverse-on-surface: #f4eefc;
-  --md-inverse-primary: #c9bfff;
-  /* M3 elevation levels 1-3 (light). Dark mode leans on the tonal surfaces instead. */
-  --md-elevation-1: 0 1px 2px rgb(0 0 0 / 14%), 0 1px 3px 1px rgb(0 0 0 / 7%);
-  --md-elevation-2: 0 1px 2px rgb(0 0 0 / 16%), 0 2px 6px 2px rgb(0 0 0 / 9%);
-  --md-elevation-3: 0 1px 3px rgb(0 0 0 / 18%), 0 4px 8px 3px rgb(0 0 0 / 10%);
+  --md-surface-container-low: #ffffff;
+  --md-surface-container: #f6f7fb;
+  --md-surface-container-high: #f1f2f7;
+  --md-surface-container-highest: #e8eaf1;
+  --md-on-surface: #14152a;
+  --md-on-surface-variant: #5f6378;
+  --md-outline: #a3a7b7;
+  --md-outline-variant: #eceef3;
+  --md-inverse-surface: #22233a;
+  --md-inverse-on-surface: #f3f3fa;
+  --md-inverse-primary: #b9adff;
+  --md-elevation-1: 0 1px 2px rgb(20 21 42 / 5%), 0 6px 20px rgb(20 21 42 / 5%);
+  --md-elevation-2: 0 2px 6px rgb(20 21 42 / 7%), 0 12px 28px rgb(20 21 42 / 8%);
+  --md-elevation-3: 0 8px 24px rgb(20 21 42 / 12%), 0 24px 56px rgb(20 21 42 / 12%);
 
-  /* Text-safe steps of the semantic hues, measured against --md-surface-container-low
-     (#f7f1ff), the card surface: income 4.63, warning 4.69, expense 5.08, orange 5.39.
-     The bright values in :root are FILLS (bars, tints, chart marks) and fail as text on a
-     light surface. If you change a hue or a surface, re-measure — do not eyeball it. */
-  --income-text: #2e7d32;
-  --warning-text: #a15c00;
-  --expense-text: #c62828;
+  /* The frame: a grey page, the app on one white rounded panel, a tinted side column. */
+  --page-bg: #e3e6ec;
+  --aside-bg: #f6f7fb;
+
+  /* Pastel tiles behind icons — each a fill with its own ink, measured as a pair. */
+  --tile-green: #cfebd8;   --tile-green-ink: #1c6e43;
+  --tile-orange: #ffdcb5;  --tile-orange-ink: #8f4700;
+  --tile-cream: #edf0df;   --tile-cream-ink: #505c25;
+  --tile-blue: #c9eef8;    --tile-blue-ink: #055f78;
+  --tile-lilac: #ece9ff;   --tile-lilac-ink: #3d1fe0;
+
+  /* The warm "This month" card and the activity bars. */
+  --hero: linear-gradient(135deg, #fadd7e 0%, #f6c65f 55%, #f2ab4f 100%);
+  --hero-ink: #3b2a05;
+  --chart-amber: #f3ad2d;
+
+  --income-text: #1c7a3f;
+  --warning-text: #9a5600;
+  --expense-text: #c4271c;
   --accent-orange-text: #a8450e;
-  /* 4.77 on --md-surface-container-high, the lowest surface it sits on. --md-outline (4.03)
-     is a border colour, not a text colour. */
-  --text-tertiary-md: #66627a;
+  --text-tertiary-md: #666a80;
 
   /* Legacy names, aliased onto roles. */
   --accent: var(--md-primary);
-  --accent-text: var(--md-primary);                 /* 6.05 on the card surface */
+  --accent-text: var(--md-primary);
   --accent-soft: var(--md-secondary-container);
   --accent-soft-text: var(--md-on-secondary-container);
   --canvas: var(--md-surface);
@@ -81,53 +89,47 @@
   --text-tertiary: var(--text-tertiary-md);
   --shadow: var(--md-elevation-1);
   --shadow-float: var(--md-elevation-3);
-  /* M3 state layers: an overlay of the content colour at a fixed opacity. */
-  --state-hover: color-mix(in srgb, var(--md-on-surface) 8%, transparent);
-  --state-press: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+  --state-hover: color-mix(in srgb, var(--md-on-surface) 6%, transparent);
+  --state-press: color-mix(in srgb, var(--md-on-surface) 10%, transparent);
 
-  /* M3 type scale (Roboto). */
-  --font: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --text-2xs: 11px;   /* label-small */
-  --text-xs: 12px;    /* label-medium, body-small */
+  --font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --text-2xs: 11px;
+  --text-xs: 12px;
   --text-sm: 13px;
-  --text-md: 14px;    /* body-medium, label-large */
-  --text-lg: 16px;    /* title-medium, body-large */
-  --text-xl: 22px;    /* title-large */
-  --text-2xl: 24px;   /* headline-small */
-  --text-3xl: 28px;   /* headline-medium */
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 28px;
 
-  /* Space scale. --gap keeps its name so existing rules need no edit. */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
-  --gap: var(--space-4);
+  --gap: 20px;
 
-  /* M3 shape scale. */
-  --radius-xs: 4px;     /* extra-small: text fields, snackbar */
-  --radius-sm: 8px;     /* small: chips, menus */
-  --radius: 12px;       /* medium: cards */
-  --radius-lg: 16px;    /* large: navigation drawer, sheets */
-  --radius-xl: 28px;    /* extra-large: dialogs */
-  --radius-pill: 999px; /* full: buttons, search, nav indicators */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius: 18px;
+  --radius-lg: 22px;
+  --radius-xl: 24px;
+  --radius-frame: 32px;
+  --radius-pill: 999px;
 
-  /* M3 motion: the "standard" easing curve. One duration token, so the reduced-motion escape
-     hatch has one thing to zero. */
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --dur: 0.2s;
 
-  /* Shell metrics. Appearance-independent, so deliberately NOT repeated in the dark blocks.
-     The two breakpoints are 1023px (drawer -> navigation rail) and 719px (rail -> top app
-     bar). They are literals in the media queries because a custom property cannot be used in
-     one and there is no CSS build step; this comment is their source of truth. */
-  --sidebar-w: 256px;
-  --rail-w: 80px;       /* M3 navigation rail */
-  --topbar-h: 64px;     /* M3 small top app bar */
-  --tap: 48px;          /* M3 minimum touch target. Applied by pointer type. */
+  /* Shell metrics. The frame's margin is what shows the grey page around the panel. The two
+     breakpoints: 1279px (the Dashboard's side column moves below) and 719px (rail -> top
+     bar). They are literals in the media queries; this comment is their source of truth. */
+  --frame-gap: 20px;
+  --rail-w: 96px;
+  --sidebar-w: var(--rail-w);
+  --topbar-h: 64px;
+  --tap: 48px;
 
-  /* One stacking ladder, so a new overlay does not have to guess. */
   --z-topbar: 40;
   --z-modal: 50;
   --z-toast: 60;
@@ -139,77 +141,97 @@
    mode. Always edit both. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --md-primary: #c9bfff;
-    --md-on-primary: #2e009c;
-    --md-primary-container: #4a3aa8;
-    --md-on-primary-container: #e8e2ff;
-    --md-secondary-container: #493f83;
-    --md-on-secondary-container: #e3dcff;
-    --md-error: #ffb4ab;
-    --md-error-container: #93000a;
+    --md-primary: #a191ff;
+    --md-on-primary: #17086b;
+    --md-primary-container: #2e2270;
+    --md-on-primary-container: #e6e1ff;
+    --md-secondary-container: #292160;
+    --md-on-secondary-container: #d9d2ff;
+    --md-error: #ff8a80;
+    --md-error-container: #5c1410;
     --md-on-error-container: #ffdad6;
-    --md-surface: #14121b;
-    --md-surface-container-lowest: #0e0d16;
-    --md-surface-container-low: #1c1a24;
-    --md-surface-container: #201e28;
-    --md-surface-container-high: #2b2932;
-    --md-surface-container-highest: #35333e;
-    --md-on-surface: #e5e0ee;
-    --md-on-surface-variant: #c9c4d8;
-    --md-outline: #928ea1;
-    --md-outline-variant: #48455a;
-    --md-inverse-surface: #e5e0ee;
-    --md-inverse-on-surface: #312f39;
-    --md-inverse-primary: #5d3fe0;
-    --md-elevation-1: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px 1px rgb(0 0 0 / 15%);
-    --md-elevation-2: 0 1px 2px rgb(0 0 0 / 30%), 0 2px 6px 2px rgb(0 0 0 / 15%);
-    --md-elevation-3: 0 1px 3px rgb(0 0 0 / 30%), 0 4px 8px 3px rgb(0 0 0 / 15%);
+    --md-surface: #12131c;
+    --md-surface-container-lowest: #0d0e15;
+    --md-surface-container-low: #181926;
+    --md-surface-container: #1c1d2c;
+    --md-surface-container-high: #222336;
+    --md-surface-container-highest: #2b2c42;
+    --md-on-surface: #ecedf5;
+    --md-on-surface-variant: #a9acbe;
+    --md-outline: #6f7287;
+    --md-outline-variant: #262739;
+    --md-inverse-surface: #ecedf5;
+    --md-inverse-on-surface: #22233a;
+    --md-inverse-primary: #3d1fe0;
+    --md-elevation-1: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 20px rgb(0 0 0 / 20%);
+    --md-elevation-2: 0 2px 6px rgb(0 0 0 / 35%), 0 12px 28px rgb(0 0 0 / 25%);
+    --md-elevation-3: 0 8px 24px rgb(0 0 0 / 45%), 0 24px 56px rgb(0 0 0 / 35%);
 
-    /* On the dark surfaces the bright fills already clear 4.5:1 as text against the card
-       (#1c1a24): income 6.18, expense 4.66 — so the text tokens alias them. */
+    --page-bg: #07080d;
+    --aside-bg: #161723;
+
+    --tile-green: #173a27;   --tile-green-ink: #8fe0b0;
+    --tile-orange: #3e2a12;  --tile-orange-ink: #ffc285;
+    --tile-cream: #2c2f1e;   --tile-cream-ink: #d8e0a6;
+    --tile-blue: #11323c;    --tile-blue-ink: #8fddf2;
+    --tile-lilac: #241f4d;   --tile-lilac-ink: #c8beff;
+
+    --hero-ink: #3b2a05;
+    --chart-amber: #f3ad2d;
+
     --income-text: var(--income);
     --warning-text: var(--warning);
-    --expense-text: var(--expense);
+    --expense-text: #ff7a70;
     --accent-orange-text: var(--accent-orange);
-    --text-tertiary-md: #9d99ad;   /* 5.18 on --md-surface-container-high */
+    --text-tertiary-md: #9295ab;
   }
 }
 
 /* Explicit choice wins in both directions. */
 :root[data-theme='dark'] {
-  --md-primary: #c9bfff;
-  --md-on-primary: #2e009c;
-  --md-primary-container: #4a3aa8;
-  --md-on-primary-container: #e8e2ff;
-  --md-secondary-container: #493f83;
-  --md-on-secondary-container: #e3dcff;
-  --md-error: #ffb4ab;
-  --md-error-container: #93000a;
+  --md-primary: #a191ff;
+  --md-on-primary: #17086b;
+  --md-primary-container: #2e2270;
+  --md-on-primary-container: #e6e1ff;
+  --md-secondary-container: #292160;
+  --md-on-secondary-container: #d9d2ff;
+  --md-error: #ff8a80;
+  --md-error-container: #5c1410;
   --md-on-error-container: #ffdad6;
-  --md-surface: #14121b;
-  --md-surface-container-lowest: #0e0d16;
-  --md-surface-container-low: #1c1a24;
-  --md-surface-container: #201e28;
-  --md-surface-container-high: #2b2932;
-  --md-surface-container-highest: #35333e;
-  --md-on-surface: #e5e0ee;
-  --md-on-surface-variant: #c9c4d8;
-  --md-outline: #928ea1;
-  --md-outline-variant: #48455a;
-  --md-inverse-surface: #e5e0ee;
-  --md-inverse-on-surface: #312f39;
-  --md-inverse-primary: #5d3fe0;
-  --md-elevation-1: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px 1px rgb(0 0 0 / 15%);
-  --md-elevation-2: 0 1px 2px rgb(0 0 0 / 30%), 0 2px 6px 2px rgb(0 0 0 / 15%);
-  --md-elevation-3: 0 1px 3px rgb(0 0 0 / 30%), 0 4px 8px 3px rgb(0 0 0 / 15%);
+  --md-surface: #12131c;
+  --md-surface-container-lowest: #0d0e15;
+  --md-surface-container-low: #181926;
+  --md-surface-container: #1c1d2c;
+  --md-surface-container-high: #222336;
+  --md-surface-container-highest: #2b2c42;
+  --md-on-surface: #ecedf5;
+  --md-on-surface-variant: #a9acbe;
+  --md-outline: #6f7287;
+  --md-outline-variant: #262739;
+  --md-inverse-surface: #ecedf5;
+  --md-inverse-on-surface: #22233a;
+  --md-inverse-primary: #3d1fe0;
+  --md-elevation-1: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 20px rgb(0 0 0 / 20%);
+  --md-elevation-2: 0 2px 6px rgb(0 0 0 / 35%), 0 12px 28px rgb(0 0 0 / 25%);
+  --md-elevation-3: 0 8px 24px rgb(0 0 0 / 45%), 0 24px 56px rgb(0 0 0 / 35%);
 
-  /* On the dark surfaces the bright fills already clear 4.5:1 as text against the card
-     (#1c1a24): income 6.18, expense 4.66 — so the text tokens alias them. */
+  --page-bg: #07080d;
+  --aside-bg: #161723;
+
+  --tile-green: #173a27;   --tile-green-ink: #8fe0b0;
+  --tile-orange: #3e2a12;  --tile-orange-ink: #ffc285;
+  --tile-cream: #2c2f1e;   --tile-cream-ink: #d8e0a6;
+  --tile-blue: #11323c;    --tile-blue-ink: #8fddf2;
+  --tile-lilac: #241f4d;   --tile-lilac-ink: #c8beff;
+
+  --hero-ink: #3b2a05;
+  --chart-amber: #f3ad2d;
+
   --income-text: var(--income);
   --warning-text: var(--warning);
-  --expense-text: var(--expense);
+  --expense-text: #ff7a70;
   --accent-orange-text: var(--accent-orange);
-  --text-tertiary-md: #9d99ad;   /* 5.18 on --md-surface-container-high */
+  --text-tertiary-md: #9295ab;
 }
 
 * { box-sizing: border-box; }
@@ -225,7 +247,8 @@ body {
   font-size: var(--text-md);
   line-height: 20px;
   letter-spacing: 0.01em;
-  background: var(--canvas);
+  /* The page shows around the app panel; the panel itself is --canvas. */
+  background: var(--page-bg);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
 }
@@ -255,35 +278,50 @@ a { color: var(--accent-text); }
 
 /* ---------- layout ---------- */
 
-.shell { display: flex; min-height: 100%; }
+/*
+ * The frame: the whole app sits on one white rounded panel, inset from the window so the grey
+ * page shows around it. `overflow: clip` rounds the corners without making the panel a scroll
+ * container — so the rail's `position: sticky` still sticks to the viewport.
+ */
+.shell {
+  display: flex;
+  margin: var(--frame-gap);
+  min-height: calc(100vh - 2 * var(--frame-gap));
+  min-height: calc(100dvh - 2 * var(--frame-gap));
+  background: var(--canvas);
+  border-radius: var(--radius-frame);
+  box-shadow: var(--md-elevation-1);
+  overflow: clip;
+}
 
+/* The icon rail: logo on top, destinations as icons, the New expense button at the bottom. */
 .sidebar {
-  width: var(--sidebar-w);
-  flex: 0 0 var(--sidebar-w);
-  /* M3 standard navigation drawer: a tonal surface, no divider line. */
-  background: var(--md-surface-container-low);
-  padding: 16px 12px;
+  width: var(--rail-w);
+  flex: 0 0 var(--rail-w);
+  padding: 24px 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
+  border-right: 1px solid var(--border);
   position: sticky;
-  top: 0;
-  /* vh first as the fallback for Safari < 15.4; dvh because a collapsing mobile toolbar
-     otherwise clips the sidebar footer out of the scroll container. */
-  height: 100vh;
-  height: 100dvh;
+  top: var(--frame-gap);
+  align-self: flex-start;
+  height: calc(100vh - 2 * var(--frame-gap));
+  height: calc(100dvh - 2 * var(--frame-gap));
   overflow-y: auto;
+  scrollbar-width: none;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 16px 20px;
-  font-weight: 500;
+  font-weight: 600;
   font-size: var(--text-lg);
-  letter-spacing: 0.01em;
 }
+.sidebar .brand { padding: 0 0 22px; }
+.sidebar .brand-name { display: none; }
 
 .brand-mark {
   width: 32px; height: 32px;
@@ -292,49 +330,109 @@ a { color: var(--accent-text); }
   object-fit: cover;
   display: block;
 }
+/* The rail's logo is the round badge from the reference, with the indigo glow under it. */
+.sidebar .brand-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--md-primary) 35%, transparent);
+}
 
-/* M3 drawer item: 56px, full-pill active indicator in secondary-container. */
+/* Drawer-style rows: the phone menu panel. The rail restyles them below. */
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  padding: 0 24px 0 16px;
-  border-radius: var(--radius-pill);
+  gap: 14px;
+  min-height: 52px;
+  padding: 0 18px;
+  border-radius: var(--radius-sm);
   color: var(--md-on-surface-variant);
   text-decoration: none;
   font-size: var(--text-md);
   font-weight: 500;
-  letter-spacing: 0.01em;
 }
 .nav-link { transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
 .nav-link:hover { background: var(--state-hover); color: var(--md-on-surface); }
 .nav-link.active { background: var(--md-secondary-container); color: var(--md-on-secondary-container); font-weight: 600; }
-.nav-link.active:hover { background: color-mix(in srgb, var(--md-on-secondary-container) 8%, var(--md-secondary-container)); }
-.nav-link .material-symbols-rounded { font-size: 24px; }
-/* M3: an inactive destination shows the outlined glyph, the active one the filled glyph. */
-.nav-link .material-symbols-rounded { font-variation-settings: 'FILL' 0; }
+.nav-link .material-symbols-rounded { font-size: 24px; font-variation-settings: 'FILL' 0; }
 .nav-link.active .material-symbols-rounded { font-variation-settings: 'FILL' 1; }
 
-.sidebar-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
-.identity-avatar { font-weight: 500; }
+/* Rail items: icon only. The label stays in the accessibility tree, and `title` shows it. */
+.sidebar .nav-link {
+  position: relative;
+  justify-content: center;
+  width: 52px;
+  min-height: 52px;
+  padding: 0;
+  border-radius: 16px;
+}
+.sidebar .nav-link.active { background: none; color: var(--md-primary); }
+.sidebar .nav-link:hover { background: var(--state-hover); }
+/* The small indigo dot beside the active icon. */
+.sidebar .nav-link.active::after {
+  content: '';
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--md-primary);
+  box-shadow: 0 0 0 2px var(--canvas);
+}
+.sidebar .nav-label,
+.sr-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
-.identity { display: flex; align-items: center; gap: 9px; padding: 4px 8px; }
+/* New expense, at the foot of the rail. */
+.rail-fab {
+  margin-top: auto;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  text-decoration: none;
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--md-primary) 40%, transparent);
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.rail-fab:hover { transform: translateY(-2px); }
+.rail-fab .material-symbols-rounded { font-size: 30px; }
+/* The rail carries New expense at every width above phones, so a page's own copy of that
+   button is shown only on phones, where there is no rail. */
+.btn.rail-duplicate { display: none; }
+
+.sidebar-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+/* The rail has no footer identity: the Dashboard greets the user, and Settings holds sign-out. */
+.sidebar .sidebar-footer { display: none; }
+
+.identity { display: flex; align-items: center; gap: 10px; padding: 4px 8px; }
 .identity-avatar {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   background: var(--md-primary-container);
   color: var(--md-on-primary-container);
   font-size: var(--text-md);
-  font-weight: 500;
+  font-weight: 600;
 }
 .identity-name {
   font-size: var(--text-md);
-  font-weight: 500;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -348,10 +446,7 @@ a { color: var(--accent-text); }
   white-space: nowrap;
 }
 
-/* Width-conditional visibility, as CSS rather than a JS width check — no resize listener,
-   and no wrong-chrome flash on first paint. The phone block below is what switches it. */
-
-.main { flex: 1; min-width: 0; padding: 32px 40px 64px; }
+.main { flex: 1; min-width: 0; padding: 36px 40px 56px; }
 
 .page-head {
   display: flex;
@@ -361,18 +456,17 @@ a { color: var(--accent-text); }
   margin-bottom: var(--space-5);
   flex-wrap: wrap;
 }
-/* headline-medium */
-.page-head h1 { margin: 0 0 4px; font-size: var(--text-3xl); line-height: 36px; font-weight: 400; letter-spacing: 0; }
+.page-head h1 { margin: 0 0 4px; font-size: var(--text-3xl); line-height: 36px; font-weight: 600; letter-spacing: -0.01em; }
 .page-head p { margin: 0; color: var(--text-secondary); font-size: var(--text-md); }
 
 /* ---------- primitives ---------- */
 
-/* M3 elevated card: surface-container-low + level 1. No border — the tone and shadow separate it. */
+/* A white card on the white panel: a hairline plus a soft, wide shadow separate it. */
 .card {
   background: var(--card);
-  border: none;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 24px;
   box-shadow: var(--shadow);
   transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
@@ -390,8 +484,7 @@ a { color: var(--accent-text); }
   margin: 0;
   font-size: var(--text-lg);
   line-height: 24px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-weight: 600;
 }
 .card-header .sub { margin: 2px 0 0; font-size: var(--text-xs); line-height: 16px; color: var(--text-secondary); }
 
@@ -405,79 +498,70 @@ a { color: var(--accent-text); }
 .row.wrap { flex-wrap: wrap; }
 .spacer { flex: 1; }
 
-/* label-medium / headline-medium / body-small */
-.stat-label { font-size: var(--text-xs); line-height: 16px; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.04em; }
-.stat-value { font-size: var(--text-3xl); line-height: 36px; font-weight: 400; letter-spacing: 0; margin-top: 4px; }
+.stat-label { font-size: var(--text-sm); line-height: 18px; color: var(--text-secondary); font-weight: 400; }
+.stat-value { font-size: var(--text-2xl); line-height: 32px; font-weight: 600; letter-spacing: -0.01em; margin-top: 6px; }
 .stat-sub { font-size: var(--text-xs); line-height: 16px; color: var(--text-tertiary); margin-top: 6px; }
 
 /*
- * M3 common buttons. All are 40px tall with a full-pill shape and label-large text.
+ * Buttons — rounded rectangles, as in the reference, not pills.
  *
- *   .btn           outlined button
- *   .btn.primary   filled button
- *   .btn.ghost     text button — or, with .icon, a standard icon button
+ *   .btn           tonal: a quiet grey fill
+ *   .btn.primary   the indigo action
+ *   .btn.ghost     text only — or, with .icon, an icon button
  *   .btn.danger    outlined, in the error role
- *
- * Hover and press are state layers (an overlay of the content colour), not a colour change.
  */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 40px;
-  padding: 0 24px;
-  border: 1px solid var(--md-outline);
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--md-primary);
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface);
   font-size: var(--text-md);
   line-height: 20px;
   font-weight: 500;
-  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 .btn:has(> .material-symbols-rounded:first-child) { padding-left: 16px; }
-.btn { transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease), color var(--dur) var(--ease); }
-.btn:hover:not(:disabled) { background: color-mix(in srgb, var(--md-primary) 8%, transparent); }
-.btn:active:not(:disabled) { background: color-mix(in srgb, var(--md-primary) 12%, transparent); }
-/* M3 disabled: 38% content, no colour. */
-.btn:disabled { opacity: 0.38; cursor: not-allowed; }
-.btn .material-symbols-rounded { font-size: 18px; }
+.btn { transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease), color var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.btn:hover:not(:disabled) { background: var(--md-surface-container-highest); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn .material-symbols-rounded { font-size: 20px; }
 
 .btn.primary {
   background: var(--md-primary);
-  border-color: transparent;
   color: var(--md-on-primary);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--md-primary) 28%, transparent);
 }
-.btn.primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--md-on-primary) 8%, var(--md-primary));
-  box-shadow: var(--md-elevation-1);
-}
-.btn.primary:active:not(:disabled) { background: color-mix(in srgb, var(--md-on-primary) 12%, var(--md-primary)); box-shadow: none; }
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, #000 10%, var(--md-primary)); }
 
-.btn.danger { color: var(--md-error); border-color: var(--md-error); }
+.btn.danger { background: transparent; color: var(--md-error); border-color: color-mix(in srgb, var(--md-error) 55%, transparent); }
 .btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--md-error) 8%, transparent); }
 
 /* A router <Link> styled as a button keeps the anchor's underline unless told otherwise. */
 a.btn { text-decoration: none; }
-.btn.ghost { border-color: transparent; padding: 0 12px; }
+.btn.ghost { background: transparent; color: var(--md-primary); padding: 0 12px; }
+.btn.ghost:hover:not(:disabled) { background: var(--md-secondary-container); }
 .btn.ghost:has(> .material-symbols-rounded:last-child) { padding-right: 8px; gap: 4px; }
 .btn.ghost:has(> .material-symbols-rounded:first-child) { padding-left: 12px; padding-right: 16px; }
 
-/* M3 standard icon button: a 40px circle in on-surface-variant. */
 .btn.icon,
 .btn.ghost.icon {
   width: 40px;
   min-width: 40px;
   height: 40px;
+  min-height: 40px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: 12px;
   color: var(--md-on-surface-variant);
 }
 .btn.ghost.icon:hover:not(:disabled) { background: var(--state-hover); color: var(--md-on-surface); }
-.btn.ghost.icon:active:not(:disabled) { background: var(--state-press); }
-.btn.icon .material-symbols-rounded { font-size: 24px; }
+.btn.icon .material-symbols-rounded { font-size: 22px; }
 
 /* M3 input chip, selected: 32px, 8px corners, trailing remove icon. */
 .chip {
@@ -490,9 +574,8 @@ a.btn { text-decoration: none; }
   border: none;
   border-radius: var(--radius-sm);
   padding: 0 8px 0 12px;
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   font-weight: 500;
-  letter-spacing: 0.01em;
 }
 .chip button { background: none; border: none; color: inherit; display: grid; place-items: center; padding: 2px; border-radius: 50%; }
 .chip button:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
@@ -506,9 +589,8 @@ a.btn { text-decoration: none; }
   font-size: var(--text-2xs);
   line-height: 16px;
   font-weight: 500;
-  letter-spacing: 0.04em;
   padding: 0 8px;
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   background: var(--md-surface-container-highest);
   color: var(--md-on-surface-variant);
   border: none;
@@ -522,19 +604,20 @@ a.btn { text-decoration: none; }
  * Focus thickens the outline to 2px in primary with an inset shadow, so nothing reflows.
  */
 .field { display: block; margin-bottom: 16px; }
-.field > span { display: block; font-size: var(--text-xs); line-height: 16px; font-weight: 500; letter-spacing: 0.04em; color: var(--text-secondary); margin-bottom: 6px; }
+.field > span { display: block; font-size: var(--text-sm); line-height: 18px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; }
+/* Filled fields, like the reference's "Choose account" control: a quiet grey well. */
 .field input, .field select, .field textarea {
   width: 100%;
   min-height: 48px;
   padding: 12px 16px;
-  border-radius: var(--radius-xs);
-  border: 1px solid var(--md-outline);
-  background: transparent;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: var(--md-surface-container-high);
   color: var(--text-primary);
-  font-size: var(--text-lg);
-  line-height: 24px;
+  font-size: var(--text-md);
+  line-height: 22px;
 }
-.field input:hover, .field select:hover, .field textarea:hover { border-color: var(--md-on-surface); }
+.field input:hover, .field select:hover, .field textarea:hover { border-color: var(--md-outline-variant); }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none;
   border-color: var(--md-primary);
@@ -545,9 +628,9 @@ a.btn { text-decoration: none; }
 .list-row select {
   min-height: 40px;
   padding: 0 12px;
-  border-radius: var(--radius-xs);
-  border: 1px solid var(--md-outline);
-  background: transparent;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--md-surface-container-high);
   color: var(--text-primary);
   font: inherit;
   font-size: var(--text-sm);
@@ -567,25 +650,24 @@ a.btn { text-decoration: none; }
 .category-tile .name { flex: 1; min-width: 0; font-size: var(--text-md); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .category-tile .row { flex: none; }
 
-.field-hint { font-size: var(--text-xs); line-height: 16px; color: var(--text-tertiary); margin-top: 4px; padding: 0 16px; }
+.field-hint { font-size: var(--text-xs); line-height: 16px; color: var(--text-tertiary); margin-top: 6px; }
 
-/* M3 search bar: a full-pill surface-container-high field, no outline. */
 .search {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 48px;
   background: var(--md-surface-container-high);
-  border-radius: var(--radius-pill);
+  border-radius: 14px;
   padding: 0 4px 0 16px;
   flex: 1;
   min-width: 200px;
   transition: box-shadow var(--dur) var(--ease);
 }
 .search:focus-within { box-shadow: inset 0 0 0 2px var(--md-primary); }
-.search input { border: none; background: none; outline: none; padding: 12px 0; flex: 1; min-width: 0; color: inherit; font-size: var(--text-lg); }
+.search input { border: none; background: none; outline: none; padding: 12px 0; flex: 1; min-width: 0; color: inherit; font-size: var(--text-md); }
 .search input::placeholder { color: var(--md-on-surface-variant); }
-.search .material-symbols-rounded { color: var(--md-on-surface-variant); font-size: 24px; }
+.search .material-symbols-rounded { color: var(--md-on-surface-variant); font-size: 22px; }
 
 /*
  * Meter.
@@ -596,7 +678,7 @@ a.btn { text-decoration: none; }
  */
 .progress {
   --meter-hue: var(--accent);
-  height: 6px;
+  height: 8px;
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--meter-hue) 16%, var(--border));
   overflow: hidden;
@@ -610,14 +692,144 @@ a.btn { text-decoration: none; }
 .progress.warning { --meter-hue: var(--warning); }
 .progress.exceeded { --meter-hue: var(--expense); }
 
-/* A leading avatar: M3 lists use a full circle. */
+/* The reference's pastel icon squares: soft rounded corners, scaled with the tile. */
 .icon-tile {
   width: 38px; height: 38px;
-  border-radius: 50%;
+  border-radius: 30%;
   display: grid; place-items: center;
   flex: 0 0 38px;
 }
 .icon-tile .material-symbols-rounded { font-size: 21px; }
+
+/* ---------- dashboard ---------- */
+
+.dash-head { display: flex; align-items: center; gap: 18px; margin-bottom: 32px; }
+.dash-avatar {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--cta-gradient);
+  color: #fff;
+  font-weight: 600;
+  font-size: var(--text-lg);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent-pink) 25%, transparent);
+}
+.dash-hello { flex: 1; min-width: 0; }
+.dash-hello h1 { margin: 0; font-size: var(--text-3xl); line-height: 36px; font-weight: 600; letter-spacing: -0.01em; }
+.dash-hello p { margin: 2px 0 0; color: var(--text-secondary); font-size: var(--text-md); }
+
+/* The warm card, then the three other monthly figures. */
+.dash-top {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.35fr) repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  align-items: center;
+}
+.stat-tile { display: flex; align-items: flex-start; gap: 16px; min-width: 0; }
+/* Tops aligned, so tiles with sub-lines of different lengths don't stagger beside the card. */
+.dash-top > .stat-tile { align-self: start; margin-top: 30px; }
+.stat-tile-icon {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+}
+.tone-cream { background: var(--tile-cream); color: var(--tile-cream-ink); }
+.tone-orange { background: var(--tile-orange); color: var(--tile-orange-ink); }
+.tone-blue { background: var(--tile-blue); color: var(--tile-blue-ink); }
+.stat-tile-label { font-size: var(--text-sm); color: var(--text-secondary); }
+.stat-tile-value {
+  margin-top: 4px;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stat-tile-sub { font-size: var(--text-xs); color: var(--text-tertiary); margin-top: 2px; }
+.stat-tile-spark { margin-top: 8px; max-width: 160px; }
+
+/* The reference's yellow bank card, as this month's shared spending. */
+.hero-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  padding: 22px 24px;
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  background: var(--hero);
+  color: var(--hero-ink);
+  box-shadow: 0 14px 30px rgb(242 171 79 / 30%);
+}
+/* The card's sweeping curve: a large soft circle in the lower corner. */
+.hero-card::after {
+  content: '';
+  position: absolute;
+  right: -30%;
+  bottom: -55%;
+  width: 90%;
+  height: 120%;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 18%);
+  pointer-events: none;
+}
+.hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; position: relative; }
+.hero-eyebrow { font-size: var(--text-2xs); font-weight: 500; opacity: 0.8; }
+.hero-name { font-size: var(--text-sm); font-weight: 600; margin-top: 2px; }
+.hero-chip {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 45%);
+}
+.hero-amount {
+  position: relative;
+  margin: auto 0 10px;
+  padding-top: 16px;
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.hero-foot { position: relative; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: var(--text-sm); font-weight: 600; }
+.hero-foot > div { display: flex; flex-direction: column; }
+.hero-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.75; white-space: nowrap; }
+.hero-spark { position: absolute; right: 22px; bottom: 20px; width: 38%; opacity: 0.55; }
+
+.dash-footnote { margin: 18px 0 0; font-size: var(--text-xs); color: var(--text-tertiary); }
+
+.dash-trend { margin-top: 32px; }
+.dash-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--gap); margin-top: var(--gap); }
+
+.history-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+}
+.history-main { min-width: 0; }
+.history-title { font-size: var(--text-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-sub { font-size: var(--text-xs); color: var(--text-tertiary); margin-top: 2px; }
+.history-amount { font-size: var(--text-md); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+
+/* Two figures per row once four no longer fit; the warm card keeps a row of its own. */
+@media (max-width: 1279px) {
+  .dash-top { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hero-card { grid-column: 1 / -1; }
+  .dash-top > .stat-tile { margin-top: 0; }
+}
 
 /* ---------- household ---------- */
 
@@ -756,7 +968,7 @@ a.btn { text-decoration: none; }
  */
 .panel {
   background: var(--card);
-  border: none;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -788,7 +1000,6 @@ a.btn { text-decoration: none; }
   font-size: var(--text-xs);
   line-height: 16px;
   font-weight: 500;
-  letter-spacing: 0.04em;
   color: var(--text-secondary);
   white-space: nowrap;
   padding: 0;
@@ -907,9 +1118,9 @@ a.btn { text-decoration: none; }
   border-bottom: 1px solid var(--border);
 }
 .list-row:last-child { border-bottom: none; }
-.list-row .title { font-weight: 500; font-size: var(--text-lg); line-height: 24px; }
-.list-row .meta { font-size: var(--text-md); color: var(--text-secondary); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.list-row .amount { font-size: var(--text-lg); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.list-row .title { font-weight: 500; font-size: var(--text-md); line-height: 22px; }
+.list-row .meta { font-size: var(--text-xs); color: var(--text-secondary); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.list-row .amount { font-size: var(--text-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 /*
  * Row actions.
  *
@@ -947,7 +1158,7 @@ a.btn { text-decoration: none; }
 }
 /* M3 basic dialog: surface-container-high, extra-large corners, headline-small title. */
 .modal {
-  background: var(--md-surface-container-high);
+  background: var(--canvas);
   border: none;
   border-radius: var(--radius-xl);
   width: 100%;
@@ -989,12 +1200,12 @@ a.btn { text-decoration: none; }
   gap: 8px;
   height: 32px;
   white-space: nowrap;
-  padding: 0 16px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--md-outline-variant);
-  background: transparent;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--md-surface-container-high);
   color: var(--md-on-surface-variant);
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   font-weight: 500;
   letter-spacing: 0.01em;
   transition: background var(--dur) var(--ease);
@@ -1002,8 +1213,8 @@ a.btn { text-decoration: none; }
 .segmented button:hover { background: var(--state-hover); }
 .segmented button[aria-pressed='true'] {
   border-color: transparent;
-  background: var(--md-secondary-container);
-  color: var(--md-on-secondary-container);
+  background: var(--md-primary);
+  color: var(--md-on-primary);
   padding-left: 8px;
 }
 .segmented button[aria-pressed='true']::before {
@@ -1235,10 +1446,10 @@ summary:focus-visible {
      padding and the button's line-height to add up to it. */
   min-height: var(--topbar-h);
   padding: 8px 16px 8px 4px;
-  background: var(--md-surface-container);
+  background: var(--canvas);
+  border-bottom: 1px solid var(--border);
 }
-/* title-large */
-.topbar .brand { padding: 0; font-size: var(--text-xl); line-height: 28px; font-weight: 400; }
+.topbar .brand { padding: 0; font-size: var(--text-lg); line-height: 26px; font-weight: 600; }
 .topbar .brand-mark { display: none; }
 
 .nav-panel {
@@ -1260,78 +1471,52 @@ summary:focus-visible {
 /* ---------- responsive ---------- */
 
 /*
- * Three tiers, two breakpoints:
+ * Two tiers:
  *
- *   >= 1024px   236px labelled sidebar (the base rules above)
- *   720-1023px  72px icon rail
- *   <= 719px    top bar with a disclosure menu
+ *   >= 720px   the frame: a white panel inset on the grey page, with the icon rail
+ *   <= 719px   full-bleed, with a top bar and a disclosure menu instead of the rail
  *
- * Why not the single 860px this replaced: 768px is iPad portrait and every Android tablet in
- * portrait, and 861-1023px is a half-screen laptop window, where a 236px sidebar is 26% of
- * the viewport. The rail gives back exactly the width `.grid.cols-2` needs to stay two-up
- * there. All three tiers are ordinary web layouts — a rail is what VS Code and Slack do, a
- * top bar with a menu is what every other site does.
+ * The rail is 96px at every width above phones, so there is no longer a separate tablet tier;
+ * 1023px only tightens the padding. The Dashboard has its own 1279px step for its side column.
  *
  * Touch sizing is deliberately NOT keyed to these breakpoints; see the (pointer: coarse)
  * block below. A phone in landscape is 900px wide and still a touchscreen.
  *
- * The file stays desktop-first: base is desktop, and these are two max-width blocks, so the
- * <= 719px block must remain LAST — it undoes the rail.
+ * The file stays desktop-first, so the <= 719px block must remain LAST.
  */
 
-/* --- Rail tier --- */
 @media (max-width: 1023px) {
-  /*
-   * M3 navigation rail: the label sits under the icon, and the active indicator is a
-   * 56x32 pill around the icon alone rather than the whole item. Scoped to .sidebar so the
-   * narrow tier's menu panel keeps the drawer-style rows.
-   */
-  .sidebar {
-    width: var(--rail-w);
-    flex: 0 0 var(--rail-w);
-    padding: 12px 0;
-    align-items: center;
-    gap: 8px;
-  }
-  .brand { padding: 4px 0 12px; }
-  .brand-name { display: none; }
-  .sidebar .nav-link {
-    flex-direction: column;
-    justify-content: center;
-    gap: 4px;
-    width: 100%;
-    min-height: 56px;
-    padding: 0 4px;
-    border-radius: 0;
-    font-size: var(--text-xs);
-    line-height: 16px;
-    text-align: center;
-  }
-  .sidebar .nav-link,
-  .sidebar .nav-link:hover,
-  .sidebar .nav-link.active,
-  .sidebar .nav-link.active:hover { background: none; }
-  .sidebar .nav-link .material-symbols-rounded {
-    width: 56px;
-    height: 32px;
-    display: grid;
-    place-items: center;
-    border-radius: var(--radius-pill);
-    transition: background var(--dur) var(--ease);
-  }
-  .sidebar .nav-link:hover .material-symbols-rounded { background: var(--state-hover); }
-  .sidebar .nav-link.active .material-symbols-rounded { background: var(--md-secondary-container); }
-  .sidebar .sidebar-footer { width: 100%; padding-top: 10px; }
-  /* .sidebar-scoped: unscoped, these also hid the account name in the phone menu. */
-  .sidebar .identity { justify-content: center; padding: 4px 0; }
-  .sidebar .identity-name, .sidebar .identity-meta { display: none; }
-  .main { padding: 24px 24px 48px; }
+  :root { --frame-gap: 14px; }
+  .main { padding: 28px 28px 48px; }
 }
 
 /* --- Narrow tier --- */
 @media (max-width: 719px) {
-  /* The shell stacks, because the nav is now above the content rather than beside it. */
-  .shell { flex-direction: column; }
+  .btn.rail-duplicate { display: inline-flex; }
+
+  /* Dashboard on a phone: the warm card, then the figures two to a row. */
+  .dash-head { gap: 14px; margin-bottom: 22px; }
+  .dash-avatar { width: 48px; height: 48px; }
+  .dash-hello h1 { font-size: var(--text-xl); line-height: 28px; }
+  .dash-top { grid-template-columns: 1fr 1fr; gap: 18px; }
+  .stat-tile { flex-direction: column; gap: 10px; }
+  .stat-tile-icon { width: 44px; height: 44px; border-radius: 12px; }
+  .stat-tile-value { font-size: var(--text-lg); line-height: 24px; }
+  .dash-top > .stat-tile:last-child { grid-column: 1 / -1; flex-direction: row; }
+  .dash-top > .stat-tile { margin-top: 0; }
+  .dash-trend { margin-top: 24px; }
+
+  /* Full-bleed: on a phone the inset frame would only waste width. */
+  body { background: var(--canvas); }
+  .shell {
+    flex-direction: column;
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
   .sidebar { display: none; }
   .topbar { display: flex; }
 

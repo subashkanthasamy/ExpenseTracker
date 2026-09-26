@@ -33,6 +33,26 @@ export function monthBounds(reference: number): {
   }
 }
 
+/**
+ * This month's rows grouped by category id — what a budget is measured against.
+ *
+ * Pass rows that have been through `sharedOnly`, so a budget reads the same for every member:
+ * otherwise the owner would see a category over budget that a member sees as under. The
+ * Budgets page and the Dashboard both use this, so the two cannot show different spend for
+ * the same budget.
+ */
+export function monthRowsByCategory(sharedRows: Expense[], reference = Date.now()): Map<string, Expense[]> {
+  const { startOfThis, startOfNext } = monthBounds(reference)
+  const byCategory = new Map<string, Expense[]>()
+  sharedRows.forEach((expense) => {
+    if (expense.date < startOfThis || expense.date >= startOfNext) return
+    const rows = byCategory.get(expense.categoryId)
+    if (rows) rows.push(expense)
+    else byCategory.set(expense.categoryId, [expense])
+  })
+  return byCategory
+}
+
 /** Epoch bounds for a shared `DateRangeWire`, or null for "all time". */
 export function boundsFor(range: DateRangeWire, now = new Date()): { start: number; end: number } | null {
   switch (range) {

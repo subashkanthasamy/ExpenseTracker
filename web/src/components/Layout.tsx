@@ -1,6 +1,6 @@
 /** The app shell: navigation plus the routed page, in three tiers. */
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { useSession } from '../session/SessionProvider'
 import { roleLabel } from '../shared'
@@ -30,7 +30,7 @@ interface NavItem {
  * less than Budgets.
  */
 const NAV: NavItem[] = [
-  { to: '/', label: 'Dashboard', icon: 'dashboard', end: true },
+  { to: '/', label: 'Dashboard', icon: 'home', end: true },
   { to: '/expenses', label: 'Expenses', icon: 'receipt_long' },
   { to: '/insights', label: 'Insights', icon: 'insights' },
   { to: '/budgets', label: 'Budgets', icon: 'savings' },
@@ -43,6 +43,7 @@ const NAV: NavItem[] = [
 ]
 
 export function Layout() {
+  const session = useSession()
   const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -78,6 +79,15 @@ export function Layout() {
             <span className="nav-label">{item.label}</span>
           </NavLink>
         ))}
+
+        {/* The reference's big + at the foot of the rail. A link rather than a button, so it
+            opens the same `?new=1` dialog from any page and works with Back. Guests cannot
+            add expenses, so they are not offered it. */}
+        {session.allows('addExpense') && (
+          <Link to="/expenses?new=1" className="rail-fab" aria-label="New expense" title="New expense">
+            <Icon name="add" />
+          </Link>
+        )}
 
         <div className="sidebar-footer">
           <Identity />

@@ -14,6 +14,7 @@ import {
 } from '../components/ui'
 import { deleteBudget, observeBudgets, upsertBudget } from '../data/budgets'
 import { useCollection, useHouseholdData } from '../data/HouseholdData'
+import { monthRowsByCategory } from '../data/series'
 import { useSession } from '../session/SessionProvider'
 import { budgetProgress, money, sharedOnly } from '../shared'
 import type { Budget } from '../types'
@@ -42,15 +43,10 @@ export function Budgets() {
    * owner would see a category over budget that a member sees as under.
    */
   const spentByCategory = useMemo(() => {
-    const now = new Date()
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime()
     const totals = new Map<string, number>()
-    sharedOnly(expenses)
-      .filter((expense) => expense.date >= start && expense.date < end)
-      .forEach((expense) => {
-        totals.set(expense.categoryId, (totals.get(expense.categoryId) ?? 0) + expense.amount)
-      })
+    monthRowsByCategory(sharedOnly(expenses)).forEach((rows, categoryId) => {
+      totals.set(categoryId, rows.reduce((sum, expense) => sum + expense.amount, 0))
+    })
     return totals
   }, [expenses])
 

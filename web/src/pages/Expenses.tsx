@@ -145,7 +145,8 @@ export function Expenses() {
         }
       >
         {session.allows('addExpense') && (
-          <button className="btn primary" type="button" onClick={() => adding.open()}>
+          // Phones only: above 719px the rail's + opens the same dialog.
+          <button className="btn primary rail-duplicate" type="button" onClick={() => adding.open()}>
             <Icon name="add" />
             New expense
           </button>
