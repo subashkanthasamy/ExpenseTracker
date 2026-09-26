@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -131,6 +132,25 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        uiState.passwordResetSentTo?.let { address ->
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissPasswordReset() },
+                title = { Text("Check your email") },
+                // "If an account exists" is load-bearing, not hedging: the send succeeds even
+                // for an unregistered address so that this screen cannot be used to discover
+                // who has an account.
+                text = {
+                    Text(
+                        "If an account exists for $address, a password reset link is on its way. " +
+                            "The link expires after an hour."
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.dismissPasswordReset() }) { Text("Done") }
+                }
+            )
+        }
+
         Button(
             onClick = { viewModel.signIn(email.trim(), password) },
             enabled = !uiState.isLoading && email.isNotBlank() && password.isNotBlank(),
@@ -139,11 +159,19 @@ fun LoginScreen(
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
             } else {
-                Text("Sign In")
+                Text("Sign in")
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        TextButton(
+            onClick = { viewModel.sendPasswordReset(email) },
+            enabled = !uiState.isLoading,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Text("Forgot password?")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedButton(
             onClick = onGoogleSignInClick,
@@ -160,7 +188,7 @@ fun LoginScreen(
             enabled = !uiState.isLoading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("\uD83E\uDDEA Explore Demo")
+            Text("Explore the demo")
         }
 
         // Phone sign-in hidden until Firebase Blaze plan is enabled — flip to true to re-enable
@@ -173,14 +201,14 @@ fun LoginScreen(
                 enabled = !uiState.isLoading,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Sign in with Phone")
+                Text("Sign in with phone")
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(onClick = onNavigateToSignUp) {
-            Text("Don't have an account? Sign Up")
+            Text("Don't have an account? Sign up")
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -202,7 +230,7 @@ fun LoginScreen(
             enabled = !uiState.isLoading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Try Demo")
+            Text("Try the demo")
         }
 
         uiState.error?.let { error ->

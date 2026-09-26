@@ -7,6 +7,7 @@
  */
 import {
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as fbSignOut,
@@ -20,13 +21,13 @@ export function authErrorMessage(error: unknown): string {
   const code = (error as { code?: string })?.code ?? ''
   switch (code) {
     case 'auth/invalid-email':
-      return 'That email address is not valid.'
+      return 'Enter a valid email address.'
     case 'auth/missing-password':
       return 'Enter your password.'
     case 'auth/weak-password':
       return 'Use a password of at least six characters.'
     case 'auth/email-already-in-use':
-      return 'That email already has an account. Try signing in instead.'
+      return 'An account with this email already exists. Sign in instead.'
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
     case 'auth/user-not-found':
@@ -35,17 +36,19 @@ export function authErrorMessage(error: unknown): string {
       return 'Email or password is incorrect.'
     case 'auth/too-many-requests':
       return 'Too many attempts. Wait a minute and try again.'
+    case 'auth/missing-email':
+      return 'Enter your email address first.'
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
       return ''
     case 'auth/popup-blocked':
-      return 'Your browser blocked the sign-in window. Allow popups for this site and retry.'
+      return 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.'
     case 'auth/unauthorized-domain':
-      return 'This domain is not authorised in Firebase Authentication > Settings > Authorized domains.'
+      return "Google sign-in isn't available on this website yet. Sign in with your email and password instead."
     case 'auth/operation-not-allowed':
-      return 'That sign-in method is disabled in the Firebase console.'
+      return "This sign-in method isn't available right now. Try another way to sign in."
     default:
-      return (error as { message?: string })?.message ?? 'Something went wrong. Try again.'
+      return `Couldn't sign in. ${(error as { message?: string })?.message ?? 'Try again.'}`
   }
 }
 
@@ -72,4 +75,25 @@ export async function signInWithGoogle(): Promise<void> {
 
 export async function signOut(): Promise<void> {
   await fbSignOut(auth)
+}
+
+/**
+ * Sends a password-reset email, resolving even when no account exists for `email`.
+ *
+ * `auth/user-not-found` is swallowed deliberately. Surfacing it would turn the sign-in form
+ * into a way to test whether a given person is registered, and in a family household the
+ * addresses are guessable. A malformed address still throws — that is a typo the user can fix,
+ * not a disclosure.
+ *
+ * Newer Firebase projects enable email-enumeration protection server-side and resolve
+ * successfully anyway; this keeps the behaviour the same either way, and matches
+ * `AuthRepository.sendPasswordReset` in shared/ so all three clients answer identically.
+ */
+export async function sendPasswordReset(email: string): Promise<void> {
+  try {
+    await sendPasswordResetEmail(auth, email.trim())
+  } catch (error) {
+    if ((error as { code?: string })?.code === 'auth/user-not-found') return
+    throw error
+  }
 }

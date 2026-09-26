@@ -30,7 +30,14 @@ data class AuthUiState(
     val error: String? = null,
     val user: User? = null,
     val household: Household? = null,
-    val phoneAuthState: PhoneAuthState = PhoneAuthState.Idle
+    val phoneAuthState: PhoneAuthState = PhoneAuthState.Idle,
+    /**
+     * The address a reset link was just sent to, or null.
+     *
+     * Set even when no account existed for it — see AuthRepository.sendPasswordReset. The
+     * confirmation is phrased so that is not a lie.
+     */
+    val passwordResetSentTo: String? = null
 )
 
 sealed class PhoneAuthState {
@@ -89,6 +96,28 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun sendPasswordReset(email: String) {
+        val address = email.trim()
+        if (address.isEmpty()) {
+            _uiState.update { it.copy(error = "Enter your email address, then tap Forgot password.") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, passwordResetSentTo = null) }
+            authRepository.sendPasswordReset(address)
+                .onSuccess {
+                    _uiState.update { it.copy(isLoading = false, passwordResetSentTo = address) }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isLoading = false, error = error.message) }
+                }
+        }
+    }
+
+    fun dismissPasswordReset() {
+        _uiState.update { it.copy(passwordResetSentTo = null) }
+    }
+
     fun signInWithGoogle(idToken: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -143,7 +172,7 @@ class AuthViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false) }
                 _events.emit(AuthEvent.NavigateToDashboard)
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = "Failed to enter sandbox: ${e.message}") }
+                _uiState.update { it.copy(isLoading = false, error = "Couldn't open the demo. ${e.message}") }
             }
         }
     }
@@ -182,12 +211,12 @@ class AuthViewModel @Inject constructor(
         override fun onVerificationFailed(e: FirebaseException) {
             val friendlyMessage = when {
                 e.message?.contains("BILLING_NOT_ENABLED") == true ->
-                    "Phone sign-in is temporarily unavailable. Please try signing in with Google or email."
+                    "Phone sign-in isn't available right now. Sign in with Google or email instead."
                 e.message?.contains("Invalid format") == true ->
-                    "Please enter your phone number with country code (e.g., +91 7010373171)"
+                    "Enter your phone number with the country code, for example +91 98765 43210."
                 e.message?.contains("TOO_MANY_REQUESTS") == true ->
-                    "Too many attempts. Please try again later."
-                else -> e.message ?: "Phone verification failed"
+                    "Too many attempts. Try again later."
+                else -> e.message ?: "Couldn't verify your phone number. Try again."
             }
             _uiState.update { it.copy(isLoading = false, error = friendlyMessage, phoneAuthState = PhoneAuthState.Idle) }
         }
@@ -215,7 +244,7 @@ class AuthViewModel @Inject constructor(
     fun verifyPhoneCode(code: String) {
         val verificationId = storedVerificationId
         if (verificationId == null) {
-            _uiState.update { it.copy(error = "Verification session expired. Please request a new code.") }
+            _uiState.update { it.copy(error = "This code has expired. Request a new one.") }
             return
         }
         val credential = PhoneAuthProvider.getCredential(verificationId, code)

@@ -8,6 +8,7 @@ import com.bose.expensetracker.data.remote.FirestoreDataSource
 import com.bose.expensetracker.domain.model.User
 import com.bose.expensetracker.domain.repository.AuthRepository
 import com.bose.expensetracker.domain.repository.PhoneAuthRepository
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthProvider
 import kotlinx.coroutines.flow.Flow
@@ -47,6 +48,15 @@ class AuthRepositoryImpl @Inject constructor(
             )
             try { firestoreDataSource.createUser(user) } catch (_: Exception) { }
             user
+        }
+    }
+
+    override suspend fun sendPasswordReset(email: String): Result<Unit> = runCatching {
+        try {
+            authDataSource.sendPasswordReset(email)
+        } catch (e: FirebaseAuthInvalidUserException) {
+            // "No account for that address." Reporting it would let anyone test whether a
+            // given person is registered, so it is treated as a send. See AuthRepository.
         }
     }
 

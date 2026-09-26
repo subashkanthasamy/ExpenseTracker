@@ -2,10 +2,12 @@ import { useState } from 'react'
 
 import {
   authErrorMessage,
+  sendPasswordReset,
   signInWithEmail,
   signInWithGoogle,
   signUpWithEmail,
 } from '../session/auth'
+import { BrandMark } from '../components/Layout'
 import { Card, Field, Icon, Notice } from '../components/ui'
 
 export function SignIn() {
@@ -15,10 +17,13 @@ export function SignIn() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  /** Address a reset link was sent to. Set even if no account exists — see sendPasswordReset. */
+  const [resetSentTo, setResetSentTo] = useState('')
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true)
     setError('')
+    setResetSentTo('')
     try {
       await action()
       // No navigation here: the session provider observes the auth state and swaps the tree.
@@ -42,9 +47,7 @@ export function SignIn() {
     <div className="centered">
       <Card className="auth-card">
         <div className="row" style={{ gap: 10, marginBottom: 18 }}>
-          <span className="brand-mark">
-            <Icon name="wallet" size={18} />
-          </span>
+          <BrandMark />
           <div>
             <div style={{ fontWeight: 700 }}>Expense Tracker</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -56,6 +59,17 @@ export function SignIn() {
         {error !== '' && (
           <div style={{ marginBottom: 14 }}>
             <Notice kind="error">{error}</Notice>
+          </div>
+        )}
+
+        {resetSentTo !== '' && (
+          <div style={{ marginBottom: 14 }}>
+            {/* "If an account exists" is load-bearing, not hedging: the send succeeds even for
+                an unregistered address so this form cannot be used to discover who has one. */}
+            <Notice>
+              If an account exists for <strong>{resetSentTo}</strong>, a password reset link is on
+              its way. The link expires after an hour.
+            </Notice>
           </div>
         )}
 
@@ -96,6 +110,30 @@ export function SignIn() {
             {busy ? 'Working…' : mode === 'signIn' ? 'Sign in' : 'Create account'}
           </button>
         </form>
+
+        {mode === 'signIn' && (
+          <div style={{ textAlign: 'center', marginTop: 10 }}>
+            <button
+              className="btn ghost"
+              type="button"
+              style={{ fontSize: 13, color: 'var(--accent-text)' }}
+              disabled={busy}
+              onClick={() => {
+                if (email.trim() === '') {
+                  setError('Enter your email address first.')
+                  return
+                }
+                const address = email.trim()
+                void run(async () => {
+                  await sendPasswordReset(address)
+                  setResetSentTo(address)
+                })
+              }}
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
 
         <div
           style={{

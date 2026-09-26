@@ -65,31 +65,17 @@ npm run build       # tsc -b && vite build
 
 ## Deploying
 
-There are two live targets — Netlify and Firebase Hosting. Both serve the same `dist`, and both
-need their domain listed under Firebase console → Authentication → Settings → **Authorized
-domains**, or Google sign-in fails with `auth/unauthorized-domain`. Email/password keeps working,
-which makes that easy to misdiagnose.
+Two live targets, both serving the same `dist`. Each needs its own entry under Firebase console →
+Authentication → Settings → **Authorized domains**, or Google sign-in fails there with
+`auth/unauthorized-domain` while email/password keeps working — which makes it easy to misread as
+"Google sign-in is broken".
 
-**Netlify.** One-time: `npm i -g netlify-cli`, `netlify login`, then from `web/`:
-
-```bash
-netlify sites:create --name <your-site-name>   # globally unique; becomes <name>.netlify.app
-netlify link --name <your-site-name>           # writes web/.netlify/state.json
-```
-
-Use `sites:create` + `link`, **not `netlify init`** — `init` wires up continuous deployment from
-the GitHub remote, which is exactly what cannot work here (see "Netlify builds nothing" below).
-It would configure cleanly and then fail on every push.
-
-Then, to deploy:
+**Netlify** — live at https://expense-tracker-daily-shared.netlify.app.
+See **[NETLIFY.md](NETLIFY.md)** for first-time setup, verification and troubleshooting.
 
 ```bash
 cd web && npm run deploy          # or npm run deploy:draft for a preview URL
 ```
-
-That script rebuilds the Kotlin/JS package before building the site. Skipping it is the easiest
-way to ship a bundle whose domain logic is older than the repo, so it is baked into the command
-rather than left to memory.
 
 **Firebase Hosting:**
 
@@ -99,35 +85,23 @@ cd web && npm run build
 cd .. && firebase deploy --only hosting
 ```
 
-Each host needs its own SPA fallback, and both are already in place: `public/_redirects` for
-Netlify, and the rewrite block in `firebase.json` for Firebase. Without one, a reload on
-`/expenses` returns 404 — there is no file behind a client-side route.
+The `deploy` script rebuilds the Kotlin/JS package before building the site. Skipping that step
+ships a bundle whose domain logic is older than the repo, and nothing looks wrong — so it is part
+of the command rather than left to memory.
 
-Note the Firebase CLI's OAuth flow is blocked by Workspace policy on this account; rules are
-published from the console instead. Hosting deploys may hit the same wall, in which case upload
+Each host needs its own SPA fallback and both are in place: `public/_redirects` for Netlify, the
+rewrite block in `firebase.json` for Firebase. Without one, a reload on `/expenses` returns 404 —
+there is no file behind a client-side route.
+
+Two things that are easy to trip over, covered in full in [NETLIFY.md](NETLIFY.md): **Netlify
+never builds this repo** (the shared module is a `file:` dependency into gitignored
+`shared/build/`, and building it there would need the Android SDK), and **source maps are off**
+(`build.sourcemap: false`) because Vite embeds `sourcesContent`, making a map the complete
+readable source of this client.
+
+The Firebase CLI's OAuth flow is blocked by Workspace policy on this account; rules are published
+from the console instead, and hosting deploys may hit the same wall — in which case upload
 `web/dist` through the console. Netlify uses a different provider and is unaffected.
-
-**Netlify builds nothing.** It cannot: `web/` depends on `expensetracker-shared` as a `file:`
-path into `shared/build/`, which is gitignored and so absent from a fresh clone — and building it
-there would need Gradle, which would configure the `:app` module and fail looking for an Android
-SDK. So the CLI uploads a finished `dist`. Two upsides: direct deploys consume no Netlify build
-minutes, and since Vite inlines `VITE_*` at build time, the Firebase config is already in the
-bundle — Netlify needs no environment variables.
-
-**Verifying a deploy.** Note that the SPA fallback makes HTTP status codes useless for proving
-a file is *absent* — `/*  /index.html  200` matches any path that is not a real file, so a
-missing asset and a typo'd URL both return 200 with the app shell. Check the body instead:
-
-```bash
-SITE=https://expense-tracker-daily-shared.netlify.app
-curl -sI  "$SITE/expenses" | head -1                      # want 200 — deep links resolve
-curl -s   "$SITE/assets/index-*.js.map" | head -c 1        # want '<' (shell), not '{' (real map)
-curl -s   "$SITE/assets/index-*.js" | grep -c sourceMappingURL   # want 0
-```
-
-**Source maps are off** (`build.sourcemap: false`). Vite embeds `sourcesContent`, so a map is the
-complete readable TypeScript of this client. Set it to `true` temporarily if you need to debug a
-production problem.
 
 ## Three sharp edges
 

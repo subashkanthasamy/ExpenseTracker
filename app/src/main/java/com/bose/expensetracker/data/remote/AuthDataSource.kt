@@ -33,20 +33,25 @@ class AuthDataSource @Inject constructor(
 
     suspend fun signInWithEmail(email: String, password: String): FirebaseUser {
         val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
-        return result.user ?: throw Exception("Sign in failed")
+        return result.user ?: throw Exception("Couldn't sign you in. Try again.")
     }
 
     suspend fun signUpWithEmail(email: String, password: String, displayName: String): FirebaseUser {
         val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
-        val user = result.user ?: throw Exception("Sign up failed")
+        val user = result.user ?: throw Exception("Couldn't create your account. Try again.")
         user.updateProfile(userProfileChangeRequest { this.displayName = displayName }).await()
         return user
+    }
+
+    /** Fires the reset email. Firebase composes it; the template lives in the console. */
+    suspend fun sendPasswordReset(email: String) {
+        firebaseAuth.sendPasswordResetEmail(email).await()
     }
 
     suspend fun signInWithGoogle(idToken: String): FirebaseUser {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         val result = firebaseAuth.signInWithCredential(credential).await()
-        return result.user ?: throw Exception("Google sign in failed")
+        return result.user ?: throw Exception("Couldn't sign in with Google. Try again.")
     }
 
     fun sendPhoneVerificationCode(
@@ -81,7 +86,7 @@ class AuthDataSource @Inject constructor(
 
     suspend fun signInWithPhoneCredential(credential: PhoneAuthCredential): FirebaseUser {
         val result = firebaseAuth.signInWithCredential(credential).await()
-        return result.user ?: throw Exception("Phone sign in failed")
+        return result.user ?: throw Exception("Couldn't sign in with your phone number. Try again.")
     }
 
     fun signOut() {

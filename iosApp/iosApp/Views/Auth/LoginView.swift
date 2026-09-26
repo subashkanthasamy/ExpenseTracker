@@ -55,7 +55,7 @@ struct LoginView: View {
 
             Button {
                 guard !email.isEmpty, !password.isEmpty else {
-                    viewModel.error = "Please enter email and password"
+                    viewModel.error = "Enter your email and password."
                     return
                 }
                 Task {
@@ -65,7 +65,7 @@ struct LoginView: View {
                 if viewModel.isLoading {
                     ProgressView().tint(.white)
                 } else {
-                    Text("Sign In")
+                    Text("Sign in")
                         .fontWeight(.semibold)
                 }
             }
@@ -76,6 +76,13 @@ struct LoginView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.horizontal)
             .disabled(viewModel.isLoading || email.isEmpty || password.isEmpty)
+
+            Button("Forgot password?") {
+                Task { await viewModel.sendPasswordReset(email: email) }
+            }
+            .font(.subheadline)
+            .foregroundStyle(AppColors.accentPurple)
+            .disabled(viewModel.isLoading)
 
             Button {
                 Task { await viewModel.signInWithGoogle() }
@@ -96,10 +103,27 @@ struct LoginView: View {
             .padding(.horizontal)
             .disabled(viewModel.isLoading)
 
-            Button("Don't have an account? Sign Up", action: onSignUp)
+            Button("Don't have an account? Sign up", action: onSignUp)
                 .foregroundStyle(AppColors.accentPurple)
 
             Spacer()
+        }
+        // "If an account exists" is load-bearing rather than hedging: the send reports success
+        // even for an unregistered address, so that this screen cannot be used to find out who
+        // has an account. See AuthService.sendPasswordReset.
+        .alert(
+            "Check your email",
+            isPresented: Binding(
+                get: { viewModel.passwordResetSentTo != nil },
+                set: { if !$0 { viewModel.passwordResetSentTo = nil } }
+            )
+        ) {
+            Button("Done", role: .cancel) { viewModel.passwordResetSentTo = nil }
+        } message: {
+            Text(
+                "If an account exists for \(viewModel.passwordResetSentTo ?? ""), a password "
+                    + "reset link is on its way. The link expires after an hour."
+            )
         }
     }
 }

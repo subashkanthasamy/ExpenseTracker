@@ -16,13 +16,13 @@ enum GoogleSignInError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingClientID:
-            return "Google Sign-In is not configured (no CLIENT_ID in GoogleService-Info.plist)."
+            return "Google sign-in isn't available in this version of the app. Sign in with your email instead."
         case .noPresenter:
-            return "Could not find a window to present Google Sign-In."
+            return "Couldn't open Google sign-in. Try again."
         case .missingIDToken:
-            return "Google did not return an ID token."
+            return "Google sign-in didn't finish. Try again."
         case .cancelled:
-            return "Google Sign-In was cancelled."
+            return "Google sign-in was cancelled."
         }
     }
 }
@@ -87,6 +87,21 @@ class AuthService {
         isAuthenticated = true
         print("SignIn success: user=\(user.uid), activeHousehold=\(user.activeHouseholdId ?? "nil")")
         return user
+    }
+
+    /// Sends a password-reset email, reporting success even for an unregistered address.
+    ///
+    /// `userNotFound` is swallowed deliberately: surfacing it would turn the sign-in screen
+    /// into a way to test whether a given person has an account, and in a family household the
+    /// addresses are guessable. A malformed address still throws — that is a typo, not a
+    /// disclosure. See `AuthRepository.sendPasswordReset` in shared for the same contract on
+    /// the other clients.
+    func sendPasswordReset(_ email: String) async throws {
+        do {
+            try await auth.sendPasswordReset(withEmail: email)
+        } catch let error as NSError where error.code == AuthErrorCode.userNotFound.rawValue {
+            return
+        }
     }
 
     func signUpWithEmail(_ email: String, password: String, displayName: String) async throws -> AppUser {

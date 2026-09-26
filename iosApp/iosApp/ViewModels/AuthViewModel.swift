@@ -6,6 +6,9 @@ import Shared
 class AuthViewModel {
     var isLoading = false
     var error: String?
+    /// Address a reset link was just sent to. Set even when no account existed for it, so the
+    /// confirmation wording must stay conditional — see AuthService.sendPasswordReset.
+    var passwordResetSentTo: String?
     var isAuthenticated = false
     var needsHouseholdSetup = false
 
@@ -28,9 +31,27 @@ class AuthViewModel {
             isLoading = false
         } catch let err {
             print("Sign in error: \(err)")
-            self.error = err.localizedDescription
+            self.error = "Couldn't sign in. \(err.localizedDescription)"
             isLoading = false
         }
+    }
+
+    func sendPasswordReset(email: String) async {
+        let address = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !address.isEmpty else {
+            error = "Enter your email address first."
+            return
+        }
+        isLoading = true
+        error = nil
+        passwordResetSentTo = nil
+        do {
+            try await authService.sendPasswordReset(address)
+            passwordResetSentTo = address
+        } catch {
+            self.error = "Couldn't send the reset link. \(error.localizedDescription)"
+        }
+        isLoading = false
     }
 
     func signInWithGoogle() async {
@@ -47,7 +68,7 @@ class AuthViewModel {
             isLoading = false
         } catch let err {
             print("Google sign in error: \(err)")
-            self.error = err.localizedDescription
+            self.error = "Couldn't sign in with Google. \(err.localizedDescription)"
             isLoading = false
         }
     }
@@ -62,7 +83,7 @@ class AuthViewModel {
             isLoading = false
         } catch let err {
             print("Sign up error: \(err)")
-            self.error = err.localizedDescription
+            self.error = "Couldn't create your account. \(err.localizedDescription)"
             isLoading = false
         }
     }
@@ -89,7 +110,7 @@ class AuthViewModel {
             isLoading = false
         } catch let err {
             print("Create household error: \(err)")
-            self.error = err.localizedDescription
+            self.error = "Couldn't create the household. Check your connection and try again."
             isLoading = false
         }
     }
@@ -99,7 +120,7 @@ class AuthViewModel {
         isLoading = true
         do {
             guard let target = try await firestoreService.resolveInviteCode(inviteCode) else {
-                self.error = "Invalid invite code"
+                self.error = "That invite code doesn't match a household. Check it and try again."
                 isLoading = false
                 return
             }
@@ -115,7 +136,7 @@ class AuthViewModel {
             isLoading = false
         } catch let err {
             print("Join household error: \(err)")
-            self.error = err.localizedDescription
+            self.error = "Couldn't join the household. Check your connection and try again."
             isLoading = false
         }
     }
