@@ -21,8 +21,10 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore'
 
 import { db } from '../firebase'
@@ -123,10 +125,10 @@ export async function joinHousehold(inviteCode: string, uid: string): Promise<st
   if (code.length < 4) throw new JoinError('Enter the full invite code.')
 
   const lookup = await getDoc(doc(db, 'inviteCodes', code))
-  if (!lookup.exists()) throw new JoinError('That invite code does not exist.')
+  if (!lookup.exists()) throw new JoinError("That invite code doesn't exist. Check it and try again.")
 
   const householdId = lookup.data().householdId as string
-  if (!householdId) throw new JoinError('That invite code is not usable.')
+  if (!householdId) throw new JoinError("That invite code can't be used. Ask for a new one.")
 
   try {
     // Both keys in one update, as the join branch requires.
@@ -146,7 +148,7 @@ export async function joinHousehold(inviteCode: string, uid: string): Promise<st
   } catch {
     // The most likely cause by far, and the rules cannot distinguish it for us.
     throw new JoinError(
-      'Could not join. The code may have been rotated, or the household may be full.',
+      "Couldn't join the household. The invite code may have changed, or the household may be full. Ask for a new code.",
     )
   }
   return householdId
@@ -208,18 +210,50 @@ export async function rotateInviteCode(household: Household): Promise<string> {
   return inviteCode
 }
 
+/** Every subcollection a household owns. Must match the Android and iOS deletions. */
+const HOUSEHOLD_COLLECTIONS = [
+  'expenses',
+  'categories',
+  'budgets',
+  'savingsGoals',
+  'recurring',
+  'assets',
+  'liabilities',
+] as const
+
+/** Comfortably under Firestore's 500-writes-per-batch limit. */
+const DELETE_BATCH = 400
+
 /**
- * Deletes the household. Owner only.
+ * Deletes the household and everything in it. Owner only.
  *
- * **This does not cascade.** Firestore orphans the subcollections — expenses, categories,
- * budgets and the rest survive with no parent and no way to reach them from the app. Doing
- * this properly needs a Cloud Function; until then the caller is warned explicitly.
+ * Firestore does not cascade, so each subcollection is emptied here first. **The order is
+ * forced by the rules:** every subcollection rule, and the invite-code rule, reads the
+ * household document to check the caller's role — once it is gone, nothing under it can be
+ * deleted. So: subcollections, then the invite code, then the household, and any failure
+ * stops before the household goes, leaving a state the owner can simply retry.
+ *
+ * A Cloud Function remains the better home for this (it would not depend on one client
+ * finishing a long run of writes), but the result is now the same on all three clients.
  */
 export async function deleteHousehold(householdId: string, inviteCode: string): Promise<void> {
-  await deleteDoc(doc(db, 'households', householdId))
-  if (inviteCode) {
-    await deleteDoc(doc(db, 'inviteCodes', inviteCode)).catch(() => {})
+  for (const name of HOUSEHOLD_COLLECTIONS) {
+    const snapshot = await getDocs(collection(db, 'households', householdId, name))
+    for (let i = 0; i < snapshot.docs.length; i += DELETE_BATCH) {
+      const batch = writeBatch(db)
+      snapshot.docs.slice(i, i + DELETE_BATCH).forEach((d) => batch.delete(d.ref))
+      await batch.commit()
+    }
   }
+  // Only a lookup that exists and points here: households predating the lookup have none,
+  // and a delete of a missing or foreign code is refused by the rules (they read the
+  // document's own householdId), which would make those households undeletable.
+  if (inviteCode) {
+    const lookup = doc(db, 'inviteCodes', inviteCode)
+    const existing = await getDoc(lookup)
+    if (existing.exists() && existing.data().householdId === householdId) await deleteDoc(lookup)
+  }
+  await deleteDoc(doc(db, 'households', householdId))
 }
 
 export interface Member {

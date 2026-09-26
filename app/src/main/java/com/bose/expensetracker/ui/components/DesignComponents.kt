@@ -248,7 +248,8 @@ fun SmartInsightCard(
     icon: ImageVector,
     title: String,
     amount: String,
-    badgeLabel: String,
+    /** Null shows no badge; [badgeColor] still tints the icon and amount. */
+    badgeLabel: String?,
     badgeColor: Color,
     modifier: Modifier = Modifier
 ) {
@@ -280,14 +281,16 @@ fun SmartInsightCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = badgeLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = badgeColor,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp
-                )
+                if (badgeLabel != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = badgeLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = badgeColor,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp
+                    )
+                }
             }
             Text(
                 text = amount,

@@ -299,6 +299,26 @@ export interface DonutSlice {
 
 const TAU = Math.PI * 2
 
+/**
+ * A share as a whole percentage, but never "0%" for a share that is not zero.
+ *
+ * `toFixed(0)` rounds ₹3,100 of ₹13 lakh to "0%", which reads as "nothing spent" beside a
+ * visible amount. Anything above zero and under half a percent says "<1%" instead.
+ */
+export function sharePercent(share: number): string {
+  if (share > 0 && share < 0.005) return '<1%'
+  return `${(share * 100).toFixed(0)}%`
+}
+
+/**
+ * The smallest sweep a non-zero segment is drawn with: about 3.5°, roughly 5px of arc on the
+ * default donut. Below that the 2px separator gaps swallow the segment whole, so a category
+ * the legend names has nothing to see and nothing to hover. The extra is taken from the
+ * segments that can afford it, so the ring still closes; the exact figures stay in the
+ * centre readout, the legend and the ranked list beside the chart.
+ */
+const MIN_SWEEP = 0.06
+
 function arcPath(cx: number, cy: number, outer: number, inner: number, from: number, to: number): string {
   const large = to - from > Math.PI ? 1 : 0
   const p = (radius: number, angle: number) => [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)]
@@ -343,7 +363,9 @@ export function DonutChart({
   total: number
   centerLabel?: string
 }) {
-  const [tip, setTip] = useState<TipState | null>(null)
+  // The hovered or focused segment. Its figures replace the total in the centre of the ring:
+  // a floating tooltip had to sit above the chart and covered the card's own title.
+  const [active, setActive] = useState<DonutSlice | null>(null)
   const cx = size / 2
   const cy = size / 2
   const outer = size / 2 - 2
@@ -358,21 +380,26 @@ export function DonutChart({
   // The caller shows an empty state; a donut of nothing would be a NaN path.
   if (sum <= 0) return null
 
+  // Lift every small segment to MIN_SWEEP, then scale the rest down to pay for it.
+  const natural = drawn.map((slice) => (slice.value / sum) * TAU)
+  const lifted = natural.map((sweep) => Math.max(sweep, MIN_SWEEP))
+  const small = natural.filter((sweep) => sweep < MIN_SWEEP).length * MIN_SWEEP
+  const largeNatural = natural.filter((sweep) => sweep >= MIN_SWEEP).reduce((a, b) => a + b, 0)
+  const scale = largeNatural > 0 ? (TAU - small) / largeNatural : 1
+  const sweeps = natural.map((sweep, i) => (sweep >= MIN_SWEEP ? sweep * scale : lifted[i]!))
+
   let angle = -Math.PI / 2
-  const arcs = drawn.map((slice) => {
-    const sweep = (slice.value / sum) * TAU
+  const arcs = drawn.map((slice, i) => {
+    const sweep = sweeps[i]!
     const from = angle
     angle += sweep
     return { slice, from, to: angle, sweep }
   })
 
-  const show = (slice: DonutSlice) =>
-    setTip({
-      x: cx,
-      y: 14,
-      value: money(slice.value),
-      label: `${slice.label} · ${((slice.value / sum) * 100).toFixed(0)}%`,
-    })
+  // Matched by key, not identity: the caller rebuilds its slices on every render.
+  const keyOf = (slice: DonutSlice) => slice.id || slice.label
+  const show = (slice: DonutSlice) => setActive(slice)
+  const hide = () => setActive(null)
 
   return (
     <div className="chart-wrap" style={{ width: size }}>
@@ -403,25 +430,48 @@ export function DonutChart({
                  the segment — a stroke in its own colour would add ink that is not data. */
               stroke="var(--card)"
               strokeWidth="2"
+              opacity={active == null || keyOf(active) === keyOf(slice) ? 1 : 0.45}
+              style={{ transition: 'opacity 0.15s' }}
               onPointerEnter={() => show(slice)}
-              onPointerLeave={() => setTip(null)}
+              onPointerLeave={hide}
               onFocus={() => show(slice)}
-              onBlur={() => setTip(null)}
+              onBlur={hide}
             />
           ))
         )}
         {/* Proportional figures, not tabular: this is a standalone number, and equal-width
             digits read loose at display size. */}
-        <text x={cx} y={cy - 2} textAnchor="middle" fontSize="17" fontWeight="700" fill="var(--text-primary)">
-          {moneyShort(total)}
-        </text>
-        <text x={cx} y={cy + 15} textAnchor="middle" fontSize="10" fill="var(--text-secondary)">
-          {centerLabel}
-        </text>
+        {active == null ? (
+          <>
+            <text x={cx} y={cy - 2} textAnchor="middle" fontSize="17" fontWeight="700" fill="var(--text-primary)">
+              {moneyShort(total)}
+            </text>
+            <text x={cx} y={cy + 15} textAnchor="middle" fontSize="10" fill="var(--text-secondary)">
+              {centerLabel}
+            </text>
+          </>
+        ) : (
+          // aria-live so a keyboard user tabbing through the segments hears each one.
+          <g aria-live="polite">
+            <text x={cx} y={cy - 8} textAnchor="middle" fontSize="17" fontWeight="700" fill="var(--text-primary)">
+              {moneyShort(active.value)}
+            </text>
+            <text x={cx} y={cy + 8} textAnchor="middle" fontSize="10" fill="var(--text-secondary)">
+              {truncate(active.label, 16)}
+            </text>
+            <text x={cx} y={cy + 22} textAnchor="middle" fontSize="10" fontWeight="600" fill="var(--text-secondary)">
+              {sharePercent(active.value / sum)}
+            </text>
+          </g>
+        )}
       </svg>
-      {tip != null && <ChartTip tip={tip} width={size} />}
     </div>
   )
+}
+
+/** Fits a label inside the ring's hole, which is about 16 characters wide at 10px. */
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text
 }
 
 /** The donut's identity channel. Never optional — see the note on `DonutChart`. */

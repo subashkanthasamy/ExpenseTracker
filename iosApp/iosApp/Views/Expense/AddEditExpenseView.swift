@@ -31,18 +31,18 @@ struct AddEditExpenseView: View {
 
                     if !isExpense {
                         Label(
-                            "Income isn't stored yet — this screen currently records expenses only.",
+                            "Income can't be saved yet. This screen records expenses only.",
                             systemImage: "info.circle"
                         )
                         .font(.caption)
                         .foregroundStyle(DS.textSecondary)
                     }
 
-                    DSCaptureRow(icon: "mic.fill", title: "Add by Voice") { showVoice = true }
+                    DSCaptureRow(icon: "mic.fill", title: "Add by voice") { showVoice = true }
 
                     DSCaptureRow(
                         icon: "doc.text.viewfinder",
-                        title: "Scan Receipt (OCR)",
+                        title: "Scan receipt",
                         dashed: true,
                         centered: true
                     ) { showScanner = true }
@@ -65,7 +65,7 @@ struct AddEditExpenseView: View {
                     }
 
                     DSPrimaryButton(
-                        title: viewModel.isEditing ? "Update Transaction" : "Add Transaction",
+                        title: viewModel.isEditing ? "Save changes" : "Add expense",
                         isBusy: viewModel.isLoading,
                         isEnabled: canSave
                     ) {
@@ -108,8 +108,8 @@ struct AddEditExpenseView: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 6) {
-                DSSectionLabel(text: "Add Entry")
-                Text(viewModel.isEditing ? "Edit Transaction" : "New Transaction")
+                DSSectionLabel(text: "Expenses")
+                Text(viewModel.isEditing ? "Edit expense" : "New expense")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(DS.textPrimary)
             }
@@ -176,7 +176,7 @@ struct AddEditExpenseView: View {
     /// transaction, not an afterthought like the note.
     private var paymentMethodRow: some View {
         VStack(alignment: .leading, spacing: 10) {
-            DSSectionLabel(text: "Paid with")
+            DSSectionLabel(text: "Payment method")
             HStack(spacing: 8) {
                 ForEach(PaymentMethod.companion.selectable, id: \.self) { method in
                     let selected = viewModel.paymentMethod == method
@@ -220,7 +220,7 @@ struct AddEditExpenseView: View {
                 }
             }
             if viewModel.scope == ExpenseScope.personal {
-                Text("Only you and the household owner can see this. It is left out of shared totals.")
+                Text("Personal: only you, the owner and admins can see it. Not counted in shared totals.")
                     .font(.caption)
                     .foregroundStyle(DS.textSecondary)
             }
@@ -233,7 +233,7 @@ struct AddEditExpenseView: View {
                 Image(systemName: "text.alignleft")
                     .font(.system(size: 15))
                     .foregroundStyle(DS.textLabel)
-                TextField("Add a note…", text: $viewModel.notes)
+                TextField("Add a note (optional)", text: $viewModel.notes)
                     .font(.system(size: 15))
                     .foregroundStyle(DS.textPrimary)
                     .tint(DS.accent)

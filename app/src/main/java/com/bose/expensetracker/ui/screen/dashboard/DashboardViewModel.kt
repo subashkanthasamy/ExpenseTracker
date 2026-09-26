@@ -2,8 +2,12 @@ package com.bose.expensetracker.ui.screen.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bose.expensetracker.domain.model.Budget
+import com.bose.expensetracker.domain.model.BudgetStatus
+import com.bose.expensetracker.domain.model.Category
 import com.bose.expensetracker.domain.model.Expense
 import com.bose.expensetracker.domain.repository.AuthRepository
+import com.bose.expensetracker.domain.repository.BudgetRepository
 import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
 import com.bose.expensetracker.domain.repository.HouseholdRepository
@@ -12,6 +16,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
@@ -23,7 +28,9 @@ data class CategoryBreakdown(
     val categoryName: String,
     val amount: Double,
     val percentage: Float,
-    val color: Long
+    val color: Long,
+    /** Null when the category has no budget. */
+    val budgetStatus: BudgetStatus? = null
 )
 
 data class HouseholdMember(
@@ -42,12 +49,20 @@ data class DashboardUiState(
     val noHousehold: Boolean = false
 )
 
+private data class DashboardInputs(
+    val expenses: List<Expense>,
+    val categories: List<Category>,
+    val budgets: List<Budget>,
+    val filter: String?
+)
+
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val expenseRepository: ExpenseRepository,
     private val authRepository: AuthRepository,
     private val householdRepository: HouseholdRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val budgetRepository: BudgetRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -96,15 +111,20 @@ class DashboardViewModel @Inject constructor(
             expenseRepository.startRealtimeSync(hId)
             categoryRepository.startRealtimeSync(hId)
 
-            // Combine expenses with categories and person filter
+            // Combine expenses with categories, budgets and person filter. A budget read
+            // failure only costs the badges, so it degrades to "no budgets" rather than
+            // taking the whole dashboard down.
             combine(
                 expenseRepository.getExpenses(hId),
                 categoryRepository.getCategories(hId),
+                budgetRepository.getBudgetsWithSpending(hId).catch { emit(emptyList()) },
                 _personFilter
-            ) { expenses, categories, filter ->
-                Triple(expenses, categories, filter)
-            }.collect { (allExpenses, categories, filter) ->
+            ) { expenses, categories, budgets, filter ->
+                DashboardInputs(expenses, categories, budgets, filter)
+            }.collect { (allExpenses, categories, budgets, filter) ->
                 val categoryColorMap = categories.associate { it.name to it.color }
+                val categoryIdByName = categories.associate { it.name to it.id }
+                val budgetByCategoryId = budgets.associateBy { it.categoryId }
 
                 val now = Calendar.getInstance()
                 val currentMonth = now.get(Calendar.MONTH)
@@ -147,6 +167,18 @@ class DashboardViewModel @Inject constructor(
                 }
 
                 val monthTotal = thisMonthExpenses.sumOf { it.amount }
+
+                // A budget is a household limit, so its spend is the whole household's shared
+                // spending this month — not narrowed by the person filter. Recomputed here
+                // rather than taken from the repository, whose total only refreshes when the
+                // budgets themselves change.
+                val householdMonthSpendByCategory = Permissions.sharedOnly(allExpenses)
+                    .filter { expense ->
+                        expenseCal.timeInMillis = expense.date
+                        expenseCal.get(Calendar.MONTH) == currentMonth && expenseCal.get(Calendar.YEAR) == currentYear
+                    }
+                    .groupBy { it.categoryId }
+                    .mapValues { (_, rows) -> rows.sumOf { it.amount } }
                 val defaultColors = listOf(
                     0xFF4CAF50, 0xFF2196F3, 0xFFE91E63, 0xFFFF9800,
                     0xFF9C27B0, 0xFFF44336, 0xFF3F51B5, 0xFFFF5722,
@@ -163,7 +195,12 @@ class DashboardViewModel @Inject constructor(
                             categoryName = name,
                             amount = total,
                             percentage = if (monthTotal > 0) (total / monthTotal).toFloat() else 0f,
-                            color = color
+                            color = color,
+                            budgetStatus = categoryIdByName[name]
+                                ?.let { budgetByCategoryId[it] }
+                                ?.let { budget ->
+                                    budget.copy(spent = householdMonthSpendByCategory[budget.categoryId] ?: 0.0).status
+                                }
                         )
                     }
                     .sortedByDescending { it.amount }

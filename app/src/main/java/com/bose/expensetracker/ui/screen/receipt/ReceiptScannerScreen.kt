@@ -72,7 +72,7 @@ fun ReceiptScannerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Scan Receipt") },
+                title = { Text("Scan a receipt") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -92,13 +92,13 @@ fun ReceiptScannerScreen(
             if (uiState.isProcessing) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Processing receipt...")
+                Text("Reading receipt…")
             } else if (uiState.receiptResult != null) {
                 val result = uiState.receiptResult!!
 
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Extracted Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("Details found", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(12.dp))
 
                         result.merchant?.let {
@@ -128,7 +128,7 @@ fun ReceiptScannerScreen(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Use This")
+                    Text("Use these details")
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -137,11 +137,11 @@ fun ReceiptScannerScreen(
                     onClick = { viewModel.reset() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Scan Again")
+                    Text("Scan again")
                 }
             } else {
                 Text(
-                    "Capture or select a receipt image",
+                    "Take a photo of a receipt, or choose one from your gallery.",
                     style = MaterialTheme.typography.titleMedium
                 )
 
@@ -151,7 +151,7 @@ fun ReceiptScannerScreen(
                     onClick = { cameraLauncher.launch(photoUri) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Take Photo")
+                    Text("Take photo")
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -160,7 +160,7 @@ fun ReceiptScannerScreen(
                     onClick = { galleryLauncher.launch("image/*") },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Choose from Gallery")
+                    Text("Choose from gallery")
                 }
             }
 

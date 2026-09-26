@@ -18,7 +18,7 @@ struct NetWorthView: View {
             VStack(spacing: 20) {
                 // Summary
                 VStack(spacing: 8) {
-                    Text("Net Worth").font(.subheadline).foregroundStyle(DS.textSecondary)
+                    Text("Net worth").font(.subheadline).foregroundStyle(DS.textSecondary)
                     Text(formatCurrency(viewModel.netWorth))
                         .font(.system(size: 32, weight: .bold))
                         .foregroundStyle(viewModel.netWorth >= 0 ? AppColors.incomeGreen : AppColors.expenseRed)
@@ -68,21 +68,21 @@ struct NetWorthView: View {
             .padding()
         }
         .background(DS.canvas)
-        .navigationTitle("Net Worth")
+        .navigationTitle("Net worth")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if canManage {
                     Menu {
-                        Button("Add Asset") { showAddAsset = true }
-                        Button("Add Liability") { showAddLiability = true }
+                        Button("Add asset") { showAddAsset = true }
+                        Button("Add liability") { showAddLiability = true }
                     } label: { Image(systemName: "plus") }
                 }
             }
         }
-        .alert("Add Asset", isPresented: $showAddAsset) {
+        .alert("Add asset", isPresented: $showAddAsset) {
             TextField("Name", text: $newName)
             TextField("Value", text: $newAmount)
-            TextField("Type (e.g. Property, Stocks)", text: $newType)
+            TextField("Type (for example, Property or Stocks)", text: $newType)
             Button("Add") {
                 let n = newName, a = newAmount, t = newType
                 clearFields()
@@ -90,10 +90,10 @@ struct NetWorthView: View {
             }
             Button("Cancel", role: .cancel) { clearFields() }
         }
-        .alert("Add Liability", isPresented: $showAddLiability) {
+        .alert("Add liability", isPresented: $showAddLiability) {
             TextField("Name", text: $newName)
             TextField("Amount", text: $newAmount)
-            TextField("Type (e.g. Loan, Credit Card)", text: $newType)
+            TextField("Type (for example, Loan or Credit card)", text: $newType)
             Button("Add") {
                 let n = newName, a = newAmount, t = newType
                 clearFields()

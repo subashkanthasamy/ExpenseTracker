@@ -5,14 +5,14 @@ class BiometricService {
     func canAuthenticate() -> Bool {
         let context = LAContext()
         var error: NSError?
-        return context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
+        return context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
     }
 
     func authenticate() async -> Bool {
         let context = LAContext()
         context.localizedReason = "Unlock Expense Tracker"
         do {
-            return try await context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Authenticate to access your expenses")
+            return try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Unlock to see your expenses")
         } catch {
             return false
         }

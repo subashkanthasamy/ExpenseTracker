@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 
-import { PageHead } from '../components/Layout'
 import {
   Card,
   CardHeader,
   Field,
+  formatDate,
   Icon,
   ListSkeleton,
   Modal,
@@ -66,7 +66,7 @@ export function HouseholdPage() {
       setMessage(success)
       setMembers(await getMembers(household))
     } catch (caught) {
-      setMessage((caught as Error)?.message ?? 'That did not work.')
+      setMessage(`Couldn't make that change. ${(caught as Error)?.message ?? 'Try again.'}`)
     } finally {
       setBusy(false)
     }
@@ -82,16 +82,35 @@ export function HouseholdPage() {
     }
   }
 
+  const canManage = session.allows('manageMembers')
+  const canLeave = session.allows('leaveHousehold')
+  const canDelete = session.allows('deleteHousehold')
+
   return (
     <>
-      <PageHead title={household.name} subtitle={roleDescription(role) || 'Household'}>
+      {/* The household is the subject of the page, so it gets a header card of its own rather
+          than a bare page title: who it is, how big it is, and where you stand in it. */}
+      <section className="card household-hero" aria-label="Household">
+        <span className="household-avatar" aria-hidden="true">
+          {initials(household.name)}
+        </span>
+        <div className="household-hero-text">
+          <h1>{household.name}</h1>
+          <div className="household-facts">
+            <span className="badge owner">{roleLabel(role)}</span>
+            <span>
+              {household.memberUids.length} {household.memberUids.length === 1 ? 'member' : 'members'}
+            </span>
+            {household.createdAt > 0 && <span>Created {formatDate(household.createdAt)}</span>}
+          </div>
+        </div>
         {session.allows('renameHousehold') && (
           <button className="btn" type="button" onClick={() => setRenaming(true)}>
             <Icon name="edit" />
             Rename
           </button>
         )}
-      </PageHead>
+      </section>
 
       {message !== '' && (
         <div style={{ marginBottom: 16 }}>
@@ -99,126 +118,160 @@ export function HouseholdPage() {
         </div>
       )}
 
-      <div className="grid cols-2">
+      <div className="household-grid">
         <Card>
-          <CardHeader title="Members" sub={`${household.memberUids.length} of 20`} />
+          <CardHeader title="Members" sub={`${household.memberUids.length} of 20 places used`} />
 
           {members == null ? (
             <ListSkeleton rows={3} />
           ) : (
             <div className="list">
-              {members.map((member) => (
-                <div className="list-row" key={member.uid}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="title">
-                      {member.displayName}
-                      {member.uid === session.uid && (
-                        <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> · you</span>
-                      )}
+              {members.map((member) => {
+                // The owner's role is not changeable: there is deliberately no ownership
+                // transfer, so it is not offered rather than offered and rejected.
+                const editable = canManage && !member.isOwner
+                return (
+                  <div className="list-row member-row" key={member.uid}>
+                    <span className="member-avatar" style={avatarTint(member.uid)} aria-hidden="true">
+                      {initials(member.displayName)}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="title">
+                        {member.displayName}
+                        {member.uid === session.uid && <span className="you"> · you</span>}
+                      </div>
+                      <div className="meta">
+                        {/* With a role picker beside it, a badge would say the same thing twice. */}
+                        {!editable && (
+                          <span className={`badge ${member.isOwner ? 'owner' : ''}`}>{roleLabel(member.role)}</span>
+                        )}
+                        {member.email !== '' && <span className="ellipsis">{member.email}</span>}
+                      </div>
                     </div>
-                    <div className="meta">
-                      <span className={`badge ${member.isOwner ? 'owner' : ''}`}>
-                        {roleLabel(member.role)}
-                      </span>
-                      {member.email !== '' && <span>{member.email}</span>}
-                    </div>
-                  </div>
 
-                  {/* The owner's role is not changeable: there is deliberately no ownership
-                      transfer, so it is not offered rather than offered and rejected. */}
-                  {session.allows('manageMembers') && !member.isOwner && (
-                    <div className="row" style={{ gap: 6 }}>
-                      <select
-                        value={member.role}
-                        disabled={busy}
-                        onChange={(event) =>
-                          void act(
-                            () => setMemberRole(household, member.uid, event.target.value as RoleWire),
-                            `${member.displayName} is now a ${event.target.value}.`,
-                          )
-                        }
-                      >
-                        <option value="admin">Admin</option>
-                        <option value="member">Member</option>
-                        <option value="guest">Guest</option>
-                      </select>
-                      <button
-                        className="btn ghost icon"
-                        type="button"
-                        disabled={busy}
-                        aria-label={`Remove ${member.displayName} from the household`}
-                        onClick={() =>
-                          destructive.ask({
-                            title: `Remove ${member.displayName}?`,
-                            message:
-                              'Their expenses stay in the household and keep their name on them. They can be invited back with a valid code.',
-                            confirmLabel: 'Remove',
-                            run: () =>
-                              act(
-                                () => removeMember(household, member.uid),
-                                `${member.displayName} was removed.`,
-                              ),
-                          })
-                        }
-                      >
-                        <Icon name="person_remove" size={18} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    {editable && (
+                      <div className="row" style={{ gap: 4 }}>
+                        <select
+                          aria-label={`Role for ${member.displayName}`}
+                          value={member.role}
+                          disabled={busy}
+                          onChange={(event) =>
+                            void act(
+                              () => setMemberRole(household, member.uid, event.target.value as RoleWire),
+                              `${member.displayName}'s role changed to ${roleLabel(event.target.value as RoleWire)}`,
+                            )
+                          }
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="member">Member</option>
+                          <option value="guest">Guest</option>
+                        </select>
+                        <button
+                          className="btn ghost icon"
+                          type="button"
+                          disabled={busy}
+                          aria-label={`Remove ${member.displayName} from the household`}
+                          title="Remove from household"
+                          onClick={() =>
+                            destructive.ask({
+                              title: `Remove ${member.displayName}?`,
+                              message:
+                                'Their expenses stay in the household with their name on them. You can invite them back with an invite code.',
+                              confirmLabel: 'Remove from household',
+                              run: () =>
+                                act(
+                                  () => removeMember(household, member.uid),
+                                  `${member.displayName} removed from household`,
+                                ),
+                            })
+                          }
+                        >
+                          <Icon name="person_remove" size={20} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </Card>
 
-        <div className="grid" style={{ gap: 'var(--gap)', alignContent: 'start' }}>
-          {session.allows('manageInviteCode') ? (
-            <Card>
-              <CardHeader
-                title="Invite code"
-                sub="Anyone with this code can join as a member. Rotating it stops the old one working."
-              />
-              <div className="code" style={{ marginBottom: 12 }}>
-                {household.inviteCode || '——————'}
-              </div>
-              <div className="row" style={{ gap: 8 }}>
-                <button className="btn" type="button" onClick={() => void copyCode()}>
-                  <Icon name={copied ? 'check' : 'content_copy'} />
-                  {copied ? 'Copied' : 'Copy'}
-                </button>
-                <button
-                  className="btn"
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    destructive.ask({
-                      title: 'Rotate the invite code?',
-                      message:
-                        'The current code stops working immediately, including for anyone a member has already passed it on to. Nobody already in the household is affected.',
-                      confirmLabel: 'Rotate',
-                      run: () =>
-                        act(() => rotateInviteCode(household), 'A new code has been issued.'),
-                    })
-                  }
-                >
-                  <Icon name="autorenew" />
-                  Rotate
-                </button>
-              </div>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader
-                title="Invite code"
-                sub="Only the household owner can issue or rotate the invite code."
-              />
-            </Card>
-          )}
+        <div className="household-side">
+          <Card>
+            <CardHeader
+              title="Invite code"
+              sub={
+                session.allows('manageInviteCode')
+                  ? 'Anyone with this code can join as a member.'
+                  : 'Only the household owner can create or change the invite code.'
+              }
+            />
+            {session.allows('manageInviteCode') && (
+              <>
+                <div className="invite-code">
+                  <span className="code-value">{household.inviteCode || '——————'}</span>
+                  <button
+                    className="btn ghost icon"
+                    type="button"
+                    aria-label={copied ? 'Invite code copied' : 'Copy invite code'}
+                    title={copied ? 'Invite code copied' : 'Copy invite code'}
+                    onClick={() => void copyCode()}
+                  >
+                    <Icon name={copied ? 'check' : 'content_copy'} size={20} />
+                  </button>
+                </div>
+                <div className="invite-foot">
+                  <span className="t-xs t-secondary">Getting a new code stops the old one from working.</span>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      destructive.ask({
+                        title: 'Get a new invite code?',
+                        message:
+                          'The current code stops working right away, even if someone has already shared it. People already in the household aren\'t affected.',
+                        confirmLabel: 'Get new code',
+                        run: () =>
+                          act(() => rotateInviteCode(household), 'New invite code created'),
+                      })
+                    }
+                  >
+                    <Icon name="autorenew" />
+                    New code
+                  </button>
+                </div>
+              </>
+            )}
+          </Card>
 
           <Card>
-            <CardHeader title="Your access" sub={roleDescription(role)} />
+            <CardHeader title="Your access" />
+            <div className="access-row">
+              <span className="access-icon" aria-hidden="true">
+                <Icon name={role === 'owner' || role === 'admin' ? 'shield_person' : 'person'} />
+              </span>
+              <div>
+                <div className="t-strong">{roleLabel(role)}</div>
+                <div className="t-sm t-secondary">{roleDescription(role)}</div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
 
-            {session.allows('leaveHousehold') && (
+      {(canLeave || canDelete) && (
+        <section className="card danger-zone" aria-labelledby="danger-zone-title">
+          <h2 id="danger-zone-title">Danger zone</h2>
+          {canLeave && (
+            <div className="danger-row">
+              <div>
+                <div className="t-strong">Leave household</div>
+                <div className="t-sm t-secondary">
+                  Your expenses stay in the household with your name on them, and you'll be signed out.
+                </div>
+              </div>
               <button
                 className="btn danger"
                 type="button"
@@ -227,44 +280,39 @@ export function HouseholdPage() {
                   destructive.ask({
                     title: 'Leave this household?',
                     message:
-                      'Your expenses stay behind with your name on them, and you will be signed out. Rejoining needs a valid invite code.',
-                    confirmLabel: 'Leave',
+                      'Your expenses stay in the household with your name on them, and you\'ll be signed out. To rejoin, you\'ll need an invite code.',
+                    confirmLabel: 'Leave household',
                     run: () =>
                       act(async () => {
                         await leaveHousehold(household, session.uid)
                         await signOut()
-                      }, 'You have left the household.'),
+                      }, 'You left the household'),
                   })
                 }
               >
                 <Icon name="logout" />
                 Leave household
               </button>
-            )}
-
-            {session.allows('deleteHousehold') && (
-              <>
-                <div style={{ marginTop: 14 }}>
-                  <Notice kind="warn">
-                    Deleting removes the household itself, but Firestore does not cascade — the
-                    expenses, categories and budgets underneath survive with no way to reach
-                    them. Doing this cleanly needs a Cloud Function.
-                  </Notice>
+            </div>
+          )}
+          {canDelete && (
+            <div className="danger-row">
+              <div>
+                <div className="t-strong">Delete household</div>
+                <div className="t-sm t-secondary">
+                  This deletes the household and everything in it — expenses, categories,
+                  budgets, savings goals, recurring expenses, assets and liabilities — for every
+                  member. This can't be undone.
                 </div>
-                <button
-                  className="btn danger"
-                  type="button"
-                  style={{ marginTop: 12 }}
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <Icon name="delete_forever" />
-                  Delete household
-                </button>
-              </>
-            )}
-          </Card>
-        </div>
-      </div>
+              </div>
+              <button className="btn danger" type="button" onClick={() => setConfirmDelete(true)}>
+                <Icon name="delete_forever" />
+                Delete household
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       {renaming && (
         <RenameForm
@@ -275,7 +323,7 @@ export function HouseholdPage() {
             void act(async () => {
               await renameHousehold(household, name)
               setRenaming(false)
-            }, 'Household renamed.')
+            }, 'Household renamed')
           }
         />
       )}
@@ -289,7 +337,7 @@ export function HouseholdPage() {
             void act(async () => {
               await deleteHousehold(household.id, household.inviteCode)
               setConfirmDelete(false)
-            }, 'Household deleted.')
+            }, 'Household deleted')
           }
         />
       )}
@@ -297,6 +345,30 @@ export function HouseholdPage() {
       {destructive.node}
     </>
   )
+}
+
+/** Up to two initials, for an avatar. */
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return '?'
+  const first = words[0]![0] ?? ''
+  const last = words.length > 1 ? (words[words.length - 1]![0] ?? '') : ''
+  return (first + last).toUpperCase()
+}
+
+/** Brand hues for member avatars. Tints of these, never text colours, so any of them works. */
+const AVATAR_HUES = ['#7b61ff', '#e040fb', '#ff8a65', '#4caf50', '#29b6f6', '#ffa726']
+
+/**
+ * A stable per-member tint, derived from the uid so a person keeps their colour across
+ * reloads and devices. Mixed into the card surface, so the text on it stays the ordinary
+ * text colour and readable in both appearances.
+ */
+function avatarTint(uid: string): React.CSSProperties {
+  let hash = 0
+  for (let i = 0; i < uid.length; i++) hash = (hash * 31 + uid.charCodeAt(i)) | 0
+  const hue = AVATAR_HUES[Math.abs(hash) % AVATAR_HUES.length]!
+  return { background: `color-mix(in srgb, ${hue} 26%, var(--card))` }
 }
 
 function RenameForm({
@@ -331,7 +403,7 @@ function RenameForm({
         </>
       }
     >
-      <Field label="Name">
+      <Field label="Household name">
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -357,8 +429,8 @@ function DeleteConfirm({
   const [typed, setTyped] = useState('')
   return (
     <Modal
-      title="Delete household"
-      subtitle="This cannot be undone, and it does not delete the data underneath."
+      title="Delete this household?"
+      subtitle="This deletes everything in the household for every member. This can't be undone."
       onClose={onClose}
       actions={
         <>
@@ -371,7 +443,7 @@ function DeleteConfirm({
             disabled={busy || typed !== expected}
             onClick={onConfirm}
           >
-            {busy ? 'Deleting…' : 'Delete permanently'}
+            {busy ? 'Deleting…' : 'Delete household'}
           </button>
         </>
       }

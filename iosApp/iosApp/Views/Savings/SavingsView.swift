@@ -20,6 +20,7 @@ struct SavingsView: View {
                 VStack(spacing: 12) {
                     Image(systemName: "target").font(.system(size: 48)).foregroundStyle(DS.textSecondary)
                     Text("No savings goals yet").foregroundStyle(DS.textSecondary)
+                    Text("Tap + to add a savings goal.").font(.caption).foregroundStyle(DS.textSecondary)
                 }
             } else {
                 List {
@@ -53,19 +54,19 @@ struct SavingsView: View {
                 }
             }
         }
-        .navigationTitle("Savings Goals")
-        .alert("Error", isPresented: Binding(
+        .navigationTitle("Savings goals")
+        .alert("Something went wrong", isPresented: Binding(
             get: { viewModel.error != nil },
             set: { if !$0 { viewModel.error = nil } }
         )) {
-            Button("OK") { viewModel.error = nil }
+            Button("Close") { viewModel.error = nil }
         } message: { Text(viewModel.error ?? "") }
         .toolbar {
             ToolbarItem(placement: .primaryAction) { if canManage { Button { showAdd = true } label: { Image(systemName: "plus") } } }
         }
-        .alert("New Goal", isPresented: $showAdd) {
+        .alert("New savings goal", isPresented: $showAdd) {
             TextField("Goal name", text: $goalName)
-            TextField("Target amount", text: $targetStr)
+            TextField("Amount to save", text: $targetStr)
             Button("Add") {
                 let name = goalName, target = targetStr, ic = icon
                 goalName = ""; targetStr = ""
@@ -73,7 +74,7 @@ struct SavingsView: View {
             }
             Button("Cancel", role: .cancel) { goalName = ""; targetStr = "" }
         }
-        .alert("Add Contribution", isPresented: $showContribute) {
+        .alert("Add contribution", isPresented: $showContribute) {
             TextField("Amount", text: $contributeAmount)
             Button("Add") {
                 let amt = contributeAmount, gid = contributeGoalId

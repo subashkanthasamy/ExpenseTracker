@@ -241,7 +241,8 @@ service cloud.firestore {
       );
 
       // Creator only — an admin manages the household but cannot destroy it. Firestore does
-      // not cascade, so the subcollections are orphaned rather than removed — see the notes.
+      // not cascade, so the clients empty every subcollection and the invite code FIRST: the
+      // rules for those read this document, so they become undeletable once it is gone.
       allow delete: if isSignedIn() && isOwnerOnly(resource.data);
 
       // ---- Expenses: members own their own rows ---------------------------

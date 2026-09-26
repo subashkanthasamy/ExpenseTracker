@@ -97,7 +97,7 @@ class SettingsViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(errorMessage = e.message ?: "Could not exit demo mode") }
+                _uiState.update { it.copy(errorMessage = e.message ?: "Couldn't exit the demo. Try again.") }
             }
         }
     }
@@ -114,7 +114,7 @@ class SettingsViewModel @Inject constructor(
                     loadHouseholdData(user.uid)
                 } catch (e: Exception) {
                     android.util.Log.e("SettingsVM", "loadHouseholdData failed: ${e.message}", e)
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to load household data") }
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Couldn't load your household. Check your connection and try again.") }
                 }
             }
         }
@@ -200,7 +200,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(errorMessage = null) }
             val uid = authRepository.getCurrentUserId() ?: run {
-                _uiState.update { it.copy(errorMessage = "Not signed in") }
+                _uiState.update { it.copy(errorMessage = "You're signed out. Sign in and try again.") }
                 return@launch
             }
             android.util.Log.d("SettingsVM", "switchHousehold: uid=$uid, target=$householdId")
@@ -209,7 +209,7 @@ class SettingsViewModel @Inject constructor(
                 _householdSwitchedEvent.emit(Unit)
             }.onFailure { error ->
                 android.util.Log.e("SettingsVM", "switchHousehold failed: ${error.message}", error)
-                _uiState.update { it.copy(errorMessage = "Switch failed: ${error.message}") }
+                _uiState.update { it.copy(errorMessage = "Couldn't switch households. ${error.message}") }
             }
         }
     }
@@ -218,7 +218,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(errorMessage = null) }
             val uid = authRepository.getCurrentUserId() ?: run {
-                _uiState.update { it.copy(errorMessage = "Not signed in") }
+                _uiState.update { it.copy(errorMessage = "You're signed out. Sign in and try again.") }
                 return@launch
             }
             android.util.Log.d("SettingsVM", "createNewHousehold: uid=$uid, name=$name")
@@ -228,7 +228,7 @@ class SettingsViewModel @Inject constructor(
                 _householdSwitchedEvent.emit(Unit)
             }.onFailure { error ->
                 android.util.Log.e("SettingsVM", "createNewHousehold failed: ${error.message}", error)
-                _uiState.update { it.copy(errorMessage = "Create failed: ${error.message}") }
+                _uiState.update { it.copy(errorMessage = "Couldn't create the household. ${error.message}") }
             }
         }
     }
@@ -237,7 +237,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(errorMessage = null) }
             val uid = authRepository.getCurrentUserId() ?: run {
-                _uiState.update { it.copy(errorMessage = "Not signed in") }
+                _uiState.update { it.copy(errorMessage = "You're signed out. Sign in and try again.") }
                 return@launch
             }
             android.util.Log.d("SettingsVM", "joinNewHousehold: uid=$uid, code=$inviteCode")
@@ -246,7 +246,7 @@ class SettingsViewModel @Inject constructor(
                 _householdSwitchedEvent.emit(Unit)
             }.onFailure { error ->
                 android.util.Log.e("SettingsVM", "joinNewHousehold failed: ${error.message}", error)
-                _uiState.update { it.copy(errorMessage = "Join failed: ${error.message}") }
+                _uiState.update { it.copy(errorMessage = "Couldn't join the household. ${error.message}") }
             }
         }
     }
@@ -260,17 +260,27 @@ class SettingsViewModel @Inject constructor(
 
     fun exportExpenses(format: ExportFormat, startDate: Long?, endDate: Long?) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isExporting = true) }
+            _uiState.update { it.copy(isExporting = true, errorMessage = null) }
             try {
-                val uid = authRepository.getCurrentUserId() ?: return@launch
-                val hId = householdRepository.getUserHouseholdId(uid) ?: return@launch
+                val uid = authRepository.getCurrentUserId()
+                if (uid == null) {
+                    _uiState.update { it.copy(errorMessage = "You're signed out. Sign in and try again.") }
+                    return@launch
+                }
+                val hId = householdRepository.getUserHouseholdId(uid)
+                if (hId == null) {
+                    _uiState.update { it.copy(errorMessage = "Couldn't export expenses. Join or create a household first.") }
+                    return@launch
+                }
                 val file = when (format) {
                     ExportFormat.CSV -> exportExpensesUseCase.exportCsv(hId, startDate, endDate)
                     ExportFormat.PDF -> exportExpensesUseCase.exportPdf(hId, startDate, endDate)
                 }
                 _exportedFile.emit(file)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(dummyDataMessage = "Export failed: ${e.message}") }
+                _uiState.update { it.copy(errorMessage = "Couldn't export expenses. Check your connection and try again.") }
             } finally {
                 _uiState.update { it.copy(isExporting = false) }
             }
@@ -286,16 +296,16 @@ class SettingsViewModel @Inject constructor(
                 val userName = authRepository.getCurrentUserDisplayName() ?: "User"
                 val result = importExpensesUseCase.importCsv(inputStream, hId, uid, userName)
                 val message = if (result.errors.isNotEmpty() && result.importedCount == 0) {
-                    "Import failed: ${result.errors.first()}"
+                    "Couldn't import expenses. ${result.errors.first()}"
                 } else {
                     buildString {
                         append("Imported ${result.importedCount} of ${result.totalRows} expenses.")
-                        if (result.skippedCount > 0) append("\n${result.skippedCount} rows skipped.")
+                        if (result.skippedCount > 0) append("\n${result.skippedCount} ${if (result.skippedCount == 1) "row" else "rows"} skipped.")
                     }
                 }
                 _uiState.update { it.copy(importMessage = message) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(importMessage = "Import failed: ${e.message}") }
+                _uiState.update { it.copy(importMessage = "Couldn't import expenses. ${e.message}") }
             } finally {
                 _uiState.update { it.copy(isImporting = false) }
             }
@@ -312,20 +322,20 @@ class SettingsViewModel @Inject constructor(
             try {
                 val uid = authRepository.getCurrentUserId()
                 if (uid == null) {
-                    _uiState.update { it.copy(resetMessage = "Not signed in") }
+                    _uiState.update { it.copy(resetMessage = "You're signed out. Sign in and try again.") }
                     return@launch
                 }
                 val hId = householdRepository.getUserHouseholdId(uid)
                 if (hId == null) {
-                    _uiState.update { it.copy(resetMessage = "No active household") }
+                    _uiState.update { it.copy(resetMessage = "Set up or join a household first.") }
                     return@launch
                 }
                 android.util.Log.d("SettingsVM", "resetAllExpenses: uid=$uid, hId=$hId")
                 expenseRepository.deleteAllExpenses(hId).getOrThrow()
-                _uiState.update { it.copy(resetMessage = "All expenses have been deleted.") }
+                _uiState.update { it.copy(resetMessage = "All expenses deleted") }
             } catch (e: Exception) {
                 android.util.Log.e("SettingsVM", "resetAllExpenses failed", e)
-                _uiState.update { it.copy(resetMessage = "Failed to reset expenses: ${e.message}") }
+                _uiState.update { it.copy(resetMessage = "Couldn't delete expenses. ${e.message}") }
             } finally {
                 _uiState.update { it.copy(isResetting = false) }
             }
@@ -439,7 +449,7 @@ class SettingsViewModel @Inject constructor(
                 inserted++
             }
 
-            _uiState.update { it.copy(dummyDataMessage = "$inserted dummy expenses added!") }
+            _uiState.update { it.copy(dummyDataMessage = "$inserted sample expenses added") }
         }
     }
 
@@ -448,7 +458,7 @@ class SettingsViewModel @Inject constructor(
             val uid = authRepository.getCurrentUserId()
             android.util.Log.d("SettingsVM", "seedCategories: uid=$uid")
             if (uid == null) {
-                _uiState.update { it.copy(dummyDataMessage = "Error: Not signed in") }
+                _uiState.update { it.copy(dummyDataMessage = "You're signed out. Sign in and try again.") }
                 return@launch
             }
 
@@ -461,7 +471,7 @@ class SettingsViewModel @Inject constructor(
             }
 
             if (hId == null) {
-                _uiState.update { it.copy(dummyDataMessage = "Error: No household found. Create or join a household first.") }
+                _uiState.update { it.copy(dummyDataMessage = "Set up or join a household first.") }
                 return@launch
             }
 
@@ -470,7 +480,7 @@ class SettingsViewModel @Inject constructor(
 
             val cats = categoryRepository.getCategories(hId).firstOrNull() ?: emptyList()
             android.util.Log.d("SettingsVM", "seedCategories: ${cats.size} categories after seeding: ${cats.map { it.name }}")
-            _uiState.update { it.copy(dummyDataMessage = "${cats.size} categories seeded to Firebase!") }
+            _uiState.update { it.copy(dummyDataMessage = "${cats.size} categories added") }
         }
     }
 

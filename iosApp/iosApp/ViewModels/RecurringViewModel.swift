@@ -32,7 +32,7 @@ class RecurringViewModel {
             generatedCount = try await recurringService.generateDueExpenses(householdId: hid)
             items = try await firestoreService.getRecurringExpenses(householdId: hid)
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Couldn't load recurring expenses. Check your connection and try again."
         }
         isLoading = false
     }
@@ -86,7 +86,7 @@ class RecurringViewModel {
             try await firestoreService.addRecurringExpense(householdId: hid, recurring: rule)
             await load()
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Couldn't save the recurring expense. Check your connection and try again."
         }
     }
 
@@ -96,7 +96,7 @@ class RecurringViewModel {
             try await firestoreService.updateRecurringExpense(householdId: hid, recurring: rule.withActive(active))
             items = try await firestoreService.getRecurringExpenses(householdId: hid)
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Couldn't update the recurring expense. Check your connection and try again."
         }
     }
 
@@ -106,7 +106,7 @@ class RecurringViewModel {
             try await firestoreService.deleteRecurringExpense(householdId: hid, id: rule.id)
             items.removeAll { $0.id == rule.id }
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Couldn't delete the recurring expense. Check your connection and try again."
         }
     }
 }

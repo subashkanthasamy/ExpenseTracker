@@ -60,9 +60,7 @@ export function Layout() {
       {/* Wide and mid tiers: a vertical sidebar, full-width or collapsed to an icon rail. */}
       <nav className="sidebar" aria-label="Main">
         <div className="brand">
-          <span className="brand-mark">
-            <Icon name="wallet" size={18} />
-          </span>
+          <BrandMark />
           <span className="brand-name">Expense Tracker</span>
         </div>
 
@@ -103,9 +101,7 @@ export function Layout() {
           <Icon name={menuOpen ? 'close' : 'menu'} />
         </button>
         <div className="brand">
-          <span className="brand-mark">
-            <Icon name="wallet" size={16} />
-          </span>
+          <BrandMark />
           {/* The current destination, not the product name: on a narrow screen knowing where
               you are is worth more than being reminded what you opened. */}
           <span>{current?.label ?? 'Expense Tracker'}</span>
@@ -163,6 +159,15 @@ function Identity() {
 }
 
 /** Page title block, with optional actions on the right. */
+/**
+ * The app logo: the white rupee on the brand gradient, the same artwork the Android launcher
+ * and the iOS app icon are built from (docs/Expense.png). Decorative — the product name sits
+ * beside it everywhere it appears.
+ */
+export function BrandMark() {
+  return <img className="brand-mark" src="/logo-192.png" alt="" width={32} height={32} />
+}
+
 export function PageHead({
   title,
   subtitle,

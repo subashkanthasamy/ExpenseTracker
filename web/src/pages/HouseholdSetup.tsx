@@ -25,7 +25,7 @@ export function HouseholdSetup({ user }: { user: User }) {
     setError('')
     try {
       if (mode === 'create') {
-        if (name.trim().length === 0) throw new Error('Give the household a name.')
+        if (name.trim().length === 0) throw new Error('Enter a household name.')
         await createHousehold(name, user.uid)
       } else {
         await joinHousehold(code, user.uid)
@@ -35,7 +35,7 @@ export function HouseholdSetup({ user }: { user: User }) {
       setError(
         caught instanceof JoinError
           ? caught.message
-          : (caught as Error)?.message ?? 'Something went wrong.',
+          : `Something went wrong. ${(caught as Error)?.message ?? 'Try again.'}`,
       )
     } finally {
       setBusy(false)
@@ -47,7 +47,7 @@ export function HouseholdSetup({ user }: { user: User }) {
       <Card className="auth-card">
         <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>Set up your household</h2>
         <p style={{ margin: '0 0 18px', fontSize: 13, color: 'var(--text-secondary)' }}>
-          A household is the shared space you and your family record expenses in.
+          Your household is where you and the people you share costs with track expenses together.
         </p>
 
         <div className="segmented" style={{ marginBottom: 18 }}>
@@ -55,7 +55,7 @@ export function HouseholdSetup({ user }: { user: User }) {
             Create new
           </button>
           <button type="button" aria-pressed={mode === 'join'} onClick={() => setMode('join')}>
-            Join with code
+            Join with invite code
           </button>
         </div>
 
@@ -69,7 +69,7 @@ export function HouseholdSetup({ user }: { user: User }) {
           {mode === 'create' ? (
             <Field
               label="Household name"
-              hint="You will be the owner, and the only person who can delete it."
+              hint="You'll be the owner, and the only person who can delete it."
             >
               <input
                 value={name}
@@ -82,7 +82,7 @@ export function HouseholdSetup({ user }: { user: User }) {
           ) : (
             <Field
               label="Invite code"
-              hint="Six characters, from the household screen of whoever invited you."
+              hint="6 characters. Find it on the Household screen of the person who invited you."
             >
               <input
                 value={code}
@@ -96,7 +96,7 @@ export function HouseholdSetup({ user }: { user: User }) {
           )}
 
           <button className="btn primary" type="submit" disabled={busy} style={{ width: '100%' }}>
-            {busy ? 'Working…' : mode === 'create' ? 'Create household' : 'Join household'}
+            {busy ? (mode === 'create' ? 'Creating…' : 'Joining…') : mode === 'create' ? 'Create household' : 'Join household'}
           </button>
         </form>
 

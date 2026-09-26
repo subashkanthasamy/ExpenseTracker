@@ -74,7 +74,7 @@ fun SavingsScreen(
                     containerColor = AccentPurple,
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Goal")
+                    Icon(Icons.Default.Add, contentDescription = "Add savings goal")
                 }
             }
         }
@@ -93,7 +93,7 @@ fun SavingsScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
                 Spacer(modifier = Modifier.weight(1f))
-                Text("Savings Goals", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Savings goals", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.weight(1f))
                 Spacer(modifier = Modifier.size(48.dp))
             }
@@ -105,9 +105,9 @@ fun SavingsScreen(
             } else if (uiState.goals.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("No savings goals", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("No savings goals yet", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Tap + to set a savings target", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Tap + to create your first savings goal.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             } else {
@@ -211,7 +211,7 @@ private fun SavingsGoalCard(
                 )
                 goal.monthlyNeeded?.let {
                     Text(
-                        "Save \u20B9${"%.0f".format(it)}/month to reach goal",
+                        "Save \u20B9${"%.0f".format(it)} a month to reach this goal",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -229,7 +229,7 @@ private fun SavingsGoalCard(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 if (onDelete != null) IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.Delete, contentDescription = "Delete ${goal.name}", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -248,19 +248,19 @@ private fun AddGoalDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New Savings Goal") },
+        title = { Text("New savings goal") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Goal Name") },
+                    label = { Text("Name") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = targetText,
                     onValueChange = { targetText = it.filter { c -> c.isDigit() || c == '.' } },
-                    label = { Text("Target Amount (\u20B9)") },
+                    label = { Text("Amount to save (\u20B9)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -301,7 +301,7 @@ private fun ContributionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Contribution") },
+        title = { Text("Add money") },
         text = {
             OutlinedTextField(
                 value = amountText,

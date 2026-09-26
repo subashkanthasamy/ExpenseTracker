@@ -8,7 +8,7 @@ struct HouseholdView: View {
     var body: some View {
         Group {
             if viewModel.isLoading {
-                ProgressView("Loading household...")
+                ProgressView("Loading household…")
             } else if let h = viewModel.household {
                 List {
                     // Your role. Without this, a member finds the management controls simply
@@ -29,9 +29,9 @@ struct HouseholdView: View {
                         }
                     }
 
-                    Section("Active Household") {
+                    Section("Active household") {
                         LabeledContent("Name", value: h.name)
-                        LabeledContent("Invite Code") {
+                        LabeledContent("Invite code") {
                             HStack {
                                 Text(h.inviteCode).font(.system(.body, design: .monospaced)).bold()
                                 Button {
@@ -39,6 +39,7 @@ struct HouseholdView: View {
                                 } label: {
                                     Image(systemName: "doc.on.doc").font(.caption)
                                 }
+                                .accessibilityLabel("Copy invite code")
                             }
                         }
                         LabeledContent("Created", value: h.createdAtValue.formatted(date: .abbreviated, time: .omitted))
@@ -64,7 +65,7 @@ struct HouseholdView: View {
                     }
 
                     if viewModel.households.count > 1 {
-                        Section("All Households") {
+                        Section("Your households") {
                             ForEach(viewModel.households) { household in
                                 HStack {
                                     Text(household.name)
@@ -82,7 +83,7 @@ struct HouseholdView: View {
                     // showing the button would just produce a failure.
                     if Permissions.shared.canDeleteHousehold(role: viewModel.role) {
                         Section {
-                            Button("Delete Household", role: .destructive) { showDelete = true }
+                            Button("Delete household", role: .destructive) { showDelete = true }
                         }
                     }
                 }
@@ -94,12 +95,18 @@ struct HouseholdView: View {
             }
         }
         .navigationTitle("Household")
-        .alert("Delete Household?", isPresented: $showDelete) {
+        .alert("Delete this household?", isPresented: $showDelete) {
             Button("Delete", role: .destructive) { Task { await viewModel.deleteHousehold() } }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will permanently delete the household and all its data.")
+            Text("This deletes the household and everything in it — expenses, categories, budgets, savings goals, recurring expenses, assets and liabilities — for every member. This can't be undone.")
         }
+        .alert("Something went wrong", isPresented: Binding(
+            get: { viewModel.error != nil },
+            set: { if !$0 { viewModel.error = nil } }
+        )) {
+            Button("Close") { viewModel.error = nil }
+        } message: { Text(viewModel.error ?? "") }
         .task { await viewModel.load() }
     }
 }
@@ -162,11 +169,11 @@ private struct MemberRow: View {
                 }
             }
         }
-        .alert("Remove \(member.displayName)?", isPresented: $confirmRemove) {
-            Button("Remove", role: .destructive) { onRemove() }
+        .alert("Remove \(member.displayName) from household?", isPresented: $confirmRemove) {
+            Button("Remove from household", role: .destructive) { onRemove() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("They lose access to this household immediately. Expenses they already added stay, and they can rejoin with the invite code.")
+            Text("They lose access to this household right away. Expenses they've already added stay, and they can rejoin with an invite code.")
         }
     }
 }

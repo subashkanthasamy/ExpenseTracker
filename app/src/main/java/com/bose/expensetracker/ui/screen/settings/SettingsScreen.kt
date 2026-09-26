@@ -293,7 +293,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
-                            text = "Manage daily, budget & bill reminders",
+                            text = "Daily, budget and bill reminders",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -339,7 +339,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
-                            text = "Set spending limits per category",
+                            text = "Set a monthly budget for each category",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -379,7 +379,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Recurring Expenses",
+                            text = "Recurring",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onBackground
@@ -425,13 +425,13 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Savings Goals",
+                            text = "Savings goals",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
-                            text = "Set targets and track your savings",
+                            text = "Track what you're saving for",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -462,8 +462,8 @@ fun SettingsScreen(
                 // Biometric Lock
                 SettingsToggleCard(
                     icon = Icons.Default.Fingerprint,
-                    title = "Biometric Lock",
-                    subtitle = "Require fingerprint/face to open app",
+                    title = "Biometric lock",
+                    subtitle = "Use your fingerprint or face to unlock the app",
                     checked = uiState.biometricEnabled,
                     onCheckedChange = { viewModel.setBiometricEnabled(it) }
                 )
@@ -473,7 +473,7 @@ fun SettingsScreen(
                 // SMS Auto-Import
                 SettingsToggleCard(
                     icon = Icons.Default.Sms,
-                    title = "SMS Auto-Import",
+                    title = "SMS auto-import",
                     subtitle = "Automatically create expenses from bank SMS",
                     checked = uiState.smsImportEnabled,
                     onCheckedChange = { enabled ->
@@ -497,7 +497,7 @@ fun SettingsScreen(
             // Export Data
             SettingsActionCard(
                 icon = Icons.Default.FileDownload,
-                title = "Export Data",
+                title = "Export data",
                 subtitle = "Export expenses as CSV or PDF",
                 actionLabel = "Export",
                 isLoading = uiState.isExporting,
@@ -509,7 +509,7 @@ fun SettingsScreen(
             // Import Data
             SettingsActionCard(
                 icon = Icons.Default.FileUpload,
-                title = "Import Data",
+                title = "Import data",
                 subtitle = "Import expenses from a CSV file",
                 actionLabel = "Import",
                 isLoading = uiState.isImporting,
@@ -521,9 +521,9 @@ fun SettingsScreen(
             // Reset All Expenses
             SettingsActionCard(
                 icon = Icons.Default.DeleteForever,
-                title = "Reset All Expenses",
-                subtitle = "Delete all expenses from this household",
-                actionLabel = "Reset",
+                title = "Delete all expenses",
+                subtitle = "Delete every expense in this household",
+                actionLabel = "Delete",
                 isLoading = uiState.isResetting,
                 isDestructive = true,
                 onClick = { showResetConfirmDialog = true }
@@ -551,7 +551,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "Exit Demo",
+                        "Exit demo",
                         color = Color.White,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 15.sp
@@ -577,7 +577,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "Sign Out",
+                        "Sign out",
                         color = Color.White,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 15.sp
@@ -617,11 +617,11 @@ fun SettingsScreen(
     uiState.importMessage?.let { message ->
         AlertDialog(
             onDismissRequest = { viewModel.clearImportMessage() },
-            title = { Text("Import Result") },
+            title = { Text("Import expenses") },
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = { viewModel.clearImportMessage() }) {
-                    Text("OK")
+                    Text("Done")
                 }
             }
         )
@@ -631,11 +631,11 @@ fun SettingsScreen(
     uiState.errorMessage?.let { message ->
         AlertDialog(
             onDismissRequest = { viewModel.clearErrorMessage() },
-            title = { Text("Error") },
+            title = { Text("Something went wrong") },
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = { viewModel.clearErrorMessage() }) {
-                    Text("OK")
+                    Text("Close")
                 }
             }
         )
@@ -645,8 +645,8 @@ fun SettingsScreen(
     if (showResetConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showResetConfirmDialog = false },
-            title = { Text("Reset All Expenses") },
-            text = { Text("Are you sure you want to delete all expenses? This action cannot be undone.") },
+            title = { Text("Delete all expenses?") },
+            text = { Text("Every expense in this household will be deleted for all members. This can't be undone.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -657,7 +657,7 @@ fun SettingsScreen(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Delete All")
+                    Text("Delete all")
                 }
             },
             dismissButton = {
@@ -672,11 +672,11 @@ fun SettingsScreen(
     uiState.resetMessage?.let { message ->
         AlertDialog(
             onDismissRequest = { viewModel.clearResetMessage() },
-            title = { Text("Reset Expenses") },
+            title = { Text("Delete all expenses") },
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = { viewModel.clearResetMessage() }) {
-                    Text("OK")
+                    Text("Done")
                 }
             }
         )

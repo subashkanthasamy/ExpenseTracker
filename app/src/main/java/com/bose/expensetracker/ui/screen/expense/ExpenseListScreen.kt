@@ -75,7 +75,8 @@ import java.util.concurrent.TimeUnit
 fun ExpenseListScreen(
     viewModel: ExpenseListViewModel,
     onAddExpense: () -> Unit,
-    onEditExpense: (String) -> Unit
+    onEditExpense: (String) -> Unit,
+    onNavigateToNotifications: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
@@ -117,10 +118,10 @@ fun ExpenseListScreen(
                     letterSpacing = 1.sp
                 )
             }
-            IconButton(onClick = { }) {
+            IconButton(onClick = onNavigateToNotifications) {
                 Icon(
                     Icons.Default.Notifications,
-                    contentDescription = "Notifications",
+                    contentDescription = "Open SMS imports",
                     tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(24.dp)
                 )
@@ -167,9 +168,9 @@ fun ExpenseListScreen(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             if (filteredOut) {
-                                "None of your ${uiState.totalCount} expenses match these filters"
+                                "Try different filters, or clear them to see all your expenses."
                             } else {
-                                "Tap + to add your first expense"
+                                "Add your first expense to see it here."
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -255,12 +256,12 @@ fun ExpenseListScreen(
     expenseToDelete?.let { expense ->
         AlertDialog(
             onDismissRequest = { expenseToDelete = null },
-            title = { Text("Delete Expense") },
+            title = { Text("Delete this expense?") },
             text = {
                 Text(
-                    "Are you sure you want to delete this ${expense.categoryName} expense of ${
+                    "This ${expense.categoryName} expense of ${
                         formatCurrency(expense.amount)
-                    }?"
+                    } will be deleted. This can't be undone."
                 )
             },
             confirmButton = {
@@ -317,7 +318,7 @@ private fun ExpenseFilters(
                 value = criteria.searchQuery,
                 onValueChange = onSearchChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Search") },
+                placeholder = { Text("Search expenses") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (criteria.searchQuery.isNotEmpty()) {
@@ -347,7 +348,7 @@ private fun ExpenseFilters(
             ) {
                 Icon(
                     Icons.Default.Tune,
-                    contentDescription = "Filters",
+                    contentDescription = "Open filters",
                     tint = if (hasChipFilters) Color.White
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )

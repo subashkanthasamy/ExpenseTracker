@@ -14,7 +14,7 @@ struct DashboardView: View {
                 // Header
                 HStack {
                     VStack(alignment: .leading) {
-                        Text("Hello! 👋").font(.title2).bold()
+                        Text("Hello").font(.title2).bold()
                         Text(Date(), format: .dateTime.month(.wide).year())
                             .foregroundStyle(DS.textSecondary)
                     }
@@ -29,7 +29,7 @@ struct DashboardView: View {
                 // Balance Card
                 VStack(spacing: 12) {
                     // "Shared", because the figure excludes personal rows.
-                    Text("Shared This Month").font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                    Text("Shared this month").font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     Text(formatCurrency(viewModel.monthTotal))
                         .font(.system(size: 36, weight: .bold))
                         .foregroundStyle(.white)
@@ -79,7 +79,7 @@ struct DashboardView: View {
                     HStack {
                         Text("Recent").font(.headline)
                         Spacer()
-                        Button("See All", action: onExpenseList)
+                        Button("See all", action: onExpenseList)
                             .font(.caption).foregroundStyle(AppColors.accentPurple)
                     }
                     if viewModel.recentExpenses.isEmpty {

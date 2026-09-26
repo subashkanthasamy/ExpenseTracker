@@ -47,7 +47,7 @@ export function ExpenseForm({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!valid) {
-      setError('Enter an amount above zero and pick a category.')
+      setError('Enter an amount greater than zero and choose a category.')
       return
     }
     const category = categories.find((c) => c.id === categoryId)
@@ -89,7 +89,7 @@ export function ExpenseForm({
       }
       onClose()
     } catch (caught) {
-      setError((caught as Error)?.message ?? 'Could not save.')
+      setError(`Couldn't save the expense. ${(caught as Error)?.message ?? 'Check your connection and try again.'}`)
       setBusy(false)
     }
   }
@@ -98,7 +98,7 @@ export function ExpenseForm({
   const applyPaste = () => {
     const parsed = parseSms('BANK', pasted)
     if (!parsed) {
-      setError('That does not look like a transaction alert.')
+      setError("That doesn't look like a bank payment message. Check the text and try again.")
       return
     }
     setAmount(String(parsed.amount))
@@ -120,8 +120,8 @@ export function ExpenseForm({
       title={isEditing ? 'Edit expense' : 'Add expense'}
       subtitle={
         scope === 'personal'
-          ? 'Personal: visible to you and the household owner, and left out of shared totals.'
-          : 'Shared: visible to everyone in the household and counted in shared totals.'
+          ? 'Personal: only you, the owner and admins can see it. Not counted in shared totals.'
+          : 'Shared: everyone in the household can see it. Counted in shared totals.'
       }
       onClose={onClose}
       actions={
@@ -204,8 +204,8 @@ export function ExpenseForm({
           {pasteOpen ? (
             <div style={{ marginTop: 4 }}>
               <Field
-                label="Paste a bank alert"
-                hint="The browser cannot read your SMS inbox, so pasting is the web equivalent of Android's automatic import. The parser is the same one."
+                label="Bank message"
+                hint="Your browser can't read your text messages. Paste a bank SMS here to fill in the details."
               >
                 <textarea
                   rows={3}
@@ -217,7 +217,7 @@ export function ExpenseForm({
               <div className="row" style={{ gap: 8 }}>
                 <button className="btn" type="button" onClick={applyPaste} disabled={pasted.trim() === ''}>
                   <Icon name="auto_fix_high" />
-                  Fill from message
+                  Fill in details
                 </button>
                 <button className="btn ghost" type="button" onClick={() => setPasteOpen(false)}>
                   Cancel
@@ -241,7 +241,7 @@ export function ExpenseForm({
       {categories.length === 0 && (
         <div style={{ marginTop: 12 }}>
           <Notice kind="warn">
-            This household has no categories yet. The owner needs to open the app once to seed them.
+            This household has no categories yet. They'll appear after the household owner opens the app.
           </Notice>
         </div>
       )}

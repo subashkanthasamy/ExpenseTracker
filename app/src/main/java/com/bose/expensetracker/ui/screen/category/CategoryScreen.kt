@@ -76,7 +76,7 @@ fun CategoryScreen(viewModel: CategoryViewModel) {
                     containerColor = com.bose.expensetracker.ui.theme.AccentPurple,
                     shape = CircleShape
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Category", tint = Color.White)
+                    Icon(Icons.Default.Add, contentDescription = "Add category", tint = Color.White)
                 }
             }
         }
@@ -107,7 +107,7 @@ fun CategoryScreen(viewModel: CategoryViewModel) {
                 }
                 item {
                     Text(
-                        "Preset Categories",
+                        "Preset categories",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -127,7 +127,7 @@ fun CategoryScreen(viewModel: CategoryViewModel) {
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        "Custom Categories",
+                        "Custom categories",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -216,7 +216,7 @@ private fun CategoryItem(
                 IconButton(onClick = { showDeleteConfirmation = true }) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = "Delete $name",
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -227,8 +227,8 @@ private fun CategoryItem(
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete Category") },
-            text = { Text("Are you sure you want to delete \"$name\"? This action cannot be undone.") },
+            title = { Text("Delete \"$name\"?") },
+            text = { Text("This can't be undone.") },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirmation = false
@@ -256,20 +256,20 @@ private fun AddCategoryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Custom Category") },
+        title = { Text("Add category") },
         text = {
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Category Name") },
+                    label = { Text("Name") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Pick a Color", style = MaterialTheme.typography.labelLarge)
+                Text("Color", style = MaterialTheme.typography.labelLarge)
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Color grid: 6 per row

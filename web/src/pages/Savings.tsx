@@ -44,17 +44,17 @@ export function Savings() {
   const remove = (goal: SavingsGoal) =>
     destructive.ask({
       title: `Delete "${goal.name}"?`,
-      message: `${money(goal.currentAmount)} of ${money(goal.targetAmount)} saved. Deleting the goal does not touch any expense.`,
+      message: `${money(goal.currentAmount)} of ${money(goal.targetAmount)} saved. Your expenses aren't affected. This can't be undone.`,
       run: () => deleteGoal(householdId, goal.id),
     })
 
   return (
     <>
-      <PageHead title="Savings goals" subtitle="What the household is putting money aside for.">
+      <PageHead title="Savings goals" subtitle="What your household is saving for">
         {canManage && (
           <button className="btn primary" type="button" onClick={() => setCreating(true)}>
             <Icon name="add" />
-            New goal
+            New savings goal
           </button>
         )}
       </PageHead>
@@ -67,7 +67,7 @@ export function Savings() {
 
       {!canManage && (
         <div style={{ marginBottom: 16 }}>
-          <Notice>Savings goals are managed by the household owner.</Notice>
+          <Notice>Only the household owner and admins can change savings goals.</Notice>
         </div>
       )}
 
@@ -100,12 +100,12 @@ export function Savings() {
             action={
               canManage ? (
                 <button className="btn primary" type="button" onClick={() => setCreating(true)}>
-                  Create the first one
+                  Add savings goal
                 </button>
               ) : undefined
             }
           >
-            A goal tracks progress toward a target, and works out what to set aside each month.
+            A savings goal tracks your progress and works out how much to set aside each month.
           </Empty>
         </Card>
       ) : (
@@ -127,10 +127,20 @@ export function Savings() {
                   </div>
                   {canManage && (
                     <div className="row" style={{ gap: 4 }}>
-                      <button className="btn ghost icon" type="button" onClick={() => setEditing(goal)}>
+                      <button
+                        className="btn ghost icon"
+                        type="button"
+                        aria-label={`Edit ${goal.name} savings goal`}
+                        onClick={() => setEditing(goal)}
+                      >
                         <Icon name="edit" size={17} />
                       </button>
-                      <button className="btn ghost icon" type="button" onClick={() => void remove(goal)}>
+                      <button
+                        className="btn ghost icon"
+                        type="button"
+                        aria-label={`Delete ${goal.name} savings goal`}
+                        onClick={() => void remove(goal)}
+                      >
                         <Icon name="delete" size={17} />
                       </button>
                     </div>
@@ -151,7 +161,7 @@ export function Savings() {
 
                 {progress.monthlyNeeded != null && (
                   <div style={{ marginTop: 10, fontSize: 13 }}>
-                    Set aside <strong>{money(progress.monthlyNeeded)}</strong> a month to hit the date.
+                    Set aside <strong>{money(progress.monthlyNeeded)}</strong> a month to reach it by the target date.
                   </div>
                 )}
               </Card>
@@ -206,7 +216,7 @@ function GoalForm({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!valid) {
-      setError('Give the goal a name and a target above zero.')
+      setError('Enter a name and a target amount greater than zero.')
       return
     }
     setBusy(true)
@@ -224,14 +234,14 @@ function GoalForm({
       })
       onClose()
     } catch (caught) {
-      setError((caught as Error)?.message ?? 'Could not save.')
+      setError(`Couldn't save the savings goal. ${(caught as Error)?.message ?? 'Check your connection and try again.'}`)
       setBusy(false)
     }
   }
 
   return (
     <Modal
-      title={existing ? 'Edit goal' : 'New savings goal'}
+      title={existing ? 'Edit savings goal' : 'New savings goal'}
       onClose={onClose}
       actions={
         <>
@@ -265,7 +275,7 @@ function GoalForm({
               <input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="e.g. Emergency fund"
+                placeholder="For example, Emergency fund"
                 maxLength={80}
                 autoFocus
                 required
@@ -305,6 +315,7 @@ function GoalForm({
               type="checkbox"
               checked={hasDate}
               onChange={(event) => setHasDate(event.target.checked)}
+              aria-label="Set a target date"
               style={{ width: 'auto' }}
             />
             <input
@@ -314,7 +325,7 @@ function GoalForm({
               disabled={!hasDate}
             />
           </div>
-          <div className="field-hint">With a date, the monthly amount needed is worked out for you.</div>
+          <div className="field-hint">Add a date to see how much to set aside each month.</div>
         </div>
       </form>
     </Modal>

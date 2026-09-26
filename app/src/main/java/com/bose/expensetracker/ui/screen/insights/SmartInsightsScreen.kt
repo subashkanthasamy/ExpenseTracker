@@ -102,7 +102,7 @@ fun SmartInsightsScreen(
                                 letterSpacing = 1.sp
                             )
                             Text(
-                                "\uD83D\uDCA1 Smart Insights",
+                                "Insights",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -218,9 +218,9 @@ fun SmartInsightsScreen(
                         item {
                             SmartInsightCard(
                                 icon = Icons.Filled.ShoppingCart,
-                                title = "${topCat.key} is your biggest\nspend category",
+                                title = "${topCat.key} is your biggest\nspending category",
                                 amount = formatCurrency(topCat.value),
-                                badgeLabel = "HIGHEST SPEND",
+                                badgeLabel = "TOP CATEGORY",
                                 badgeColor = ExpenseRed
                             )
                         }
@@ -232,7 +232,7 @@ fun SmartInsightsScreen(
                         else 0.0
                         SmartInsightCard(
                             icon = Icons.Filled.CalendarMonth,
-                            title = "Daily average spend this\nmonth",
+                            title = "Average daily spending\nthis month",
                             amount = formatCurrency(avgDaily),
                             badgeLabel = "PER DAY",
                             badgeColor = AccentPurple
@@ -273,8 +273,8 @@ fun SmartInsightsScreen(
                             // shows a run-rate projection, or says why it cannot.
                             val projected = uiState.periodSummary.projectedTotal
                             Text(
-                                if (projected == null) "Not enough data to project"
-                                else "Projected by month end",
+                                if (projected == null) "Too early to project"
+                                else "Projected by the end of the month",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -297,8 +297,8 @@ fun SmartInsightsScreen(
                                 )
                             } else {
                                 Text(
-                                    "A few more days of spending are needed before a monthly " +
-                                        "estimate means anything.",
+                                    "Check back after a few more days of spending for a " +
+                                        "monthly estimate.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center
@@ -314,7 +314,7 @@ fun SmartInsightsScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    "Review Budget Plan",
+                                    "Review budgets",
                                     color = Color.White,
                                     fontWeight = FontWeight.SemiBold
                                 )

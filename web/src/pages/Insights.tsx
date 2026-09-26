@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import { DonutChart, Legend, type DonutSlice } from '../components/charts'
+import { DonutChart, Legend, sharePercent, type DonutSlice } from '../components/charts'
 import { PageHead } from '../components/Layout'
 import {
   Card,
@@ -86,7 +86,7 @@ export function Insights() {
 
   return (
     <>
-      <PageHead title="Insights" subtitle="Shared spending only — personal expenses are excluded." />
+      <PageHead title="Insights" subtitle="Shared spending only. Personal expenses aren't included." />
 
       {error != null && (
         <div style={{ marginBottom: 'var(--space-4)' }}>
@@ -125,20 +125,20 @@ export function Insights() {
       ) : (
         <>
           <div className="grid cols-3" style={{ marginBottom: 'var(--space-5)' }}>
-            <Stat label="Total shared" value={money(data.total)} sub={`${data.count} expenses`} />
+            <Stat label="Total shared" value={money(data.total)} sub={`${data.count} ${data.count === 1 ? 'expense' : 'expenses'}`} />
             <Stat label="Average expense" value={money(data.average)} />
             <Stat
               label="Top category"
               value={data.categories[0]?.name ?? '—'}
-              sub={data.categories[0] != null ? money(data.categories[0].amount) : 'Nothing recorded'}
+              sub={data.categories[0] != null ? money(data.categories[0].amount) : 'No expenses yet'}
             />
           </div>
 
           {!canReadAll && (
             <div style={{ marginBottom: 'var(--space-5)' }}>
               <Notice>
-                These totals cover shared expenses, which every member sees identically. Personal
-                expenses are excluded for everyone, so your figures match the owner's.
+                These totals include only shared expenses, so everyone in the household sees the
+                same figures.
               </Notice>
             </div>
           )}
@@ -149,14 +149,14 @@ export function Insights() {
                 title="By category"
                 sub={
                   data.categories.length > DONUT_SEGMENTS
-                    ? `Top ${DONUT_SEGMENTS - 1} shown separately, the remaining ${
+                    ? `Top ${DONUT_SEGMENTS - 1} shown, the other ${
                         data.categories.length - (DONUT_SEGMENTS - 1)
-                      } grouped`
+                      } grouped as Other`
                     : undefined
                 }
               />
               {data.categories.length === 0 ? (
-                <Empty icon="donut_small" title="Nothing in this period" />
+                <Empty icon="donut_small" title="No shared expenses in this period" />
               ) : (
                 <>
                   {/*
@@ -190,7 +190,7 @@ export function Insights() {
                             <span className="t-md t-strong" style={{ flex: 1, minWidth: 0 }}>
                               {entry.name}
                             </span>
-                            <span className="t-xs t-secondary">{(entry.share * 100).toFixed(0)}%</span>
+                            <span className="t-xs t-secondary">{sharePercent(entry.share)}</span>
                             <strong className="t-md num">{moneyShort(entry.amount)}</strong>
                           </div>
                           <Progress value={entry.share} />
@@ -209,14 +209,16 @@ export function Insights() {
                 <Card>
                   <CardHeader
                     title="By person"
-                    sub="Share of the household's shared spending — a contribution breakdown, not a leaderboard."
+                    sub="How much each member added to shared spending"
                   />
                   <div className="list">
                     {data.people.map((person) => (
                       <div key={person.userId} style={{ padding: '9px 0' }}>
-                        <div className="row between" style={{ marginBottom: 6 }}>
-                          <span className="t-md t-strong">{person.name}</span>
-                          <span className="t-sm t-secondary">{(person.share * 100).toFixed(0)}%</span>
+                        <div className="row" style={{ marginBottom: 6 }}>
+                          <span className="t-md t-strong" style={{ flex: 1, minWidth: 0 }}>
+                            {person.name}
+                          </span>
+                          <span className="t-xs t-secondary">{sharePercent(person.share)}</span>
                           <strong className="t-md num">{moneyShort(person.amount)}</strong>
                         </div>
                         <Progress value={person.share} />
@@ -232,9 +234,11 @@ export function Insights() {
                   <div className="list">
                     {data.payments.map((slice) => (
                       <div key={slice.id} style={{ padding: '9px 0' }}>
-                        <div className="row between" style={{ marginBottom: 6 }}>
-                          <span className="t-md t-strong">{slice.label}</span>
-                          <span className="t-sm t-secondary">{(slice.share * 100).toFixed(0)}%</span>
+                        <div className="row" style={{ marginBottom: 6 }}>
+                          <span className="t-md t-strong" style={{ flex: 1, minWidth: 0 }}>
+                            {slice.label}
+                          </span>
+                          <span className="t-xs t-secondary">{sharePercent(slice.share)}</span>
                           <strong className="t-md num">{moneyShort(slice.amount)}</strong>
                         </div>
                         <Progress value={slice.share} />
@@ -246,9 +250,9 @@ export function Insights() {
 
               {data.people.length <= 1 && data.payments.length <= 1 && (
                 <Card>
-                  <Empty icon="group" title="Not enough variety yet">
-                    Per-person and per-payment-method breakdowns appear once more than one member
-                    or method has been used.
+                  <Empty icon="group" title="Not enough data yet">
+                    Breakdowns by person and payment method appear once more than one member or
+                    payment method has been used.
                   </Empty>
                 </Card>
               )}

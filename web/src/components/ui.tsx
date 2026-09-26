@@ -299,7 +299,7 @@ export function useConfirmAction(): { ask: (request: DestructiveRequest) => void
     } catch (caught) {
       // Close the dialog either way: leaving it open beside an error reads as "still working".
       setPending(null)
-      setMessage((caught as Error)?.message ?? 'That did not work. Please try again.')
+      setMessage(`That didn't work. ${(caught as Error)?.message ?? 'Try again.'}`)
     } finally {
       setBusy(false)
     }
@@ -328,7 +328,7 @@ export function useConfirmAction(): { ask: (request: DestructiveRequest) => void
 export function useErrorToast(): { show: (error: unknown) => void; node: ReactNode } {
   const [message, setMessage] = useState('')
   const show = useCallback((error: unknown) => {
-    setMessage((error as Error)?.message ?? 'Something went wrong. Please try again.')
+    setMessage(`Something went wrong. ${(error as Error)?.message ?? 'Try again.'}`)
   }, [])
   const node = message !== '' ? <Toast message={message} onDismiss={() => setMessage('')} /> : null
   return { show, node }
@@ -351,7 +351,7 @@ export function Toast({ message, onDismiss }: { message: string; onDismiss: () =
     <div className="toast" role="status">
       <Icon name="error" size={18} />
       <span>{message}</span>
-      <button className="btn ghost icon" type="button" onClick={onDismiss} aria-label="Dismiss">
+      <button className="btn ghost icon" type="button" onClick={onDismiss} aria-label="Dismiss message">
         <Icon name="close" size={17} />
       </button>
     </div>

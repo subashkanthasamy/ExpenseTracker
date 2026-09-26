@@ -56,17 +56,17 @@ struct ReceiptScannerView: View {
                         .disabled(result.amount == nil)
                     } footer: {
                         if result.amount == nil {
-                            Text("No amount could be read — try a sharper photo, or enter it manually.")
+                            Text("Couldn't find an amount. Try a sharper photo, or enter the amount yourself.")
                         }
                     }
-                    Section("Raw text") {
-                        Text(result.rawText.isEmpty ? "(nothing recognised)" : result.rawText)
+                    Section("Text on the receipt") {
+                        Text(result.rawText.isEmpty ? "No text found" : result.rawText)
                             .font(.caption.monospaced())
                             .foregroundStyle(DS.textSecondary)
                     }
                 }
             }
-            .navigationTitle("Scan Receipt")
+            .navigationTitle("Scan receipt")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }
@@ -86,10 +86,10 @@ struct ReceiptScannerView: View {
                     }
                 }
             }
-            .alert("Error", isPresented: Binding(
+            .alert("Something went wrong", isPresented: Binding(
                 get: { error != nil }, set: { if !$0 { error = nil } }
             )) {
-                Button("OK") { error = nil }
+                Button("Close") { error = nil }
             } message: { Text(error ?? "") }
         }
     }
@@ -200,10 +200,10 @@ struct VoiceEntryView: View {
                 }
 
                 Spacer()
-                Text("Try: \u{201C}spent four hundred on groceries\u{201D}")
+                Text("Try saying \u{201C}spent four hundred on groceries\u{201D}")
                     .font(.caption).foregroundStyle(.tertiary)
             }
-            .navigationTitle("Voice Entry")
+            .navigationTitle("Add by voice")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { voice.stop(); dismiss() }

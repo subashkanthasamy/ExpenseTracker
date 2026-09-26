@@ -79,7 +79,6 @@ fun AddEditExpenseScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
     var showAddCategoryDialog by remember { mutableStateOf(false) }
-    var isExpenseMode by remember { mutableStateOf(true) }
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     LaunchedEffect(Unit) {
@@ -109,7 +108,7 @@ fun AddEditExpenseScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (uiState.isEditing) "Edit Transaction" else "New Transaction",
+                    text = if (uiState.isEditing) "Edit expense" else "New expense",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
@@ -127,51 +126,6 @@ fun AddEditExpenseScreen(
                         contentDescription = "Cancel",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Expense / Income toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .then(
-                            if (isExpenseMode) Modifier.background(AccentPurple)
-                            else Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-                        )
-                        .clickable { isExpenseMode = true }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "↑ Expense",
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isExpenseMode) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .then(
-                            if (!isExpenseMode) Modifier.background(AccentPurple)
-                            else Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-                        )
-                        .clickable { isExpenseMode = false }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "↓ Income",
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (!isExpenseMode) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -197,7 +151,7 @@ fun AddEditExpenseScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "Add by Voice",
+                        "Add by voice",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -225,7 +179,7 @@ fun AddEditExpenseScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "Scan Receipt (OCR)",
+                        "Scan a receipt",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -324,7 +278,7 @@ fun AddEditExpenseScreen(
                 }
             } else {
                 Text(
-                    "Loading categories...",
+                    "Loading categories…",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -416,7 +370,7 @@ fun AddEditExpenseScreen(
             if (uiState.scope == ExpenseScope.PERSONAL) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    "Only you and the household owner can see this. It is left out of shared totals.",
+                    "Personal: only you, the owner and admins can see it. Not counted in shared totals.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -429,7 +383,7 @@ fun AddEditExpenseScreen(
                 value = uiState.notes,
                 onValueChange = { viewModel.setNotes(it) },
                 placeholder = {
-                    Text("Add a note...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                    Text("Add a note (optional)", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
@@ -495,7 +449,7 @@ fun AddEditExpenseScreen(
                     )
                 } else {
                     Text(
-                        text = "Add Transaction ✓",
+                        text = if (uiState.isEditing) "Save changes" else "Add expense",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.SemiBold
                         )
@@ -519,7 +473,7 @@ fun AddEditExpenseScreen(
                     datePickerState.selectedDateMillis?.let { viewModel.setDate(it) }
                     showDatePicker = false
                 }) {
-                    Text("OK", color = AccentPurple)
+                    Text("Select", color = AccentPurple)
                 }
             },
             dismissButton = {
@@ -537,12 +491,12 @@ fun AddEditExpenseScreen(
         var newName by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddCategoryDialog = false },
-            title = { Text("Add Category", fontWeight = FontWeight.Bold) },
+            title = { Text("Add category", fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = newName,
                     onValueChange = { newName = it },
-                    placeholder = { Text("Category Name") },
+                    placeholder = { Text("Category name") },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(

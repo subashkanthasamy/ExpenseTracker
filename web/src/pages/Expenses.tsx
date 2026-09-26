@@ -11,6 +11,7 @@ import {
   Segmented,
   TableSkeleton,
   formatDate,
+  toDateInput,
   useConfirmAction,
 } from '../components/ui'
 import { deleteExpense } from '../data/expenses'
@@ -36,6 +37,24 @@ const SORTABLE: Array<{ key: SortKey; label: string; numeric?: boolean; optional
   { key: 'category', label: 'Category' },
   { key: 'person', label: 'Added by', optional: true },
 ]
+
+/** "Today", "Yesterday", else "Thu, 25 Sep" — with the year only when it is not this one. */
+function dayLabel(millis: number): string {
+  const day = new Date(millis)
+  day.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  // Rounded, because a day that crosses a DST change is 23 or 25 hours long.
+  const daysAgo = Math.round((today.getTime() - day.getTime()) / 86_400_000)
+  if (daysAgo === 0) return 'Today'
+  if (daysAgo === 1) return 'Yesterday'
+  return day.toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    ...(day.getFullYear() !== today.getFullYear() && { year: 'numeric' }),
+  })
+}
 
 export function Expenses() {
   const session = useSession()
@@ -72,6 +91,26 @@ export function Expenses() {
     })
   }, [matched, sort])
 
+  // Day groups only while the list is in date order; any other sort is a flat table, since
+  // grouping rows sorted by amount would scatter one day across many headers.
+  const grouped = sort.key === 'date'
+  const groups = useMemo(() => {
+    if (!grouped) return [{ key: 'all', date: 0, rows: visible, total: 0 }]
+    const out: Array<{ key: string; date: number; rows: Expense[]; total: number }> = []
+    for (const expense of visible) {
+      // Local calendar day, the same key the date picker writes.
+      const key = toDateInput(expense.date)
+      const last = out[out.length - 1]
+      if (last?.key === key) {
+        last.rows.push(expense)
+        last.total += expense.amount
+      } else {
+        out.push({ key, date: expense.date, rows: [expense], total: expense.amount })
+      }
+    }
+    return out
+  }, [grouped, visible])
+
   const categoryChoices = useMemo(() => categoryOptions(expenses), [expenses])
   const personChoices = useMemo(() => personOptions(expenses), [expenses])
   const total = useMemo(() => visible.reduce((sum, e) => sum + e.amount, 0), [visible])
@@ -85,7 +124,7 @@ export function Expenses() {
       message: (
         <>
           {money(expense.amount)} · {expense.categoryName}
-          {expense.notes.trim() !== '' && <> · {expense.notes}</>}. This cannot be undone.
+          {expense.notes.trim() !== '' && <> · {expense.notes}</>}. This can't be undone.
         </>
       ),
       run: () => deleteExpense(session.household.id, expense.id),
@@ -102,7 +141,7 @@ export function Expenses() {
           // measures something different on purpose.
           active
             ? `${visible.length} of ${expenses.length} shown · ${money(total)}`
-            : `${expenses.length} expenses · ${money(total)} all time`
+            : `${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'} · ${money(total)} all time`
         }
       >
         {session.allows('addExpense') && (
@@ -122,8 +161,8 @@ export function Expenses() {
       {!canReadAll && (
         <div style={{ marginBottom: 'var(--space-4)' }}>
           <Notice>
-            You are seeing shared expenses plus your own. Other members' personal expenses are
-            not shown.
+            You can see shared expenses and your own personal expenses. Other members' personal
+            expenses stay private.
           </Notice>
         </div>
       )}
@@ -135,7 +174,7 @@ export function Expenses() {
           <input
             value={criteria.searchQuery}
             onChange={(event) => setCriteria({ searchQuery: event.target.value })}
-            placeholder="Search notes, category, person or amount"
+            placeholder="Search by note, category, person or amount"
             aria-label="Search expenses"
           />
           {criteria.searchQuery !== '' && (
@@ -167,7 +206,7 @@ export function Expenses() {
               {dateRangeOptions().find((o) => o.id === criteria.dateRange)?.label}
               <button
                 type="button"
-                aria-label="Remove the date filter"
+                aria-label="Clear date filter"
                 onClick={() => setCriteria({ dateRange: 'all' })}
               >
                 <Icon name="close" />
@@ -179,7 +218,7 @@ export function Expenses() {
               {categoryChoices.find((o) => o.id === criteria.categoryFilter)?.label ?? 'Category'}
               <button
                 type="button"
-                aria-label="Remove the category filter"
+                aria-label="Clear category filter"
                 onClick={() => setCriteria({ categoryFilter: null })}
               >
                 <Icon name="close" />
@@ -191,7 +230,7 @@ export function Expenses() {
               {personChoices.find((o) => o.id === criteria.personFilter)?.label ?? 'Person'}
               <button
                 type="button"
-                aria-label="Remove the person filter"
+                aria-label="Clear person filter"
                 onClick={() => setCriteria({ personFilter: null })}
               >
                 <Icon name="close" />
@@ -203,7 +242,7 @@ export function Expenses() {
               {paymentMethodLabel(criteria.paymentMethodFilter)}
               <button
                 type="button"
-                aria-label="Remove the payment method filter"
+                aria-label="Clear payment method filter"
                 onClick={() => setCriteria({ paymentMethodFilter: null })}
               >
                 <Icon name="close" />
@@ -222,19 +261,22 @@ export function Expenses() {
               with 60 rows and a narrow filter reads as data loss. */}
           {expenses.length === 0 ? (
             <Empty icon="receipt_long" title="No expenses yet">
-              Expenses added on Android, iOS or here all show up in this list.
+              Add your first expense to see it here.
             </Empty>
           ) : (
             <Empty
               icon="filter_alt_off"
-              title="Nothing matches those filters"
+              title="No expenses match these filters"
               action={
                 <button className="btn" type="button" onClick={clearCriteria}>
                   Clear filters
                 </button>
               }
             >
-              {expenses.length} expenses are recorded, but none of them match.
+              {expenses.length === 1
+                ? 'Your 1 expense doesn\'t match.'
+                : `None of your ${expenses.length} expenses match.`}{' '}
+              Try changing or clearing the filters.
             </Empty>
           )}
         </div>
@@ -249,7 +291,9 @@ export function Expenses() {
         <div className="table-scroll panel">
           <table className="data-table">
             <caption className="sr-only">
-              {visible.length} expenses, sorted by {sort.key}, {sort.dir === 'asc' ? 'ascending' : 'descending'}
+              {visible.length} {visible.length === 1 ? 'expense' : 'expenses'}, sorted by{' '}
+              {(SORTABLE.find((column) => column.key === sort.key)?.label ?? 'Amount').toLowerCase()},{' '}
+              {sort.dir === 'asc' ? 'ascending' : 'descending'}
             </caption>
             <thead>
               <tr>
@@ -257,7 +301,7 @@ export function Expenses() {
                   <th
                     key={column.key}
                     scope="col"
-                    className={column.optional ? 'col-optional' : undefined}
+                    className={column.optional ? 'col-optional' : column.key === 'date' ? 'col-date' : undefined}
                     aria-sort={sort.key === column.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
                   >
                     <button type="button" className="th-sort" onClick={() => toggleSort(column.key)}>
@@ -275,8 +319,8 @@ export function Expenses() {
                     </button>
                   </th>
                 ))}
-                <th scope="col" className="col-optional">
-                  Method
+                <th scope="col" className="col-optional col-method">
+                  Payment
                 </th>
                 <th scope="col" className="num-col" aria-sort={sort.key === 'amount' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                   <button type="button" className="th-sort end" onClick={() => toggleSort('amount')}>
@@ -299,63 +343,86 @@ export function Expenses() {
                 </th>
               </tr>
             </thead>
-            <tbody>
-              {visible.map((expense) => {
-                const category = categories.find((c) => c.id === expense.categoryId)
-                const editable = canEditExpense(session.role, expense, session.uid)
-                return (
-                  <tr key={expense.id}>
-                    <td className="nowrap t-secondary">{formatDate(expense.date)}</td>
-                    <td>
-                      <div className="cell-primary">
-                        <CategoryIcon
-                          name={expense.categoryName}
-                          icon={category?.icon}
-                          color={category ? colorOf(category) : undefined}
-                          size={26}
-                        />
-                        <div style={{ minWidth: 0 }}>
-                          <div className="t-strong">{expense.categoryName}</div>
-                          {expense.notes.trim() !== '' && (
-                            <div className="t-xs t-secondary ellipsis">{expense.notes}</div>
-                          )}
-                        </div>
-                        {expense.scope === 'personal' && <span className="badge personal">Personal</span>}
+            {groups.map((group) => (
+              <tbody key={group.key}>
+                {grouped && (
+                  <tr className="group-head">
+                    {/* Spans every column; hidden ones included, so it survives the breakpoints. */}
+                    <th scope="rowgroup" colSpan={6}>
+                      <div className="group-head-inner">
+                        <span className="t-strong">{dayLabel(group.date)}</span>
+                        <span className="t-tertiary">
+                          {group.rows.length} {group.rows.length === 1 ? 'expense' : 'expenses'}
+                        </span>
+                        <span className="group-total num t-strong">{money(group.total)}</span>
                       </div>
-                    </td>
-                    <td className="col-optional t-secondary nowrap">{expense.addedByName || '—'}</td>
-                    <td className="col-optional t-secondary nowrap">
-                      {expense.paymentMethod !== '' ? paymentMethodLabel(expense.paymentMethod) : '—'}
-                    </td>
-                    <td className="num-col num t-strong nowrap">{money(expense.amount)}</td>
-                    <td className="actions-col">
-                      {editable && (
-                        <div className="actions">
-                          {/* Icon is aria-hidden, so without aria-label these buttons have no
-                              accessible name at all. */}
-                          <button
-                            className="btn ghost icon"
-                            type="button"
-                            aria-label={`Edit ${expense.categoryName} expense of ${money(expense.amount)}`}
-                            onClick={() => editing.open(expense.id)}
-                          >
-                            <Icon name="edit" size={17} />
-                          </button>
-                          <button
-                            className="btn ghost icon"
-                            type="button"
-                            aria-label={`Delete ${expense.categoryName} expense of ${money(expense.amount)}`}
-                            onClick={() => askDelete(expense)}
-                          >
-                            <Icon name="delete" size={17} />
-                          </button>
-                        </div>
-                      )}
-                    </td>
+                    </th>
                   </tr>
-                )
-              })}
-            </tbody>
+                )}
+                {group.rows.map((expense) => {
+                  const category = categories.find((c) => c.id === expense.categoryId)
+                  const editable = canEditExpense(session.role, expense, session.uid)
+                  return (
+                    <tr key={expense.id}>
+                      {/* Empty when grouped: the day header already says it, and the gap indents the rows. */}
+                      <td className="col-date nowrap t-secondary">{grouped ? null : formatDate(expense.date)}</td>
+                      <td className="col-grow">
+                        <div className="cell-primary">
+                          <CategoryIcon
+                            name={expense.categoryName}
+                            icon={category?.icon}
+                            color={category ? colorOf(category) : undefined}
+                            size={26}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="name-line">
+                              <span className="t-strong ellipsis">{expense.categoryName}</span>
+                              {expense.scope === 'personal' && <span className="badge personal">Personal</span>}
+                            </div>
+                            {/* On a phone the Date column is hidden, so the date moves here. */}
+                            <div className="subline t-xs t-secondary">
+                              {!grouped && <span className="date-inline">{formatDate(expense.date)}</span>}
+                              {expense.notes.trim() !== '' && <span className="ellipsis">{expense.notes}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="col-optional t-secondary">
+                        <div className="ellipsis person">{expense.addedByName || '—'}</div>
+                      </td>
+                      <td className="col-optional col-method t-secondary nowrap">
+                        {expense.paymentMethod !== '' ? paymentMethodLabel(expense.paymentMethod) : '—'}
+                      </td>
+                      <td className="num-col num t-strong nowrap">{money(expense.amount)}</td>
+                      <td className="actions-col">
+                        {editable && (
+                          <div className="actions">
+                            {/* Icon is aria-hidden, so without aria-label these buttons have no
+                                accessible name at all. */}
+                            <button
+                              className="btn ghost icon"
+                              type="button"
+                              aria-label={`Edit ${expense.categoryName} expense of ${money(expense.amount)}`}
+                              onClick={() => editing.open(expense.id)}
+                            >
+                              <Icon name="edit" size={17} />
+                            </button>
+                            <button
+                              className="btn ghost icon"
+                              type="button"
+                              aria-label={`Delete ${expense.categoryName} expense of ${money(expense.amount)}`}
+                              onClick={() => askDelete(expense)}
+                            >
+                              <Icon name="delete" size={17} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            ))}
           </table>
         </div>
       )}
@@ -363,7 +430,7 @@ export function Expenses() {
       {filters.isOpen && (
         <Modal
           title="Filters"
-          subtitle="These narrow the list only. Nothing here changes what is stored."
+          subtitle="Choose which expenses to show"
           onClose={filters.close}
           actions={
             <>

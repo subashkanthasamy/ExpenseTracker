@@ -56,15 +56,14 @@ export function Budgets() {
 
   const remove = (budget: Budget) =>
     destructive.ask({
-      title: 'Remove this budget?',
-      message: `${budget.categoryName} will stop being tracked against a monthly limit. The expenses themselves are untouched.`,
-      confirmLabel: 'Remove',
+      title: 'Delete this budget?',
+      message: `${budget.categoryName} will no longer have a monthly budget. Your expenses aren't affected.`,
       run: () => deleteBudget(householdId, budget.id),
     })
 
   return (
     <>
-      <PageHead title="Budgets" subtitle="Monthly limits per category, measured against shared spending.">
+      <PageHead title="Budgets" subtitle="Monthly budgets by category, tracked against shared spending">
         {canManage && (
           <button className="btn primary" type="button" onClick={() => setCreating(true)}>
             <Icon name="add" />
@@ -82,7 +81,7 @@ export function Budgets() {
       {!canManage && (
         <div style={{ marginBottom: 16 }}>
           <Notice>
-            Budgets are set by the household owner. You can see them but not change them.
+            Only the household owner and admins can change budgets.
           </Notice>
         </div>
       )}
@@ -104,12 +103,12 @@ export function Budgets() {
             action={
               canManage ? (
                 <button className="btn primary" type="button" onClick={() => setCreating(true)}>
-                  Create the first one
+                  Add budget
                 </button>
               ) : undefined
             }
           >
-            A budget sets a monthly ceiling for one category and warns at 80%.
+            A budget tracks a category's spending each month and warns you at 80%.
           </Empty>
         </Card>
       ) : (
@@ -148,10 +147,20 @@ export function Budgets() {
                     </span>
                     {canManage && (
                       <>
-                        <button className="btn ghost icon" type="button" onClick={() => setEditing(budget)}>
+                        <button
+                          className="btn ghost icon"
+                          type="button"
+                          aria-label={`Edit ${budget.categoryName} budget`}
+                          onClick={() => setEditing(budget)}
+                        >
                           <Icon name="edit" size={17} />
                         </button>
-                        <button className="btn ghost icon" type="button" onClick={() => void remove(budget)}>
+                        <button
+                          className="btn ghost icon"
+                          type="button"
+                          aria-label={`Delete ${budget.categoryName} budget`}
+                          onClick={() => void remove(budget)}
+                        >
                           <Icon name="delete" size={17} />
                         </button>
                       </>
@@ -216,7 +225,7 @@ function BudgetForm({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!valid) {
-      setError('Pick a category and a limit above zero.')
+      setError('Choose a category and enter a budget greater than zero.')
       return
     }
     setBusy(true)
@@ -231,7 +240,7 @@ function BudgetForm({
       })
       onClose()
     } catch (caught) {
-      setError((caught as Error)?.message ?? 'Could not save.')
+      setError(`Couldn't save the budget. ${(caught as Error)?.message ?? 'Check your connection and try again.'}`)
       setBusy(false)
     }
   }
@@ -272,7 +281,7 @@ function BudgetForm({
             ))}
           </select>
         </Field>
-        <Field label="Monthly limit" hint={parsed > 0 ? money(parsed) : undefined}>
+        <Field label="Monthly budget" hint={parsed > 0 ? money(parsed) : undefined}>
           <input
             type="number"
             inputMode="decimal"

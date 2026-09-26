@@ -200,7 +200,7 @@ class AddEditExpenseViewModel {
               let uid = authService.currentUserId,
               let amt = Double(amount), amt > 0,
               let cat = selectedCategory else {
-            error = "Please fill amount and select a category"
+            error = "Enter an amount greater than zero and choose a category."
             return false
         }
         isLoading = true
@@ -227,7 +227,7 @@ class AddEditExpenseViewModel {
             return true
         } catch {
             print("AddEditExpense save error: \(error)")
-            self.error = error.localizedDescription
+            self.error = "Couldn't save the expense. Check your connection and try again."
             isLoading = false
             return false
         }

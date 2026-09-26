@@ -40,12 +40,12 @@ final class VoiceInputService {
             SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
         }
         guard speech == .authorized else {
-            state = .denied("Speech recognition permission was declined.")
+            state = .denied("Speech recognition is turned off for Expense Tracker. Turn it on in Settings to add expenses by voice.")
             return false
         }
         let mic = await AVAudioApplication.requestRecordPermission()
         guard mic else {
-            state = .denied("Microphone permission was declined.")
+            state = .denied("Microphone access is turned off for Expense Tracker. Turn it on in Settings to add expenses by voice.")
             return false
         }
         return true
@@ -57,7 +57,7 @@ final class VoiceInputService {
         guard !isListening else { return }
         guard await authorize() else { return }
         guard let recognizer, recognizer.isAvailable else {
-            state = .failed("Speech recognition is unavailable right now.")
+            state = .failed("Voice entry isn't available right now. Try again later.")
             return
         }
 
@@ -80,7 +80,7 @@ final class VoiceInputService {
             audioEngine.prepare()
             try audioEngine.start()
         } catch {
-            state = .failed(error.localizedDescription)
+            state = .failed("Couldn't start listening. Try again.")
             return
         }
 

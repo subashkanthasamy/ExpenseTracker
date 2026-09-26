@@ -104,7 +104,7 @@ struct MainTabView: View {
                     ProgressView()
                 }
             }
-            .tabItem { Label("Home", systemImage: "house.fill") }
+            .tabItem { Label("Dashboard", systemImage: "house.fill") }
             .tag(0)
 
             NavigationStack {
@@ -119,7 +119,7 @@ struct MainTabView: View {
                     ProgressView()
                 }
             }
-            .tabItem { Label("Timeline", systemImage: "list.bullet") }
+            .tabItem { Label("Expenses", systemImage: "list.bullet") }
             .tag(1)
 
             NavigationStack {
@@ -144,7 +144,7 @@ struct MainTabView: View {
                     ProgressView()
                 }
             }
-            .tabItem { Label("Wealth", systemImage: "banknote.fill") }
+            .tabItem { Label("Net worth", systemImage: "banknote.fill") }
             .tag(3)
 
             NavigationStack {
@@ -227,11 +227,11 @@ struct MoreView: View {
 
                 NavigationLink {
                     SavingsView(viewModel: SavingsViewModel(authService: authService, firestoreService: firestoreService), canManage: canManageSharedConfig)
-                } label: { Label("Savings Goals", systemImage: "target") }
+                } label: { Label("Savings goals", systemImage: "target") }
 
                 NavigationLink {
                     RecurringView(viewModel: RecurringViewModel(authService: authService, firestoreService: firestoreService), canManage: canManageSharedConfig)
-                } label: { Label("Recurring Expenses", systemImage: "arrow.clockwise.circle") }
+                } label: { Label("Recurring", systemImage: "arrow.clockwise.circle") }
 
                 NavigationLink {
                     ReminderView(notifications: notifications)
@@ -241,7 +241,7 @@ struct MoreView: View {
                 if FeatureFlags.shared.FINANCIAL_COACH_ENABLED {
                     NavigationLink {
                         FinancialCoachView(viewModel: FinancialCoachViewModel(authService: authService, firestoreService: firestoreService))
-                    } label: { Label("Financial Coach", systemImage: "brain.head.profile") }
+                    } label: { Label("Financial coach", systemImage: "brain.head.profile") }
                 }
             }
 
@@ -257,11 +257,11 @@ struct MoreView: View {
             Section("Household") {
                 NavigationLink {
                     HouseholdView(viewModel: HouseholdViewModel(authService: authService, firestoreService: firestoreService))
-                } label: { Label("Manage Household", systemImage: "house.fill") }
+                } label: { Label("Household", systemImage: "house.fill") }
             }
 
             Section {
-                Button("Sign Out", role: .destructive) {
+                Button("Sign out", role: .destructive) {
                     authVM.signOut()
                 }
             }

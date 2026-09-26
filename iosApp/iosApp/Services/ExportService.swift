@@ -74,10 +74,10 @@ struct ExportService {
             ctx.beginPage()
             var y = margin
 
-            "Expense Report".draw(at: CGPoint(x: margin, y: y), withAttributes: title)
+            "Expense report".draw(at: CGPoint(x: margin, y: y), withAttributes: title)
             y += 30
             let total = expenses.reduce(0.0) { $0 + $1.amount }
-            "Total: \(total)   (\(expenses.count) expenses)".draw(at: CGPoint(x: margin, y: y), withAttributes: body)
+            "Total: \(total)   (\(expenses.count) \(expenses.count == 1 ? "expense" : "expenses"))".draw(at: CGPoint(x: margin, y: y), withAttributes: body)
             y += 28
 
             for (i, h) in ["Date", "Category", "Amount", "Notes"].enumerated() {
@@ -107,37 +107,78 @@ struct ExportService {
 
     // MARK: - Import
 
-    /// Parses a CSV previously produced by `exportCSV` (or Android's exporter).
-    /// Rows that don't parse are skipped rather than aborting the whole import.
+    enum ImportError: LocalizedError {
+        case missingColumns
+
+        var errorDescription: String? {
+            "This file isn't in the expected format. It needs Date, Amount and Category columns."
+        }
+    }
+
+    /// Parses a CSV produced by this app's exporter, Android's or the web's. Columns are
+    /// matched by header name, since the three exporters order them differently; a file
+    /// with no header row falls back to the old positional layout (date, category, amount,
+    /// notes). Rows that don't parse are skipped rather than aborting the whole import.
     func parseCSV(at url: URL, householdId: String, addedBy: String, addedByName: String) throws -> (expenses: [Expense], result: ImportResult) {
         let text = try String(contentsOf: url, encoding: .utf8)
         let f = Self.dateFormatter
         var expenses: [Expense] = []
         var skipped = 0
 
-        for (index, rawLine) in text.split(separator: "\n", omittingEmptySubsequences: true).enumerated() {
-            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            if line.isEmpty { continue }
-            // Skip a header row if present.
-            if index == 0, line.lowercased().hasPrefix("date,") { continue }
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: true)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard let first = lines.first else {
+            return (expenses, ImportResult(imported: 0, skipped: 0))
+        }
 
+        // Header present if the first row starts with "date" — the same test as before.
+        // A byte-order mark (spreadsheet apps add one) would otherwise hide the header.
+        let names = Self.splitCSVLine(first)
+            .map { $0.trimmingCharacters(in: CharacterSet.whitespaces.union(["\u{FEFF}"])).lowercased() }
+        let hasHeader = names.first == "date"
+        let column: (String) -> Int? = { name in names.firstIndex(of: name) }
+        let dateCol, categoryCol, amountCol: Int
+        let notesCol, methodCol, scopeCol: Int?
+        if hasHeader {
+            guard let d = column("date"), let a = column("amount"), let c = column("category") else {
+                throw ImportError.missingColumns
+            }
+            dateCol = d; amountCol = a; categoryCol = c
+            notesCol = column("notes")
+            methodCol = column("payment method")
+            scopeCol = column("visibility")
+        } else {
+            dateCol = 0; categoryCol = 1; amountCol = 2
+            notesCol = 3; methodCol = nil; scopeCol = nil
+        }
+        let field: ([String], Int?) -> String = { cols, i in
+            guard let i, i < cols.count else { return "" }
+            return cols[i].trimmingCharacters(in: .whitespaces)
+        }
+
+        for line in lines.dropFirst(hasHeader ? 1 : 0) {
             let cols = Self.splitCSVLine(line)
-            guard cols.count >= 3,
-                  let date = f.date(from: cols[0]),
-                  let amount = Double(cols[2]) else {
+            guard let date = f.date(from: field(cols, dateCol)),
+                  let amount = Double(field(cols, amountCol)) else {
                 skipped += 1
                 continue
             }
+            let method = field(cols, methodCol).lowercased()
             expenses.append(Expense(
                 id: UUID().uuidString,
                 householdId: householdId,
                 amount: amount,
                 categoryId: "",
-                categoryName: cols[1],
+                categoryName: field(cols, categoryCol),
                 date: date,
-                notes: cols.count > 3 ? cols[3] : "",
+                notes: field(cols, notesCol),
                 addedBy: addedBy,
-                addedByName: addedByName
+                addedByName: addedByName,
+                paymentMethod: PaymentMethod.companion.selectable.first {
+                    $0.label.lowercased() == method || $0.wire == method
+                } ?? PaymentMethod.unspecified,
+                scope: field(cols, scopeCol).lowercased() == "personal" ? ExpenseScope.personal : ExpenseScope.shared
             ))
         }
         return (expenses, ImportResult(imported: expenses.count, skipped: skipped))

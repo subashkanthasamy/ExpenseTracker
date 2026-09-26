@@ -76,7 +76,7 @@ class AddEditExpenseViewModel @Inject constructor(
             val uid = userId
             android.util.Log.d("AddEditExpenseVM", "loadData: userId=$uid")
             if (uid == null) {
-                _uiState.update { it.copy(error = "Not signed in. Please restart the app.") }
+                _uiState.update { it.copy(error = "You're signed out. Sign in again to add expenses.") }
                 return@launch
             }
 
@@ -91,7 +91,7 @@ class AddEditExpenseViewModel @Inject constructor(
             }
             householdId = hId
             if (hId == null) {
-                _uiState.update { it.copy(error = "No household found. Please set up a household first.") }
+                _uiState.update { it.copy(error = "Set up or join a household before adding expenses.") }
                 return@launch
             }
 
@@ -229,22 +229,22 @@ class AddEditExpenseViewModel @Inject constructor(
             val state = _uiState.value
             val amount = state.amount.toDoubleOrNull()
             if (amount == null) {
-                _uiState.update { it.copy(error = "Please enter a valid amount") }
+                _uiState.update { it.copy(error = "Enter a valid amount.") }
                 return@launch
             }
             val category = state.selectedCategory
             if (category == null) {
-                _uiState.update { it.copy(error = "Please select a category") }
+                _uiState.update { it.copy(error = "Choose a category.") }
                 return@launch
             }
             val uid = userId
             if (uid == null) {
-                _uiState.update { it.copy(error = "Not signed in. Please restart the app.") }
+                _uiState.update { it.copy(error = "You're signed out. Sign in again to add expenses.") }
                 return@launch
             }
             val hId = householdId
             if (hId == null) {
-                _uiState.update { it.copy(error = "No household found. Please set up a household first.") }
+                _uiState.update { it.copy(error = "Set up or join a household before adding expenses.") }
                 return@launch
             }
 

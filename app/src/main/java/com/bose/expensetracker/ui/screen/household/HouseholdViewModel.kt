@@ -114,7 +114,7 @@ class HouseholdViewModel @Inject constructor(
                     loadHouseholdData()
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(errorMessage = "Could not change role: ${error.message}") }
+                    _uiState.update { it.copy(errorMessage = "Couldn't change the role. ${error.message}") }
                 }
         }
     }
@@ -128,7 +128,7 @@ class HouseholdViewModel @Inject constructor(
                     loadHouseholdData()
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(errorMessage = "Could not remove member: ${error.message}") }
+                    _uiState.update { it.copy(errorMessage = "Couldn't remove this member. ${error.message}") }
                 }
         }
     }
@@ -141,13 +141,13 @@ class HouseholdViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(errorMessage = null) }
             val uid = authRepository.getCurrentUserId() ?: run {
-                _uiState.update { it.copy(errorMessage = "Not signed in") }
+                _uiState.update { it.copy(errorMessage = "You're signed out. Sign in and try again.") }
                 return@launch
             }
             householdRepository.setActiveHousehold(uid, householdId).onSuccess {
                 _householdSwitchedEvent.emit(Unit)
             }.onFailure { error ->
-                _uiState.update { it.copy(errorMessage = "Switch failed: ${error.message}") }
+                _uiState.update { it.copy(errorMessage = "Couldn't switch households. ${error.message}") }
             }
         }
     }
@@ -156,14 +156,14 @@ class HouseholdViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(errorMessage = null) }
             val uid = authRepository.getCurrentUserId() ?: run {
-                _uiState.update { it.copy(errorMessage = "Not signed in") }
+                _uiState.update { it.copy(errorMessage = "You're signed out. Sign in and try again.") }
                 return@launch
             }
             householdRepository.createHousehold(name, uid).onSuccess { household ->
                 categoryRepository.seedPresetCategories(household.id)
                 _householdSwitchedEvent.emit(Unit)
             }.onFailure { error ->
-                _uiState.update { it.copy(errorMessage = "Create failed: ${error.message}") }
+                _uiState.update { it.copy(errorMessage = "Couldn't create the household. ${error.message}") }
             }
         }
     }
@@ -172,13 +172,13 @@ class HouseholdViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(errorMessage = null) }
             val uid = authRepository.getCurrentUserId() ?: run {
-                _uiState.update { it.copy(errorMessage = "Not signed in") }
+                _uiState.update { it.copy(errorMessage = "You're signed out. Sign in and try again.") }
                 return@launch
             }
             householdRepository.joinHousehold(inviteCode, uid).onSuccess {
                 _householdSwitchedEvent.emit(Unit)
             }.onFailure { error ->
-                _uiState.update { it.copy(errorMessage = "Join failed: ${error.message}") }
+                _uiState.update { it.copy(errorMessage = "Couldn't join the household. ${error.message}") }
             }
         }
     }
@@ -186,7 +186,7 @@ class HouseholdViewModel @Inject constructor(
     fun deleteHousehold(householdId: String) {
         viewModelScope.launch {
             val uid = authRepository.getCurrentUserId() ?: run {
-                _uiState.update { it.copy(errorMessage = "Not signed in") }
+                _uiState.update { it.copy(errorMessage = "You're signed out. Sign in and try again.") }
                 return@launch
             }
 
@@ -204,7 +204,7 @@ class HouseholdViewModel @Inject constructor(
                 }
             }.onFailure { error ->
                 android.util.Log.e("HouseholdVM", "deleteHousehold failed: ${error.message}", error)
-                _uiState.update { it.copy(isDeleting = false, errorMessage = "Delete failed: ${error.message}") }
+                _uiState.update { it.copy(isDeleting = false, errorMessage = "Couldn't delete the household. Check your connection and try again.") }
             }
         }
     }

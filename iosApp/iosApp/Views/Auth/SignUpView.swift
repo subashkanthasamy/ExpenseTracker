@@ -16,13 +16,13 @@ struct SignUpView: View {
                         .font(.title2)
                 }
                 Spacer()
-                Text("Create Account").font(.title2).bold()
+                Text("Create account").font(.title2).bold()
                 Spacer()
             }
             .padding(.horizontal)
 
             VStack(spacing: 16) {
-                TextField("Display Name", text: $displayName)
+                TextField("Display name", text: $displayName)
                     .textFieldStyle(.roundedBorder)
                 TextField("Email", text: $email)
                     .textContentType(.emailAddress)
@@ -31,7 +31,7 @@ struct SignUpView: View {
                     .textFieldStyle(.roundedBorder)
                 SecureField("Password", text: $password)
                     .textFieldStyle(.roundedBorder)
-                SecureField("Confirm Password", text: $confirmPassword)
+                SecureField("Confirm password", text: $confirmPassword)
                     .textFieldStyle(.roundedBorder)
             }
             .padding(.horizontal)
@@ -49,7 +49,7 @@ struct SignUpView: View {
                 Task { await viewModel.signUp(email: email, password: password, displayName: displayName) }
             } label: {
                 if viewModel.isLoading { ProgressView().tint(.white) }
-                else { Text("Sign Up") }
+                else { Text("Sign up") }
             }
             .frame(maxWidth: .infinity).padding()
             .background(AppColors.accentPurple).foregroundStyle(.white)

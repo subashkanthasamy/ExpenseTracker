@@ -18,10 +18,10 @@ enum class PaymentMethod(val label: String, val wire: String, val emoji: String)
      * something the user picks — defaulting those rows to [CASH] would invent data and make
      * the spending breakdown lie about money that may well have moved by card.
      */
-    UNSPECIFIED("Unspecified", "", "•"),
+    UNSPECIFIED("Not recorded", "", "•"),
     CASH("Cash", "cash", "💵"),
     UPI("UPI", "upi", "📱"),
-    CREDIT_CARD("Credit Card", "credit_card", "💳");
+    CREDIT_CARD("Credit card", "credit_card", "💳");
 
     companion object {
         /** The methods a user may choose, in picker order. [UNSPECIFIED] is not among them. */

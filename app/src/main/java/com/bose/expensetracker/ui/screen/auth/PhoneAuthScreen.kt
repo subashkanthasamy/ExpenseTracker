@@ -73,7 +73,7 @@ fun PhoneAuthScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Phone Sign In") },
+                title = { Text("Sign in with phone") },
                 navigationIcon = {
                     IconButton(onClick = {
                         viewModel.resetPhoneAuth()
@@ -105,7 +105,7 @@ fun PhoneAuthScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "We'll send you a verification code via SMS",
+                        text = "We'll text you a verification code.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -132,7 +132,7 @@ fun PhoneAuthScreen(
                         OutlinedTextField(
                             value = phoneNumber,
                             onValueChange = { phoneNumber = it },
-                            label = { Text("Phone Number") },
+                            label = { Text("Phone number") },
                             placeholder = { Text("9876543210") },
                             leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
                             keyboardOptions = KeyboardOptions(
@@ -157,7 +157,7 @@ fun PhoneAuthScreen(
                         if (uiState.isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp))
                         } else {
-                            Text("Send Verification Code")
+                            Text("Send code")
                         }
                     }
                 }
@@ -202,7 +202,7 @@ fun PhoneAuthScreen(
                         if (uiState.isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp))
                         } else {
-                            Text("Verify & Sign In")
+                            Text("Verify and sign in")
                         }
                     }
 
@@ -216,11 +216,11 @@ fun PhoneAuthScreen(
                             otpCode = ""
                             viewModel.resetPhoneAuth()
                         }) {
-                            Text("Change Number")
+                            Text("Change number")
                         }
 
                         TextButton(onClick = { viewModel.resendVerificationCode(activity) }) {
-                            Text("Resend Code")
+                            Text("Resend code")
                         }
                     }
                 }
@@ -229,7 +229,7 @@ fun PhoneAuthScreen(
                     CircularProgressIndicator(modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Verifying automatically...",
+                        text = "Verifying…",
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }

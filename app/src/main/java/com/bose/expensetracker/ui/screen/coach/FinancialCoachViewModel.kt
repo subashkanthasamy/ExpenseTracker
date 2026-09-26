@@ -65,7 +65,7 @@ class FinancialCoachViewModel @Inject constructor(
             it.copy(
                 messages = listOf(
                     ChatMessage(
-                        text = "Hello! I'm your AI Financial Coach. I've analyzed your spending patterns. How can I help you optimize your wealth today?",
+                        text = "Hi, I'm your financial coach. I've looked at your spending this month. What would you like to know?",
                         isUser = false
                     )
                 )
@@ -160,13 +160,13 @@ class FinancialCoachViewModel @Inject constructor(
                     text = "Based on your spending patterns, you could potentially save ${formatCurrency(savingsEstimate)} this month by reducing discretionary spending in $topCategory.",
                     isUser = false,
                     inlineStats = listOf(
-                        InlineStat("\uD83D\uDCB8", "Potential Savings", formatCurrency(savingsEstimate), true)
+                        InlineStat("\uD83D\uDCB8", "Potential savings", formatCurrency(savingsEstimate), true)
                     )
                 )
             }
             lowerQuery.contains("score") || lowerQuery.contains("financial") -> {
                 ChatMessage(
-                    text = "Your financial health score is ${_uiState.value.financialScore}/100. This is based on your spending habits, savings rate, and budget adherence. Keep it up!",
+                    text = "Your financial health score is ${_uiState.value.financialScore}/100. This is based on your spending habits, savings rate, and budget adherence. Keep it up.",
                     isUser = false,
                     inlineStats = listOf(
                         InlineStat("⭐", "Score", "${_uiState.value.financialScore}/100", true)

@@ -15,8 +15,8 @@ struct ReceiptScanService {
 
         var errorDescription: String? {
             switch self {
-            case .noImageData: return "Could not read that image."
-            case .recognitionFailed(let reason): return "Text recognition failed: \(reason)"
+            case .noImageData: return "Couldn't open that image. Try another photo."
+            case .recognitionFailed: return "Couldn't read text from that photo. Try again with a clearer photo."
             }
         }
     }

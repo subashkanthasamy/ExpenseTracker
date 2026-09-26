@@ -78,7 +78,7 @@ fun RecurringScreen(
                 containerColor = AccentPurple,
                 contentColor = Color.White
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Recurring")
+                Icon(Icons.Default.Add, contentDescription = "Add recurring expense")
             }
         }
     ) { padding ->
@@ -110,9 +110,9 @@ fun RecurringScreen(
             } else if (uiState.items.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("No recurring expenses", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("No recurring expenses yet", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Tap + to add rent, subscriptions, EMIs", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Tap + to add rent, subscriptions or EMIs.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             } else {
@@ -198,7 +198,7 @@ private fun RecurringCard(
             )
             Spacer(modifier = Modifier.width(4.dp))
             IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = ExpenseRed, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Delete, contentDescription = "Delete ${item.categoryName} recurring expense", tint = ExpenseRed, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -222,7 +222,7 @@ private fun AddRecurringDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Recurring Expense") },
+        title = { Text("Add recurring expense") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ExposedDropdownMenuBox(expanded = catExpanded, onExpandedChange = { catExpanded = it }) {
@@ -284,7 +284,7 @@ private fun AddRecurringDialog(
                     OutlinedTextField(
                         value = dayOfMonth,
                         onValueChange = { dayOfMonth = it.filter { c -> c.isDigit() }.take(2) },
-                        label = { Text("Day of Month (1-31)") },
+                        label = { Text("Day of month (1–31)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -292,7 +292,7 @@ private fun AddRecurringDialog(
 
                 // Asked once here rather than left off every generated expense.
                 Text(
-                    "PAID WITH",
+                    "Paid with",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

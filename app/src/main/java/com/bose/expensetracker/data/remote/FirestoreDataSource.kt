@@ -345,7 +345,7 @@ class FirestoreDataSource @Inject constructor(
         val collection = firestore.collection("households").document(householdId)
             .collection(subCollection)
         val snapshot = collection.get().await()
-        snapshot.documents.chunked(500).forEach { chunk ->
+        snapshot.documents.chunked(400).forEach { chunk ->
             val batch = firestore.batch()
             chunk.forEach { doc -> batch.delete(doc.reference) }
             batch.commit().await()
@@ -362,6 +362,32 @@ class FirestoreDataSource @Inject constructor(
 
     suspend fun deleteAllLiabilities(householdId: String) {
         deleteAllInSubCollection(householdId, "liabilities")
+    }
+
+    suspend fun deleteAllBudgets(householdId: String) {
+        deleteAllInSubCollection(householdId, "budgets")
+    }
+
+    suspend fun deleteAllSavingsGoals(householdId: String) {
+        deleteAllInSubCollection(householdId, "savingsGoals")
+    }
+
+    suspend fun deleteAllRecurring(householdId: String) {
+        deleteAllInSubCollection(householdId, "recurring")
+    }
+
+    /**
+     * Deletes the invite-code lookup, but only if it exists and points at this household.
+     * Households predating the lookup have none, and the rules deny deleting a missing or
+     * foreign code — so an unconditional delete would make those households undeletable.
+     */
+    suspend fun deleteInviteCodeIfOwned(inviteCode: String, householdId: String) {
+        if (inviteCode.isBlank()) return
+        val ref = firestore.collection("inviteCodes").document(inviteCode)
+        val existing = ref.get().await()
+        if (existing.exists() && existing.getString("householdId") == householdId) {
+            ref.delete().await()
+        }
     }
 
     // --- Expenses ---
@@ -413,7 +439,7 @@ class FirestoreDataSource @Inject constructor(
         val collection = firestore.collection("households").document(householdId)
             .collection("expenses")
         val snapshot = collection.get().await()
-        val batchSize = 500
+        val batchSize = 400
         snapshot.documents.chunked(batchSize).forEach { chunk ->
             val batch = firestore.batch()
             chunk.forEach { doc -> batch.delete(doc.reference) }

@@ -167,7 +167,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           // Explicitly an error state, not an empty one.
           setState({
             status: 'error',
-            message: error.message || 'Could not load your household.',
+            message: error.message
+              ? `Couldn't load your household. ${error.message}`
+              : "Couldn't load your household. Check your connection and try again.",
             user,
           })
         },

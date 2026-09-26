@@ -17,7 +17,7 @@ struct ReminderView: View {
         List {
             if notifications.authorizationDenied {
                 Section {
-                    Label("Notifications are turned off for this app. Enable them in Settings.",
+                    Label("Notifications are off for Expense Tracker. Turn them on in Settings.",
                           systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
                         .font(.caption)
@@ -36,7 +36,7 @@ struct ReminderView: View {
                                 .font(.caption).foregroundStyle(DS.textSecondary)
                         }
                     }
-                    Button("Remove", role: .destructive) { notifications.remove(daily) }
+                    Button("Delete", role: .destructive) { notifications.remove(daily) }
                 } else {
                     DatePicker("Remind me at", selection: $dailyTime, displayedComponents: .hourAndMinute)
                     Button("Add daily reminder") {
@@ -114,7 +114,7 @@ private struct AddBillSheet: View {
                     DatePicker("Time", selection: $time, displayedComponents: .hourAndMinute)
                 }
             }
-            .navigationTitle("Add Bill")
+            .navigationTitle("Add bill reminder")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

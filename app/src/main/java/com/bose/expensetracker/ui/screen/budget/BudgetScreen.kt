@@ -78,7 +78,7 @@ fun BudgetScreen(
                     containerColor = AccentPurple,
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Budget")
+                    Icon(Icons.Default.Add, contentDescription = "Add budget")
                 }
             }
         }
@@ -117,13 +117,13 @@ fun BudgetScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            "No budgets set",
+                            "No budgets yet",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "Tap + to set a spending limit for a category",
+                            "Tap + to set a monthly budget for a category.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -215,7 +215,7 @@ private fun BudgetCard(
                 if (onDelete != null) IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = "Delete ${budget.categoryName} budget",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
@@ -250,7 +250,7 @@ private fun AddBudgetDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Budget") },
+        title = { Text("Add budget") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ExposedDropdownMenuBox(
@@ -291,7 +291,7 @@ private fun AddBudgetDialog(
                 OutlinedTextField(
                     value = limitText,
                     onValueChange = { limitText = it.filter { c -> c.isDigit() || c == '.' } },
-                    label = { Text("Monthly Limit (\u20B9)") },
+                    label = { Text("Monthly budget (\u20B9)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
                 )

@@ -68,7 +68,7 @@ fun NetWorthScreen(viewModel: NetWorthViewModel) {
                     containerColor = com.bose.expensetracker.ui.theme.AccentPurple,
                     shape = androidx.compose.foundation.shape.CircleShape
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
+                    Icon(Icons.Default.Add, contentDescription = "Add asset or liability", tint = Color.White)
                 }
             }
         }
@@ -91,7 +91,7 @@ fun NetWorthScreen(viewModel: NetWorthViewModel) {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "Net Worth",
+                            "Net worth",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -108,7 +108,7 @@ fun NetWorthScreen(viewModel: NetWorthViewModel) {
                         )
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
-                            Text("Net Worth", style = MaterialTheme.typography.labelLarge)
+                            Text("Net worth", style = MaterialTheme.typography.labelLarge)
                             Text(
                                 currencyFormat.format(uiState.netWorth),
                                 style = MaterialTheme.typography.headlineLarge,
@@ -146,7 +146,7 @@ fun NetWorthScreen(viewModel: NetWorthViewModel) {
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                    "Net Worth Over Time",
+                                    "Net worth over time",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -273,12 +273,12 @@ private fun AddNetWorthDialog(
     var selectedTypeIndex by remember { mutableIntStateOf(0) }
 
     val assetTypes = listOf("Cash", "Investment", "Property", "Other")
-    val liabilityTypes = listOf("Loan", "Credit Card", "Mortgage", "Other")
+    val liabilityTypes = listOf("Loan", "Credit card", "Mortgage", "Other")
     val types = if (isAsset) assetTypes else liabilityTypes
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isAsset) "Add Asset" else "Add Liability") },
+        title = { Text(if (isAsset) "Add asset" else "Add liability") },
         text = {
             Column {
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {

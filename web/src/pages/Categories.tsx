@@ -43,11 +43,11 @@ export function Categories() {
       const added = await topUpPresetCategories(session.household)
       setMessage(
         added === 0
-          ? 'Already up to date — nothing was missing.'
-          : `Added ${added} categor${added === 1 ? 'y' : 'ies'}.`,
+          ? 'All preset categories are already here'
+          : `${added} ${added === 1 ? 'category' : 'categories'} added`,
       )
     } catch (caught) {
-      setMessage((caught as Error)?.message ?? 'Could not top up.')
+      setMessage(`Couldn't add the missing presets. ${(caught as Error)?.message ?? 'Try again.'}`)
     } finally {
       setToppingUp(false)
     }
@@ -57,7 +57,7 @@ export function Categories() {
     destructive.ask({
       title: `Delete "${category.name}"?`,
       message:
-        'Existing expenses keep the name they were filed under, so nothing disappears from your history — the category just stops being offered.',
+        'Past expenses keep this category name, so your history isn\'t affected. It just won\'t be offered for new expenses.',
       run: () => deleteCategory(session.household.id, category.id),
     })
 
@@ -91,8 +91,8 @@ export function Categories() {
       {!canManage && (
         <div style={{ marginBottom: 16 }}>
           <Notice>
-            Categories are shared configuration, managed by the household owner. Deleting one
-            here would change what everyone sees.
+            Only the household owner and admins can change categories, because changes affect
+            everyone in the household.
           </Notice>
         </div>
       )}
@@ -117,19 +117,21 @@ export function Categories() {
             action={
               canManage ? (
                 <button className="btn primary" type="button" onClick={() => void topUp()}>
-                  Seed the {categoryPresets().length} presets
+                  Add {categoryPresets().length} preset categories
                 </button>
               ) : undefined
             }
           >
-            The household owner needs to open the app once to seed the preset categories.
+            {canManage
+              ? 'Add the preset categories to get started.'
+              : "They'll appear after the household owner opens the app."}
           </Empty>
         </Card>
       ) : (
         <>
           {custom.length > 0 && (
             <Card style={{ marginBottom: 20 }}>
-              <CardHeader title="Your own" />
+              <CardHeader title="Custom" />
               <CategoryGrid
                 categories={custom}
                 canManage={canManage}
@@ -142,7 +144,7 @@ export function Categories() {
           <Card>
             <CardHeader
               title="Presets"
-              sub="Seeded from the shared catalogue, so Android, iOS and the web agree. Deleting one is remembered — it will not come back on the next load."
+              sub="Built-in categories, the same on Android, iOS and the web. A preset you delete won't come back on its own."
             />
             <CategoryGrid
               categories={presets}
@@ -182,26 +184,29 @@ function CategoryGrid({
   onDelete: (category: Category) => void
 }) {
   return (
-    <div className="grid cols-4">
+    <div className="category-grid">
       {categories.map((category) => (
-        <div
-          key={category.id}
-          className="row"
-          style={{
-            gap: 10,
-            padding: 10,
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-sm)',
-          }}
-        >
+        <div key={category.id} className="category-tile">
           <CategoryIcon name={category.name} icon={category.icon} color={colorOf(category)} size={34} />
-          <span style={{ fontSize: 13, fontWeight: 500, flex: 1, minWidth: 0 }}>{category.name}</span>
+          <span className="name" title={category.name}>
+            {category.name}
+          </span>
           {canManage && (
             <div className="row" style={{ gap: 2 }}>
-              <button className="btn ghost icon" type="button" onClick={() => onEdit(category)}>
+              <button
+                className="btn ghost icon"
+                type="button"
+                aria-label={`Edit ${category.name}`}
+                onClick={() => onEdit(category)}
+              >
                 <Icon name="edit" size={16} />
               </button>
-              <button className="btn ghost icon" type="button" onClick={() => onDelete(category)}>
+              <button
+                className="btn ghost icon"
+                type="button"
+                aria-label={`Delete ${category.name}`}
+                onClick={() => onDelete(category)}
+              >
                 <Icon name="delete" size={16} />
               </button>
             </div>
@@ -236,7 +241,7 @@ function CategoryForm({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!valid) {
-      setError('Give the category a name.')
+      setError('Enter a category name.')
       return
     }
     setBusy(true)
@@ -253,7 +258,7 @@ function CategoryForm({
       })
       onClose()
     } catch (caught) {
-      setError((caught as Error)?.message ?? 'Could not save.')
+      setError(`Couldn't save the category. ${(caught as Error)?.message ?? 'Check your connection and try again.'}`)
       setBusy(false)
     }
   }
@@ -282,7 +287,7 @@ function CategoryForm({
         <div className="row" style={{ gap: 12, marginBottom: 16 }}>
           <CategoryIcon name={name || 'Misc'} icon={previewIcon} color={color} size={46} />
           <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            Icon is chosen from the name — “{previewIcon}”
+            The icon is picked from the name.
           </div>
         </div>
 

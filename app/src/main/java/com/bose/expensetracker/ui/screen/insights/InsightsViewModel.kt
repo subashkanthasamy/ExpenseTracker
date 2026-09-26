@@ -247,7 +247,7 @@ class InsightsViewModel @Inject constructor(
             val change = ((thisTotal - lastTotal) / lastTotal * 100)
             insights.add(
                 SpendingInsight(
-                    title = if (change >= 0) "Spending Up" else "Spending Down",
+                    title = if (change >= 0) "Spending up" else "Spending down",
                     description = "Your spending is ${if (change >= 0) "up" else "down"} ${String.format("%.0f", kotlin.math.abs(change))}% compared to last month",
                     type = if (change >= 0) InsightType.TREND_UP else InsightType.TREND_DOWN,
                     relatedCategory = null,
@@ -266,7 +266,7 @@ class InsightsViewModel @Inject constructor(
             val pct = if (thisTotal > 0) (categoryTotal / thisTotal * 100).toInt() else 0
             insights.add(
                 SpendingInsight(
-                    title = "Top Category: ${topCategory.key}",
+                    title = "Top category: ${topCategory.key}",
                     description = "${topCategory.key} accounts for $pct% of your spending this month",
                     type = InsightType.SUGGESTION,
                     relatedCategory = topCategory.key,

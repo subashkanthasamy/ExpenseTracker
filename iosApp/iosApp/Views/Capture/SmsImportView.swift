@@ -29,7 +29,7 @@ struct SmsImportView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Sender (e.g. HDFCBK)", text: $sender)
+                    TextField("Sender (for example, HDFCBK)", text: $sender)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                     TextEditor(text: $body_)
@@ -43,7 +43,7 @@ struct SmsImportView: View {
                 } header: {
                     Text("Bank message")
                 } footer: {
-                    Text("iOS doesn't allow apps to read your SMS, so paste the message (or share it to this app from Messages). Android imports these automatically.")
+                    Text("iOS doesn't let apps read your messages, so copy the bank SMS and paste it here. On Android, these are imported automatically.")
                 }
 
                 Section {
@@ -63,7 +63,7 @@ struct SmsImportView: View {
                         LabeledContent("Type", value: parsed.transactionType.name.capitalized)
                         LabeledContent("Merchant", value: parsed.merchant ?? "—")
                         if let account = parsed.cardOrAccount {
-                            LabeledContent("Card / account", value: account)
+                            LabeledContent("Card or account", value: account)
                         }
                         LabeledContent("Category", value: categoryHint ?? "—")
                     }
@@ -76,7 +76,7 @@ struct SmsImportView: View {
                 } else if didAttempt {
                     Section {
                         Label(
-                            "That doesn't look like a transaction message — no amount could be read.",
+                            "That doesn't look like a bank message. Couldn't find an amount in it.",
                             systemImage: "exclamationmark.triangle"
                         )
                         .font(.caption)
@@ -84,7 +84,7 @@ struct SmsImportView: View {
                     }
                 }
             }
-            .navigationTitle("Import from SMS")
+            .navigationTitle("Import from bank SMS")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }

@@ -4,6 +4,21 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -91,18 +106,7 @@ class MainActivity : FragmentActivity() {
             lifecycleScope.launch {
                 val biometricEnabled = biometricPreferences.isBiometricEnabled(currentUser.uid).firstOrNull() ?: false
                 if (biometricEnabled && BiometricHelper.canAuthenticate(this@MainActivity)) {
-                    BiometricHelper.authenticate(
-                        activity = this@MainActivity,
-                        onSuccess = {
-                            biometricAuthenticated = true
-                            setupContent()
-                        },
-                        onError = {
-                            // User cancelled or failed - still show app but could restrict
-                            biometricAuthenticated = true
-                            setupContent()
-                        }
-                    )
+                    unlock()
                 } else {
                     biometricAuthenticated = true
                     setupContent()
@@ -111,6 +115,27 @@ class MainActivity : FragmentActivity() {
         } else {
             biometricAuthenticated = true
             setupContent()
+        }
+    }
+
+    // A cancelled or failed prompt must not open the app — show the lock screen and let the
+    // user retry. The prompt allows DEVICE_CREDENTIAL, so the PIN/pattern is always a way in.
+    private fun unlock() {
+        BiometricHelper.authenticate(
+            activity = this,
+            onSuccess = {
+                biometricAuthenticated = true
+                setupContent()
+            },
+            onError = { showLockScreen() }
+        )
+    }
+
+    private fun showLockScreen() {
+        setContent {
+            ExpenseTrackerTheme(themePreferences = themePreferences) {
+                BiometricLockScreen(onRetry = { unlock() })
+            }
         }
     }
 
@@ -225,6 +250,34 @@ class MainActivity : FragmentActivity() {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BiometricLockScreen(onRetry: () -> Unit) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                Icons.Default.Lock,
+                contentDescription = null,
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Expense Tracker", style = MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Couldn't unlock Expense Tracker.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(onClick = onRetry) { Text("Try again") }
         }
     }
 }

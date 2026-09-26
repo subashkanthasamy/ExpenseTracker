@@ -109,9 +109,15 @@ struct ExpenseListView: View {
                 .foregroundStyle(DS.textSecondary)
             if viewModel.expenses.isEmpty {
                 Text("No expenses yet").foregroundStyle(DS.textSecondary)
+                Text("Add your first expense to see it here.")
+                    .font(.footnote)
+                    .foregroundStyle(DS.textSecondary)
+                    .multilineTextAlignment(.center)
             } else {
                 Text("No matching expenses").foregroundStyle(DS.textPrimary)
-                Text("None of your \(viewModel.expenses.count) expenses match these filters")
+                Text(viewModel.expenses.count == 1
+                     ? "Your only expense doesn't match these filters."
+                     : "None of your \(viewModel.expenses.count) expenses match these filters.")
                     .font(.footnote)
                     .foregroundStyle(DS.textSecondary)
                     .multilineTextAlignment(.center)
@@ -204,10 +210,10 @@ private struct ExpenseFilterSheet: View {
                         }
                     }
 
-                    section("Paid with") {
+                    section("Payment method") {
                         let methods = PaymentMethod.companion.selectable
                         chipRow(
-                            labels: ["Any method"] + methods.map { $0.label },
+                            labels: ["All payment methods"] + methods.map { $0.label },
                             isSelected: { [methods] index in
                                 index == 0
                                     ? viewModel.paymentMethodFilter == nil

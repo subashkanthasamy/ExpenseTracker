@@ -13,7 +13,7 @@ struct CategoryView: View {
     var body: some View {
         List {
             if !viewModel.presetCategories.isEmpty {
-                Section("Preset Categories") {
+                Section("Preset categories") {
                     ForEach(viewModel.presetCategories) { cat in
                         HStack {
                             Image(systemName: categoryIcon(cat.name, storedIcon: cat.icon)).font(.title3).foregroundStyle(AppColors.accentPurple).frame(width: 28)
@@ -24,9 +24,9 @@ struct CategoryView: View {
                     }
                 }
             }
-            Section("Custom Categories") {
+            Section("Custom categories") {
                 if viewModel.customCategories.isEmpty {
-                    Text("No custom categories").foregroundStyle(DS.textSecondary)
+                    Text("No custom categories yet").foregroundStyle(DS.textSecondary)
                 } else {
                     ForEach(viewModel.customCategories) { cat in
                         HStack {
@@ -44,12 +44,18 @@ struct CategoryView: View {
             }
         }
         .navigationTitle("Categories")
+        .alert("Something went wrong", isPresented: Binding(
+            get: { viewModel.error != nil },
+            set: { if !$0 { viewModel.error = nil } }
+        )) {
+            Button("Close") { viewModel.error = nil }
+        } message: { Text(viewModel.error ?? "") }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if canManage { Button { showAdd = true } label: { Image(systemName: "plus") } }
             }
         }
-        .alert("New Category", isPresented: $showAdd) {
+        .alert("New category", isPresented: $showAdd) {
             TextField("Category name", text: $newName)
             Button("Add") {
                 Task { await viewModel.addCategory(name: newName, icon: newIcon); newName = "" }

@@ -51,10 +51,10 @@ data class BottomNavItem(
 )
 
 val bottomNavItems = listOf(
-    BottomNavItem("Home", Icons.Outlined.Home, Icons.Filled.Home, DashboardRoute),
-    BottomNavItem("Timeline", Icons.Outlined.ViewTimeline, Icons.Filled.ViewTimeline, ExpenseListRoute()),
+    BottomNavItem("Dashboard", Icons.Outlined.Home, Icons.Filled.Home, DashboardRoute),
+    BottomNavItem("Expenses", Icons.Outlined.ViewTimeline, Icons.Filled.ViewTimeline, ExpenseListRoute()),
     BottomNavItem("Insights", Icons.Outlined.Insights, Icons.Filled.Insights, SmartInsightsRoute),
-    BottomNavItem("Wealth", Icons.Outlined.AccountBalance, Icons.Filled.AccountBalance, NetWorthRoute)
+    BottomNavItem("Net worth", Icons.Outlined.AccountBalance, Icons.Filled.AccountBalance, NetWorthRoute)
 )
 
 @Composable
@@ -118,7 +118,7 @@ fun BottomNavBar(
         ) {
             Icon(
                 imageVector = Icons.Filled.Add,
-                contentDescription = "Add Transaction",
+                contentDescription = "Add expense",
                 tint = Color.White,
                 modifier = Modifier.size(28.dp)
             )

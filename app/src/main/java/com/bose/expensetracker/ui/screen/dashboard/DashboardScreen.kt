@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bose.expensetracker.domain.model.BudgetStatus
 import com.bose.expensetracker.domain.model.ExpenseScope
 import com.bose.expensetracker.ui.components.GradientCard
 import com.bose.expensetracker.ui.components.SectionHeader
@@ -52,7 +53,6 @@ import com.bose.expensetracker.ui.theme.AccentPurple
 import com.bose.expensetracker.ui.theme.ExpenseRed
 import com.bose.expensetracker.ui.theme.IncomeGreen
 import com.bose.expensetracker.ui.theme.OverBudgetRed
-import com.bose.expensetracker.ui.theme.SavingsGreen
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -97,14 +97,14 @@ fun DashboardScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    "No Household Found",
+                    "No household yet",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "You are not associated with any household. Create or join one to start tracking expenses.",
+                    "Create a household, or join one with an invite code, to start tracking expenses.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -114,7 +114,7 @@ fun DashboardScreen(
                     onClick = onNavigateToHouseholdSetup,
                     colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)
                 ) {
-                    Text("Create or Join Household", color = Color.White)
+                    Text("Set up household", color = Color.White)
                 }
             }
         } else {
@@ -152,7 +152,7 @@ fun DashboardScreen(
                             IconButton(onClick = onNavigateToNotifications) {
                                 Icon(
                                     Icons.Default.Notifications,
-                                    contentDescription = "Notifications",
+                                    contentDescription = "Open SMS imports",
                                     tint = MaterialTheme.colorScheme.onBackground,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -160,7 +160,7 @@ fun DashboardScreen(
                             IconButton(onClick = onNavigateToSettings) {
                                 Icon(
                                     Icons.Default.Settings,
-                                    contentDescription = "Settings",
+                                    contentDescription = "Open settings",
                                     tint = MaterialTheme.colorScheme.onBackground,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -274,7 +274,7 @@ fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Weekly Trend",
+                            "Weekly trend",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -302,8 +302,8 @@ fun DashboardScreen(
                 if (uiState.categoryBreakdown.isNotEmpty()) {
                     item {
                         SectionHeader(
-                            title = "\uD83D\uDCA1 Smart Insights",
-                            actionText = "SEE ALL →",
+                            title = "Insights",
+                            actionText = "See all →",
                             onAction = onNavigateToInsights
                         )
                     }
@@ -312,12 +312,22 @@ fun DashboardScreen(
                     val topCategories = uiState.categoryBreakdown.take(2)
                     items(topCategories) { cat ->
                         val percentChange = (cat.percentage * 100).toInt()
+                        // Badges come from the category's budget; with no budget, or one
+                        // comfortably under its limit, there is nothing to flag.
                         SmartInsightCard(
                             icon = categoryIcon(cat.categoryName),
                             title = "${percentChange}% on ${cat.categoryName.lowercase()}",
                             amount = formatCurrency(cat.amount),
-                            badgeLabel = if (percentChange > 25) "OVER BUDGET" else "SAVINGS",
-                            badgeColor = if (percentChange > 25) OverBudgetRed else SavingsGreen
+                            badgeLabel = when (cat.budgetStatus) {
+                                BudgetStatus.EXCEEDED -> "OVER BUDGET"
+                                BudgetStatus.WARNING -> "NEAR LIMIT"
+                                else -> null
+                            },
+                            badgeColor = when (cat.budgetStatus) {
+                                BudgetStatus.EXCEEDED -> OverBudgetRed
+                                BudgetStatus.WARNING -> Color(0xFFFFA726)
+                                else -> MaterialTheme.colorScheme.primary
+                            }
                         )
                     }
                 }
@@ -327,7 +337,7 @@ fun DashboardScreen(
                     item {
                         SectionHeader(
                             title = "Recent",
-                            actionText = "TIMELINE →",
+                            actionText = "All expenses →",
                             onAction = onViewAllExpenses
                         )
                     }
@@ -417,12 +427,12 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "Financial Coach",
+                                    "Financial coach",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    "Get AI-powered spending insights",
+                                    "Ask questions about your spending",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -453,7 +463,7 @@ fun DashboardScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Tap + to add your first expense",
+                                "Add your first expense to see it here.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -471,9 +481,9 @@ fun DashboardScreen(
 private fun getGreeting(): String {
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     return when {
-        hour < 12 -> "Good Morning \uD83C\uDF1E"
-        hour < 17 -> "Good Afternoon \u2600\uFE0F"
-        else -> "Good Evening \uD83C\uDF19"
+        hour < 12 -> "Good morning"
+        hour < 17 -> "Good afternoon"
+        else -> "Good evening"
     }
 }
 

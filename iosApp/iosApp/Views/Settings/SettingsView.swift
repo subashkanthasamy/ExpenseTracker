@@ -28,9 +28,9 @@ struct SettingsView: View {
                     }
                 )) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Biometric Lock")
+                        Text("Biometric lock")
                         Text(viewModel.biometricAvailable
-                             ? "Require Face ID / Touch ID to open the app"
+                             ? "Require Face ID or Touch ID to open the app"
                              : "Not available on this device")
                             .font(.caption)
                             .foregroundStyle(DS.textSecondary)
@@ -45,13 +45,13 @@ struct SettingsView: View {
                 Button {
                     showExportOptions = true
                 } label: {
-                    settingsRow("Export Data", "Export expenses as CSV or PDF", "square.and.arrow.up")
+                    settingsRow("Export data", "Export expenses as CSV or PDF", "square.and.arrow.up")
                 }
 
                 Button {
                     showImporter = true
                 } label: {
-                    settingsRow("Import Data", "Import expenses from a CSV file", "square.and.arrow.down")
+                    settingsRow("Import data", "Import expenses from a CSV file", "square.and.arrow.down")
                 }
             }
 
@@ -59,7 +59,7 @@ struct SettingsView: View {
                 Button(role: .destructive) {
                     showResetConfirm = true
                 } label: {
-                    settingsRow("Reset All Expenses", "Delete every expense in this household", "trash")
+                    settingsRow("Delete all expenses", "Delete every expense in this household", "trash")
                 }
             }
 
@@ -67,7 +67,7 @@ struct SettingsView: View {
                 LabeledContent("Version", value: "1.0.0")
             } footer: {
                 // Be explicit rather than letting users hunt for a missing feature.
-                Text("SMS auto-import is Android-only — iOS does not allow apps to read SMS.")
+                Text("Automatic SMS import is only available on Android, because iOS doesn't let apps read your messages. You can still paste a bank SMS when you add an expense.")
             }
         }
         .navigationTitle("Settings")
@@ -80,19 +80,21 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
         }
         .confirmationDialog(
-            "Delete all expenses? This cannot be undone.",
+            "Delete all expenses?",
             isPresented: $showResetConfirm,
             titleVisibility: .visible
         ) {
-            Button("Delete All", role: .destructive) { Task { await viewModel.resetAllExpenses() } }
+            Button("Delete all", role: .destructive) { Task { await viewModel.resetAllExpenses() } }
             Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Every expense in this household will be deleted. This can't be undone.")
         }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.commaSeparatedText, .text]) { result in
             switch result {
             case .success(let url):
                 Task { await viewModel.importCSV(from: url) }
             case .failure(let err):
-                viewModel.error = err.localizedDescription
+                viewModel.error = "Couldn't open that file. Try again."
             }
         }
         .sheet(isPresented: Binding(
@@ -103,11 +105,11 @@ struct SettingsView: View {
                 ShareSheet(items: [file])
             }
         }
-        .alert("Error", isPresented: Binding(
+        .alert("Something went wrong", isPresented: Binding(
             get: { viewModel.error != nil },
             set: { if !$0 { viewModel.error = nil } }
         )) {
-            Button("OK") { viewModel.error = nil }
+            Button("Close") { viewModel.error = nil }
         } message: {
             Text(viewModel.error ?? "")
         }
@@ -115,7 +117,7 @@ struct SettingsView: View {
             get: { viewModel.statusMessage != nil },
             set: { if !$0 { viewModel.statusMessage = nil } }
         )) {
-            Button("OK") { viewModel.statusMessage = nil }
+            Button("Close") { viewModel.statusMessage = nil }
         } message: {
             Text(viewModel.statusMessage ?? "")
         }

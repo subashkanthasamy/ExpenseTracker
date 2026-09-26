@@ -72,7 +72,7 @@ struct FinancialCoachView: View {
 
             // Input
             HStack {
-                TextField("Ask your coach...", text: $viewModel.inputText)
+                TextField("Ask your coach…", text: $viewModel.inputText)
                     .textFieldStyle(.roundedBorder)
                 Button { viewModel.sendMessage() } label: {
                     Image(systemName: "paperplane.fill")
@@ -82,7 +82,7 @@ struct FinancialCoachView: View {
             }
             .padding()
         }
-        .navigationTitle("Financial Coach")
+        .navigationTitle("Financial coach")
         .task { await viewModel.loadContext() }
     }
 }

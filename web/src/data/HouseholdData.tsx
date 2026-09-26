@@ -58,8 +58,7 @@ export function HouseholdDataProvider({ children }: { children: ReactNode }) {
         // A rejected query is the failure mode to name explicitly: it presents as an empty
         // list, and the usual cause is an expense row with no `scope` field.
         setError(
-          `Could not load expenses: ${listenerError.message}. ` +
-            'If this persists, check that every expense document has a `scope` field.',
+          `Couldn't load expenses. Refresh the page to try again. (${listenerError.message})`,
         )
         setExpensesLoaded(true)
       },
@@ -76,7 +75,7 @@ export function HouseholdDataProvider({ children }: { children: ReactNode }) {
         setCategoriesLoaded(true)
       },
       (listenerError) => {
-        setError(`Could not load categories: ${listenerError.message}`)
+        setError(`Couldn't load categories. Refresh the page to try again. (${listenerError.message})`)
         setCategoriesLoaded(true)
       },
     )
@@ -136,7 +135,7 @@ export function useCollection<T>(
         setLoading(false)
       },
       (subscribeError) => {
-        setError(subscribeError.message)
+        setError(`Couldn't load this page. Refresh to try again. (${subscribeError.message})`)
         setLoading(false)
       },
     )

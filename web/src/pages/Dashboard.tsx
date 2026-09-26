@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
-import { Sparkline, TrendChart } from '../components/charts'
+import { Sparkline, TrendChart, sharePercent } from '../components/charts'
 import { PageHead } from '../components/Layout'
 import {
   Card,
@@ -128,7 +128,7 @@ export function Dashboard() {
           sub={
             <>
               {change == null
-                ? `${stats.count} expenses`
+                ? `${stats.count} ${stats.count === 1 ? 'expense' : 'expenses'}`
                 : `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(0)}% vs last month`}
               {stats.excludedPersonal > 0 && (
                 <>
@@ -146,9 +146,9 @@ export function Dashboard() {
           sub="Shared only"
           trend={<Sparkline values={stats.lastMonthPace} accent="var(--text-tertiary)" />}
         />
-        <Stat label="Added by you" value={money(stats.myTotal)} sub="This month, all scopes" />
+        <Stat label="Added by you" value={money(stats.myTotal)} sub="This month, shared and personal" />
         <Stat
-          label="Your personal"
+          label="Your personal expenses"
           value={money(stats.personalTotal)}
           sub="Not in shared totals"
           accent="var(--accent-orange-text)"
@@ -163,7 +163,7 @@ export function Dashboard() {
       <Card style={{ marginBottom: 'var(--space-5)' }}>
         <CardHeader
           title={`Last ${TREND_MONTHS} months`}
-          sub="Shared spending per calendar month. The current month is partial."
+          sub="Shared spending by month. This month is still in progress."
           action={
             <Link to="/insights" className="btn ghost t-sm">
               Insights
@@ -187,8 +187,8 @@ export function Dashboard() {
           />
 
           {stats.topCategories.length === 0 ? (
-            <Empty icon="donut_small" title="Nothing this month yet">
-              Shared expenses added this month will break down here.
+            <Empty icon="donut_small" title="No shared expenses this month">
+              Add a shared expense to see your top categories.
             </Empty>
           ) : (
             <div className="list">
@@ -206,7 +206,7 @@ export function Dashboard() {
                       <span className="t-md t-strong" style={{ flex: 1, minWidth: 0 }}>
                         {entry.name}
                       </span>
-                      <span className="t-sm t-secondary">{(entry.share * 100).toFixed(0)}%</span>
+                      <span className="t-sm t-secondary">{sharePercent(entry.share)}</span>
                       <strong className="t-md num">{moneyShort(entry.amount)}</strong>
                     </div>
                     <Progress value={entry.share} />
@@ -222,15 +222,15 @@ export function Dashboard() {
             title="Recent shared expenses"
             action={
               <Link to="/expenses" className="btn ghost t-sm">
-                All
+                View all
                 <Icon name="chevron_right" size={17} />
               </Link>
             }
           />
 
           {stats.recent.length === 0 ? (
-            <Empty icon="receipt_long" title="No expenses yet">
-              Anything added on Android or iOS appears here too.
+            <Empty icon="receipt_long" title="No shared expenses yet">
+              Add a shared expense to see it here.
             </Empty>
           ) : (
             <div className="list">

@@ -139,11 +139,11 @@ fun ExpenseTrackerNavGraph(
                             // for the Firebase project's Android OAuth client.
                             Log.e("GoogleSignIn", "No Google credential available: ${e.type} ${e.errorMessage}", e)
                             authViewModel.handleGoogleSignInError(
-                                "No Google account available for this app. Check that a Google account is added to the device and that this build's signing certificate is registered in Firebase."
+                                "No Google account is available to sign in with. Add a Google account to this device and try again, or sign in with email."
                             )
                         } catch (e: Exception) {
                             Log.e("GoogleSignIn", "Google Sign-In failed (${e.javaClass.simpleName})", e)
-                            authViewModel.handleGoogleSignInError(e.message ?: "Google Sign-In failed")
+                            authViewModel.handleGoogleSignInError(e.message ?: "Couldn't sign in with Google. Try again.")
                         }
                     }
                 },
@@ -222,7 +222,8 @@ fun ExpenseTrackerNavGraph(
             ExpenseListScreen(
                 viewModel = viewModel,
                 onAddExpense = { navController.navigate(AddEditExpenseRoute()) },
-                onEditExpense = { id -> navController.navigate(AddEditExpenseRoute(expenseId = id)) }
+                onEditExpense = { id -> navController.navigate(AddEditExpenseRoute(expenseId = id)) },
+                onNavigateToNotifications = { navController.navigate(NotificationsRoute) }
             )
         }
 
@@ -263,7 +264,7 @@ fun ExpenseTrackerNavGraph(
                     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Say the expense, e.g., 'Spent 50 dollars on groceries'")
+                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Say your expense, for example: spent 500 on groceries")
                     }
                     voiceLauncher.launch(intent)
                 }
@@ -281,7 +282,8 @@ fun ExpenseTrackerNavGraph(
                 viewModel = viewModel,
                 onPersonSelected = { uid ->
                     navController.navigate(ExpenseListRoute(personFilter = uid))
-                }
+                },
+                onNavigateToNotifications = { navController.navigate(NotificationsRoute) }
             )
         }
 
@@ -300,7 +302,8 @@ fun ExpenseTrackerNavGraph(
                 viewModel = viewModel,
                 onPersonSelected = { uid ->
                     navController.navigate(ExpenseListRoute(personFilter = uid))
-                }
+                },
+                onNavigateToNotifications = { navController.navigate(NotificationsRoute) }
             )
         }
 

@@ -17,8 +17,8 @@ struct BudgetView: View {
             } else if viewModel.budgets.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "chart.pie").font(.system(size: 48)).foregroundStyle(DS.textSecondary)
-                    Text("No budgets set").foregroundStyle(DS.textSecondary)
-                    Text("Tap + to add a monthly budget").font(.caption).foregroundStyle(DS.textSecondary)
+                    Text("No budgets yet").foregroundStyle(DS.textSecondary)
+                    Text("Tap + to add a monthly budget.").font(.caption).foregroundStyle(DS.textSecondary)
                 }
             } else {
                 List {
@@ -34,7 +34,7 @@ struct BudgetView: View {
                             }
                             ProgressView(value: min(budget.percentage, 100), total: 100)
                                 .tint(budget.status == .exceeded ? .red : budget.status == .warning ? .orange : .green)
-                            Text(budget.status == .exceeded ? "Over budget!" :
+                            Text(budget.status == .exceeded ? "Over budget" :
                                     budget.status == .warning ? "Getting close" : "On track")
                                 .font(.caption)
                                 .foregroundStyle(budget.status == .exceeded ? .red : budget.status == .warning ? .orange : .green)
@@ -51,11 +51,11 @@ struct BudgetView: View {
             }
         }
         .navigationTitle("Budgets")
-        .alert("Error", isPresented: Binding(
+        .alert("Something went wrong", isPresented: Binding(
             get: { viewModel.error != nil },
             set: { if !$0 { viewModel.error = nil } }
         )) {
-            Button("OK") { viewModel.error = nil }
+            Button("Close") { viewModel.error = nil }
         } message: { Text(viewModel.error ?? "") }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -66,15 +66,15 @@ struct BudgetView: View {
             NavigationStack {
                 Form {
                     Picker("Category", selection: $selectedCatId) {
-                        Text("Select").tag("")
+                        Text("Choose a category").tag("")
                         ForEach(viewModel.categories) { cat in
                             Label(cat.name, systemImage: categoryIcon(cat.name, storedIcon: cat.icon)).tag(cat.id)
                         }
                     }
-                    TextField("Monthly Limit", text: $limitStr)
+                    TextField("Monthly budget", text: $limitStr)
                         .keyboardType(.decimalPad)
                 }
-                .navigationTitle("Add Budget")
+                .navigationTitle("Add budget")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showAdd = false } }

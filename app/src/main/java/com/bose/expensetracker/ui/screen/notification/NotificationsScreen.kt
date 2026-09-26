@@ -81,7 +81,7 @@ fun NotificationsScreen(
             }
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                "SMS Report",
+                "SMS imports",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -132,7 +132,7 @@ private fun SmsReportContent(
 
         // Pending Confirmation
         if (pendingSms.isNotEmpty()) {
-            item { SectionHeader("Pending Confirmation") }
+            item { SectionHeader("Waiting for confirmation") }
 
             items(pendingSms) { pending ->
                 var showCategoryPicker by remember { mutableStateOf(false) }
@@ -233,14 +233,14 @@ private fun SmsReportContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SummaryChip(
-                    label = "Total Imported",
+                    label = "Total imported",
                     amount = "${stats.totalImported}",
                     icon = Icons.Default.Sms,
                     iconColor = AccentPurple,
                     modifier = Modifier.weight(1f)
                 )
                 SummaryChip(
-                    label = "This Month",
+                    label = "This month",
                     amount = "${stats.thisMonth}",
                     icon = Icons.Default.Receipt,
                     iconColor = IncomeGreen,
@@ -250,7 +250,7 @@ private fun SmsReportContent(
         }
 
         // History
-        item { SectionHeader("Import History") }
+        item { SectionHeader("Import history") }
 
         if (history.isEmpty()) {
             item {
@@ -275,7 +275,7 @@ private fun SmsReportContent(
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("No SMS imports yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
-                                "Enable SMS Auto-Import in Settings",
+                                "Turn on SMS auto-import in Settings.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -357,7 +357,7 @@ private fun CategoryPickerDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Category") },
+        title = { Text("Choose a category") },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 items(categories) { category ->

@@ -50,11 +50,12 @@ object ExpenseFilter {
 
         val query = criteria.searchQuery.trim()
         val bounds = dateBounds(criteria.dateRange, nowMillis, timeZone)
+        val category = criteria.categoryFilter?.let { resolveCategory(it, expenses) }
 
         return expenses.filter { expense ->
             matchesQuery(expense, query) &&
                 (criteria.personFilter == null || expense.addedBy == criteria.personFilter) &&
-                (criteria.categoryFilter == null || expense.categoryId == criteria.categoryFilter) &&
+                (category == null || categoryKey(expense) == category) &&
                 (criteria.paymentMethodFilter == null ||
                     expense.paymentMethod == criteria.paymentMethodFilter) &&
                 (bounds == null || expense.date in bounds)
@@ -95,10 +96,54 @@ object ExpenseFilter {
     }
 
     /** Distinct categories present in [expenses], sorted by name. */
-    fun categoryOptions(expenses: List<Expense>): List<FilterOption> =
-        options(expenses) { it.categoryId to it.categoryName }
+    /**
+     * One option per category NAME, not per id.
+     *
+     * The same category can carry several ids in real data: the clients seeded categories
+     * differently before [com.bose.expensetracker.domain.model.CategoryPresets] unified them,
+     * so a household can hold two "Food" rows with different ids. Offering one option per id
+     * listed "Food" twice, each showing only part of the food spending. Rows imported from a
+     * CSV whose category did not match have no id at all and were never selectable.
+     *
+     * The option id stays a real category id where there is one — the smallest, so it is
+     * stable across renders — which keeps saved filters and `?category=<id>` links working.
+     * A name that only id-less rows carry gets a [NAME_KEY] id instead.
+     */
+    fun categoryOptions(expenses: List<Expense>): List<FilterOption> = expenses
+        .groupBy { categoryKey(it) }
+        .filterKeys { it != ID_KEY }
+        .map { (key, rows) ->
+            val id = rows.map { it.categoryId }.filter { it.isNotBlank() }.minOrNull()
+                ?: (NAME_KEY + key)
+            val label = rows.firstNotNullOfOrNull { it.categoryName.trim().ifBlank { null } } ?: id
+            FilterOption(id = id, label = label)
+        }
+        .sortedBy { it.label.lowercase() }
 
     /** Distinct people who added something in [expenses], sorted by name. */
+    /** Prefix for an option id that names a category with no id of its own. */
+    private const val NAME_KEY = "name:"
+
+    /** Key prefix for a row with no category name, grouped by its id instead. */
+    private const val ID_KEY = "id:"
+
+    /** What makes two rows "the same category": the name, ignoring case and spacing. */
+    private fun categoryKey(expense: Expense): String {
+        val name = expense.categoryName.trim().lowercase()
+        return if (name.isNotEmpty()) name else ID_KEY + expense.categoryId
+    }
+
+    /**
+     * The category key a filter value selects. A plain id resolves through any row carrying
+     * it to that row's name, so every row with the same name matches — including rows filed
+     * under a different id, or none.
+     */
+    private fun resolveCategory(filter: String, expenses: List<Expense>): String {
+        if (filter.startsWith(NAME_KEY)) return filter.removePrefix(NAME_KEY)
+        return expenses.firstOrNull { it.categoryId == filter }?.let { categoryKey(it) }
+            ?: (ID_KEY + filter)
+    }
+
     fun personOptions(expenses: List<Expense>): List<FilterOption> =
         options(expenses) { it.addedBy to it.addedByName }
 

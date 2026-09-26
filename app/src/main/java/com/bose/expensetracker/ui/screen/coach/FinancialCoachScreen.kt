@@ -94,7 +94,7 @@ fun FinancialCoachScreen(
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "\uD83E\uDD16 Financial Coach",
+                        "Financial coach",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -176,7 +176,7 @@ fun FinancialCoachScreen(
                                 .padding(16.dp)
                         ) {
                             Text(
-                                "Thinking...",
+                                "Thinking…",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -215,7 +215,7 @@ fun FinancialCoachScreen(
                 onValueChange = { viewModel.setInputText(it) },
                 placeholder = {
                     Text(
-                        "Ask anything about your money...",
+                        "Ask about your spending",
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                 },
@@ -232,7 +232,7 @@ fun FinancialCoachScreen(
                 trailingIcon = {
                     Icon(
                         Icons.Default.Mic,
-                        contentDescription = "Voice",
+                        contentDescription = "Ask by voice",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
@@ -255,7 +255,7 @@ fun FinancialCoachScreen(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
+                        contentDescription = "Send message",
                         tint = Color.White,
                         modifier = Modifier.size(22.dp)
                     )

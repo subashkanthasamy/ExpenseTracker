@@ -12,7 +12,7 @@ struct InsightsView: View {
                 VStack(spacing: 8) {
                     Text("Shared this month").font(.subheadline).foregroundStyle(DS.textSecondary)
                     Text(formatCurrency(viewModel.totalSpent)).font(.title).bold()
-                    Text("Personal expenses are not counted here")
+                    Text("Personal expenses aren't counted here")
                         .font(.caption2)
                         .foregroundStyle(DS.textSecondary)
                     if viewModel.lastPeriodSpent > 0 {
@@ -33,7 +33,7 @@ struct InsightsView: View {
                 // Category Breakdown
                 if !viewModel.categoryBreakdown.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("By Category").font(.headline)
+                        Text("By category").font(.headline)
                         ForEach(viewModel.categoryBreakdown.sorted(by: { $0.value > $1.value }), id: \.key) { name, amount in
                             HStack {
                                 Image(systemName: categoryIcon(name)).foregroundStyle(AppColors.accentPurple).frame(width: 22)
@@ -56,7 +56,7 @@ struct InsightsView: View {
                 // a leaderboard.
                 if viewModel.personSplit.count > 1 {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("By Person").font(.headline)
+                        Text("By member").font(.headline)
                         ForEach(viewModel.personSplit, id: \.userId) { person in
                             Button { onPersonSelected(person.userId) } label: {
                                 VStack(alignment: .leading, spacing: 4) {
@@ -82,7 +82,7 @@ struct InsightsView: View {
                 // Only meaningful once more than one instrument has been used.
                 if viewModel.paymentSplit.count > 1 {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("By Payment Method").font(.headline)
+                        Text("By payment method").font(.headline)
                         ForEach(viewModel.paymentSplit, id: \.id) { slice in
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
@@ -103,7 +103,7 @@ struct InsightsView: View {
                 if !viewModel.topCategory.isEmpty {
                     HStack {
                         Image(systemName: "star.fill").foregroundStyle(.yellow)
-                        Text("Top: \(viewModel.topCategory)")
+                        Text("Top category: \(viewModel.topCategory)")
                         Spacer()
                     }
                     .padding()

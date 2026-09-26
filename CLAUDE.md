@@ -329,9 +329,14 @@ the owner/admins, and are excluded from every household figure.
 - **`getCategorySpending` filters `scope = 'shared' OR scope = ''`.** The blank is legacy rows,
   which `fromWire` maps to shared; filtering on `= 'shared'` alone would drop them from budgets.
 
-Member ejection is available to the owner. Household deletion is owner-only but still does not
-cascade — Firestore orphans the subcollections, so a Cloud Function remains the right home for
-both deletion and any stricter join policy.
+Member ejection is available to the owner. Household deletion is owner-only and **cascades in
+the client**, identically on all three: every subcollection (expenses, categories, budgets,
+savingsGoals, recurring, assets, liabilities), then the invite code — only if it exists and
+points at this household — then the household document. That order is forced: the rules for
+everything underneath read the household document, so once it is deleted nothing else can be.
+Any failure stops before the household goes, so a failed delete is safe to retry. A Cloud
+Function remains the better home for deletion (it would not depend on one client finishing a
+long run of writes) and for any stricter join policy.
 
 
 ## Design source

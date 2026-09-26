@@ -114,12 +114,12 @@ fun ReminderScreen(
 
         AlertDialog(
             onDismissRequest = { showAddBillDialog = false },
-            title = { Text("Add Bill Reminder") },
+            title = { Text("Add bill reminder") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = title, onValueChange = { title = it },
-                        label = { Text("Bill Name") }, singleLine = true,
+                        label = { Text("Bill name") }, singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
@@ -129,7 +129,7 @@ fun ReminderScreen(
                     )
                     OutlinedTextField(
                         value = dueDay, onValueChange = { dueDay = it },
-                        label = { Text("Due Day (1-31)") }, singleLine = true,
+                        label = { Text("Due day (1–31)") }, singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -160,7 +160,7 @@ fun ReminderScreen(
 
         AlertDialog(
             onDismissRequest = { showDailyTimeDialog = false },
-            title = { Text("Set Reminder Time") },
+            title = { Text("Set reminder time") },
             text = {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -174,7 +174,7 @@ fun ReminderScreen(
                     Text(":", style = MaterialTheme.typography.titleLarge)
                     OutlinedTextField(
                         value = minute, onValueChange = { minute = it },
-                        label = { Text("Min") }, singleLine = true,
+                        label = { Text("Minute") }, singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -199,11 +199,11 @@ fun ReminderScreen(
 
         AlertDialog(
             onDismissRequest = { showBudgetDialog = false },
-            title = { Text("Set Monthly Budget") },
+            title = { Text("Set monthly budget") },
             text = {
                 OutlinedTextField(
                     value = limit, onValueChange = { limit = it },
-                    label = { Text("Budget Limit (\u20B9)") }, singleLine = true,
+                    label = { Text("Monthly budget (\u20B9)") }, singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
             },
@@ -247,14 +247,14 @@ fun ReminderContent(
 
         // Daily Reminder
         item {
-            SectionHeader("Daily Reminder")
+            SectionHeader("Daily reminder")
             ReminderCard(
                 icon = Icons.Default.AccessTime,
                 iconColor = AccentPurple,
-                title = "Log Expenses Daily",
+                title = "Remind me to add expenses",
                 subtitle = if (dailyReminder != null)
                     "Reminder at ${"%02d:%02d".format(dailyReminder.hour, dailyReminder.minute)}"
-                else "Tap to set reminder time",
+                else "Tap to set a time",
                 isEnabled = dailyReminder?.isEnabled ?: false,
                 onToggle = {
                     if (dailyReminder != null) onToggle(dailyReminder)
@@ -266,14 +266,14 @@ fun ReminderContent(
 
         // Budget Alert
         item {
-            SectionHeader("Budget Alert")
+            SectionHeader("Budget alert")
             ReminderCard(
                 icon = Icons.Default.AccountBalanceWallet,
                 iconColor = ExpenseRed,
-                title = "Monthly Budget Limit",
+                title = "Monthly budget",
                 subtitle = if (budgetReminder != null)
-                    "Alert when spending exceeds \u20B9${"%.0f".format(budgetReminder.amount)}"
-                else "Tap to set budget limit",
+                    "Alert me when spending goes over \u20B9${"%.0f".format(budgetReminder.amount)}"
+                else "Tap to set a budget",
                 isEnabled = budgetReminder?.isEnabled ?: false,
                 onToggle = {
                     if (budgetReminder != null) onToggle(budgetReminder)
@@ -291,12 +291,12 @@ fun ReminderContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Bill Reminders",
+                    "Bill reminders",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 IconButton(onClick = onAddBill) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Bill", tint = AccentPurple)
+                    Icon(Icons.Default.Add, contentDescription = "Add bill reminder", tint = AccentPurple)
                 }
             }
         }
@@ -421,7 +421,7 @@ private fun BillReminderCard(
                 colors = SwitchDefaults.colors(checkedTrackColor = AccentPurple)
             )
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = ExpenseRed, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Delete, contentDescription = "Delete ${bill.title} reminder", tint = ExpenseRed, modifier = Modifier.size(20.dp))
             }
         }
     }

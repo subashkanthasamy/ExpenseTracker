@@ -163,8 +163,34 @@ nonisolated(unsafe) class FirestoreService: @unchecked Sendable {
         try await db.collection("households").document(id).updateData(["memberUids": members])
     }
 
-    func deleteHousehold(_ id: String) async throws {
-        try await db.collection("households").document(id).delete()
+    /// Deletes the household and everything in it.
+    ///
+    /// Order matters: the subcollection and invite-code rules read the household document,
+    /// so it must go last — once it is gone nothing under it can be deleted. Any failure
+    /// throws before the household itself is touched, so the user can retry.
+    func deleteHousehold(_ household: Household) async throws {
+        let hid = household.id
+        for collection in [expensesCollection(hid), categoriesCollection(hid), budgetsCollection(hid),
+                           savingsCollection(hid), recurringCollection(hid), assetsCollection(hid),
+                           liabilitiesCollection(hid)] {
+            let docs = try await collection.getDocuments().documents
+            // Firestore caps a batch at 500 writes; stay well under it.
+            for start in stride(from: 0, to: docs.count, by: 400) {
+                let batch = db.batch()
+                for doc in docs[start..<min(start + 400, docs.count)] { batch.deleteDocument(doc.reference) }
+                try await batch.commit()
+            }
+        }
+        // Only delete the lookup if it exists and points here: households predating it have
+        // none, and the rules deny deleting a missing or foreign code.
+        if !household.inviteCode.isEmpty {
+            let code = db.collection("inviteCodes").document(household.inviteCode)
+            let existing = try await code.getDocument()
+            if existing.exists, (existing.data()?["householdId"] as? String) == hid {
+                try await code.delete()
+            }
+        }
+        try await db.collection("households").document(hid).delete()
     }
 
     func getUserHouseholds(userId: String) async throws -> [Household] {

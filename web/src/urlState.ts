@@ -159,12 +159,18 @@ export function useUrlDialog(key: string) {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const pushedByUs = useRef(false)
+  // The query string as it was when we opened, minus our own key. A dialog like Filters edits
+  // the URL while it is open (each choice replaces the entry we pushed), and popping that
+  // entry would throw every one of those choices away — which is exactly what happened: pick
+  // a filter, press Done, and the list came back unfiltered.
+  const openedFrom = useRef('')
   const value = params.get(key)
 
   const open = useCallback(
     (next: string = '1') => {
       pushedByUs.current = true
       setParams((previous) => {
+        openedFrom.current = previous.toString()
         const merged = new URLSearchParams(previous)
         merged.set(key, next)
         return merged
@@ -174,11 +180,16 @@ export function useUrlDialog(key: string) {
   )
 
   const close = useCallback(() => {
-    if (pushedByUs.current) {
+    const now = new URLSearchParams(params)
+    now.delete(key)
+    // Pop only when the dialog changed nothing else, so Back still undoes a plain open/close.
+    // Otherwise drop just our key and keep what was chosen inside the dialog.
+    if (pushedByUs.current && now.toString() === openedFrom.current) {
       pushedByUs.current = false
       navigate(-1)
       return
     }
+    pushedByUs.current = false
     setParams(
       (previous) => {
         const merged = new URLSearchParams(previous)
@@ -187,7 +198,7 @@ export function useUrlDialog(key: string) {
       },
       { replace: true },
     )
-  }, [key, navigate, setParams])
+  }, [key, navigate, params, setParams])
 
   return { value, isOpen: value != null, open, close }
 }

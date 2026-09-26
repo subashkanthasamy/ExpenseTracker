@@ -67,7 +67,7 @@ fun ExportBottomSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                "Export Expenses",
+                "Export expenses",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -88,7 +88,7 @@ fun ExportBottomSheet(
             }
 
             // Date range
-            Text("Date Range (Optional)", style = MaterialTheme.typography.labelLarge)
+            Text("Date range (optional)", style = MaterialTheme.typography.labelLarge)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -102,7 +102,7 @@ fun ExportBottomSheet(
                         if (startDate != null && endDate != null) {
                             "${dateFormat.format(Date(startDate!!))} - ${dateFormat.format(Date(endDate!!))}"
                         } else {
-                            "All Time"
+                            "All time"
                         }
                     )
                 }
@@ -130,7 +130,7 @@ fun ExportBottomSheet(
                         modifier = Modifier.height(20.dp)
                     )
                 } else {
-                    Text("Export & Share")
+                    Text("Export and share")
                 }
             }
 
@@ -147,7 +147,7 @@ fun ExportBottomSheet(
                     startDate = dateRangePickerState.selectedStartDateMillis
                     endDate = dateRangePickerState.selectedEndDateMillis
                     showDatePicker = false
-                }) { Text("OK") }
+                }) { Text("Select") }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
@@ -173,5 +173,5 @@ fun shareExportedFile(context: Context, file: File) {
         putExtra(Intent.EXTRA_STREAM, uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    context.startActivity(Intent.createChooser(shareIntent, "Share Expense Report"))
+    context.startActivity(Intent.createChooser(shareIntent, "Share expense report"))
 }

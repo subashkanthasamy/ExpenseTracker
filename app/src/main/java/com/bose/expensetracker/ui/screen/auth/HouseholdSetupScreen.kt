@@ -62,7 +62,7 @@ fun HouseholdSetupScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Set Up Your Household",
+            text = "Set up your household",
             style = MaterialTheme.typography.headlineMedium
         )
 
@@ -91,9 +91,9 @@ fun HouseholdSetupScreen(
                     Icon(Icons.Default.Home, contentDescription = null)
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
-                        Text("Create New Household", style = MaterialTheme.typography.titleMedium)
+                        Text("Create a household", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Start fresh and invite your partner",
+                            "Start a new one and invite others",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -116,9 +116,9 @@ fun HouseholdSetupScreen(
                     Icon(Icons.Default.GroupAdd, contentDescription = null)
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
-                        Text("Join Existing Household", style = MaterialTheme.typography.titleMedium)
+                        Text("Join a household", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Enter the invite code from your partner",
+                            "Enter the invite code you were given",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -130,7 +130,7 @@ fun HouseholdSetupScreen(
             OutlinedTextField(
                 value = householdName,
                 onValueChange = { householdName = it },
-                label = { Text("Household Name") },
+                label = { Text("Household name") },
                 placeholder = { Text("e.g., The Bose Family") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -166,14 +166,14 @@ fun HouseholdSetupScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Invite Code:", style = MaterialTheme.typography.labelMedium)
+                        Text("Invite code", style = MaterialTheme.typography.labelMedium)
                         Text(
                             household.inviteCode,
                             style = MaterialTheme.typography.headlineMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            "Share this code with your partner",
+                            "Share this code with the people you want to join.",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -185,7 +185,7 @@ fun HouseholdSetupScreen(
             OutlinedTextField(
                 value = inviteCode,
                 onValueChange = { inviteCode = it.uppercase().take(6) },
-                label = { Text("Invite Code") },
+                label = { Text("Invite code") },
                 placeholder = { Text("Enter 6-character code") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()

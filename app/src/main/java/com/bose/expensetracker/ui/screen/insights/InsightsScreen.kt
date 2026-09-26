@@ -58,7 +58,8 @@ import com.bose.expensetracker.ui.theme.IncomeGreen
 @Composable
 fun InsightsScreen(
     viewModel: InsightsViewModel,
-    onPersonSelected: (String) -> Unit = {}
+    onPersonSelected: (String) -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -78,7 +79,7 @@ fun InsightsScreen(
                     .fillMaxSize()
                     .padding(horizontal = 20.dp)
             ) {
-                AnalyticsHeader()
+                AnalyticsHeader(onNavigateToNotifications)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -94,13 +95,13 @@ fun InsightsScreen(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "No Insights Yet",
+                            "No insights yet",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Start adding expenses to see spending trends and analytics.",
+                            "Add expenses to see your spending trends here.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -119,7 +120,7 @@ fun InsightsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Header
-                item { AnalyticsHeader() }
+                item { AnalyticsHeader(onNavigateToNotifications) }
 
                 // Period selector
                 item {
@@ -165,7 +166,7 @@ fun InsightsScreen(
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Personal expenses are not counted here",
+                                "Personal expenses aren't counted here",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -241,7 +242,7 @@ fun InsightsScreen(
                 // Weekly Spend bar chart
                 if (uiState.dailySpending.isNotEmpty()) {
                     item {
-                        SectionHeader(title = "WEEKLY SPEND")
+                        SectionHeader(title = "Weekly spending")
                     }
                     item {
                         // Map daily spending entries to chart data with day-of-month labels
@@ -260,7 +261,7 @@ fun InsightsScreen(
                 // By Category
                 if (uiState.categoryBreakdown.isNotEmpty()) {
                     item {
-                        SectionHeader(title = "BY CATEGORY")
+                        SectionHeader(title = "By category")
                     }
 
                     val total = uiState.categoryBreakdown.values.sum()
@@ -280,7 +281,7 @@ fun InsightsScreen(
 
                 // Only meaningful once more than one instrument has been used.
                 if (uiState.paymentSplit.size > 1) {
-                    item { SectionHeader(title = "BY PAYMENT METHOD") }
+                    item { SectionHeader(title = "By payment method") }
 
                     items(uiState.paymentSplit) { slice ->
                         CategoryProgressBar(
@@ -294,7 +295,7 @@ fun InsightsScreen(
 
                 // Only meaningful once more than one member has recorded something.
                 if (uiState.personSplit.size > 1) {
-                    item { SectionHeader(title = "BY PERSON") }
+                    item { SectionHeader(title = "By member") }
 
                     items(uiState.personSplit) { person ->
                         PersonSpendingBar(
@@ -383,7 +384,7 @@ private fun PersonSpendingBar(
 }
 
 @Composable
-private fun AnalyticsHeader() {
+private fun AnalyticsHeader(onNavigateToNotifications: () -> Unit) {
     Spacer(modifier = Modifier.height(16.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -404,10 +405,10 @@ private fun AnalyticsHeader() {
                 fontWeight = FontWeight.Bold
             )
         }
-        IconButton(onClick = { }) {
+        IconButton(onClick = onNavigateToNotifications) {
             Icon(
                 Icons.Default.Notifications,
-                contentDescription = "Notifications",
+                contentDescription = "Open SMS imports",
                 tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.size(24.dp)
             )

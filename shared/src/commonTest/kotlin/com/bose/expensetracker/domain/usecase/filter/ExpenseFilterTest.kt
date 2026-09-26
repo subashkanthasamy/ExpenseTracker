@@ -136,13 +136,15 @@ class ExpenseFilterTest {
     // --- category and person ---
 
     @Test
-    fun `category filter matches on id not name`() {
+    fun `category filter matches every row with that category name whatever its id`() {
         val expenses = listOf(
             expense("a", "2026-03-10", categoryId = "c1", categoryName = "Food"),
-            expense("b", "2026-03-11", categoryId = "c2", categoryName = "Food")
+            expense("b", "2026-03-11", categoryId = "c2", categoryName = "food "),
+            expense("c", "2026-03-12", categoryId = "", categoryName = "Food"),
+            expense("d", "2026-03-13", categoryId = "c3", categoryName = "Rent")
         )
         val result = filter(ExpenseFilterCriteria(categoryFilter = "c2"), expenses)
-        assertEquals(listOf("b"), ids(result))
+        assertEquals(listOf("a", "b", "c"), ids(result))
     }
 
     @Test

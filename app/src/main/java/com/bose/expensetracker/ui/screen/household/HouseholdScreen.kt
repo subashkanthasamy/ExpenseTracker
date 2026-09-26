@@ -154,7 +154,7 @@ fun HouseholdScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                "Active Household",
+                                "Active household",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -166,7 +166,7 @@ fun HouseholdScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Invite Code: ", style = MaterialTheme.typography.bodyMedium)
+                                Text("Invite code: ", style = MaterialTheme.typography.bodyMedium)
                                 Text(
                                     household.inviteCode,
                                     style = MaterialTheme.typography.bodyLarge,
@@ -178,7 +178,7 @@ fun HouseholdScreen(
                                 }) {
                                     Icon(
                                         Icons.Default.ContentCopy,
-                                        contentDescription = "Copy",
+                                        contentDescription = "Copy invite code",
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -227,7 +227,7 @@ fun HouseholdScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                "Switch Household",
+                                "Switch household",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -260,7 +260,7 @@ fun HouseholdScreen(
                                         if (isActive) {
                                             Icon(
                                                 Icons.Default.CheckCircle,
-                                                contentDescription = "Active",
+                                                contentDescription = "Active household",
                                                 tint = MaterialTheme.colorScheme.primary
                                             )
                                         }
@@ -282,7 +282,7 @@ fun HouseholdScreen(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Create New")
+                        Text("Create new")
                     }
                     OutlinedButton(
                         onClick = { showJoinDialog = true },
@@ -313,7 +313,7 @@ fun HouseholdScreen(
                         ) {
                             Icon(Icons.Default.DeleteForever, contentDescription = null)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Delete Household")
+                            Text("Delete household")
                         }
                     }
                 }
@@ -326,12 +326,12 @@ fun HouseholdScreen(
         var name by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showCreateDialog = false },
-            title = { Text("Create New Household") },
+            title = { Text("Create household") },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Household Name") },
+                    label = { Text("Household name") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -360,12 +360,12 @@ fun HouseholdScreen(
         var inviteCode by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showJoinDialog = false },
-            title = { Text("Join Household") },
+            title = { Text("Join a household") },
             text = {
                 OutlinedTextField(
                     value = inviteCode,
                     onValueChange = { inviteCode = it.uppercase() },
-                    label = { Text("Invite Code") },
+                    label = { Text("Invite code") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -394,9 +394,9 @@ fun HouseholdScreen(
         val householdName = uiState.household?.name ?: ""
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text("Delete Household") },
+            title = { Text("Delete \"$householdName\"?") },
             text = {
-                Text("Delete \"$householdName\"? All expenses, categories, and data in this household will be permanently deleted for all members.")
+                Text("This deletes the household and everything in it — expenses, categories, budgets, savings goals, recurring expenses, assets and liabilities — for every member. This can't be undone.")
             },
             confirmButton = {
                 TextButton(
@@ -423,11 +423,11 @@ fun HouseholdScreen(
     uiState.errorMessage?.let { message ->
         AlertDialog(
             onDismissRequest = { viewModel.clearErrorMessage() },
-            title = { Text("Error") },
+            title = { Text("Something went wrong") },
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = { viewModel.clearErrorMessage() }) {
-                    Text("OK")
+                    Text("Close")
                 }
             }
         )
@@ -546,7 +546,7 @@ private fun MemberRow(
                 TextButton(onClick = {
                     onRemove()
                     confirmRemove = false
-                }) { Text("Remove", color = ExpenseRed) }
+                }) { Text("Remove from household", color = ExpenseRed) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmRemove = false }) { Text("Cancel") }

@@ -1,8 +1,11 @@
 package com.bose.expensetracker.domain.usecase.importdata
 
 import com.bose.expensetracker.domain.model.Expense
+import com.bose.expensetracker.domain.model.ExpenseScope
+import com.bose.expensetracker.domain.model.PaymentMethod
 import com.bose.expensetracker.domain.repository.CategoryRepository
 import com.bose.expensetracker.domain.repository.ExpenseRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.firstOrNull
 import java.io.BufferedReader
 import java.io.InputStream
@@ -35,11 +38,23 @@ class ImportExpensesUseCase @Inject constructor(
         val reader = BufferedReader(InputStreamReader(inputStream))
         val errors = mutableListOf<String>()
 
-        // Validate header
-        val header = reader.readLine()?.trim()
-        if (header == null || header.lowercase() != "date,amount,category,notes,added by") {
-            return ImportResult(0, 0, 0, listOf("Invalid CSV format. Expected header: Date,Amount,Category,Notes,Added By"))
+        // Columns are found by header name, not position: the Android, iOS and web exports
+        // each order them differently, and older Android files have no payment method.
+        val header = reader.readLine()?.removePrefix("\uFEFF")
+            ?.let { parseCsvLine(it) }
+            ?.map { it.trim().lowercase() }
+            ?: emptyList()
+        fun column(name: String) = header.indexOf(name).takeIf { it >= 0 }
+        val dateCol = column("date")
+        val amountCol = column("amount")
+        val categoryCol = column("category")
+        if (dateCol == null || amountCol == null || categoryCol == null) {
+            return ImportResult(0, 0, 0, listOf("This file isn't in the expected format. The first row needs Date, Amount and Category columns."))
         }
+        val notesCol = column("notes")
+        val methodCol = column("payment method")
+        val visibilityCol = column("visibility")
+        val requiredColumns = maxOf(dateCol, amountCol, categoryCol) + 1
 
         // Load categories for name resolution
         val categories = categoryRepository.getCategories(householdId).firstOrNull() ?: emptyList()
@@ -58,28 +73,29 @@ class ImportExpensesUseCase @Inject constructor(
 
                 try {
                     val fields = parseCsvLine(line)
-                    if (fields.size < 5) {
+                    if (fields.size < requiredColumns) {
                         skippedCount++
-                        errors.add("Row $totalRows: expected 5 fields, got ${fields.size}")
+                        errors.add("Row $totalRows: expected at least $requiredColumns columns, found ${fields.size}")
                         continue
                     }
+                    fun field(col: Int?) = col?.let { fields.getOrNull(it) }?.trim().orEmpty()
 
-                    val dateStr = fields[0].trim()
-                    val amountStr = fields[1].trim()
-                    val categoryName = fields[2].trim()
-                    val notes = fields[3].trim()
+                    val dateStr = field(dateCol)
+                    val amountStr = field(amountCol)
+                    val categoryName = field(categoryCol)
+                    val notes = field(notesCol)
 
                     val date = dateFormat.parse(dateStr)?.time
                     if (date == null) {
                         skippedCount++
-                        errors.add("Row $totalRows: invalid date '$dateStr'")
+                        errors.add("Row $totalRows: couldn't read the date '$dateStr'")
                         continue
                     }
 
                     val amount = amountStr.toDoubleOrNull()
                     if (amount == null) {
                         skippedCount++
-                        errors.add("Row $totalRows: invalid amount '$amountStr'")
+                        errors.add("Row $totalRows: couldn't read the amount '$amountStr'")
                         continue
                     }
 
@@ -96,7 +112,13 @@ class ImportExpensesUseCase @Inject constructor(
                         addedBy = userId,
                         addedByName = userName,
                         createdAt = now,
-                        updatedAt = now
+                        updatedAt = now,
+                        paymentMethod = parsePaymentMethod(field(methodCol)),
+                        scope = if (field(visibilityCol).equals("personal", ignoreCase = true)) {
+                            ExpenseScope.PERSONAL
+                        } else {
+                            ExpenseScope.SHARED
+                        }
                     )
 
                     val result = expenseRepository.addExpense(expense)
@@ -104,8 +126,10 @@ class ImportExpensesUseCase @Inject constructor(
                         importedCount++
                     } else {
                         skippedCount++
-                        errors.add("Row $totalRows: save failed")
+                        errors.add("Row $totalRows: couldn't save this expense")
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     skippedCount++
                     errors.add("Row $totalRows: ${e.message}")
@@ -114,6 +138,15 @@ class ImportExpensesUseCase @Inject constructor(
         }
 
         return ImportResult(totalRows, importedCount, skippedCount, errors)
+    }
+
+    /** Accepts the label ("Credit card") or the wire value ("credit_card"), any case. */
+    private fun parsePaymentMethod(value: String): PaymentMethod {
+        if (value.isEmpty()) return PaymentMethod.UNSPECIFIED
+        return PaymentMethod.entries.firstOrNull {
+            it.wire.isNotEmpty() &&
+                (it.wire.equals(value, ignoreCase = true) || it.label.equals(value, ignoreCase = true))
+        } ?: PaymentMethod.UNSPECIFIED
     }
 
     private fun parseCsvLine(line: String): List<String> {

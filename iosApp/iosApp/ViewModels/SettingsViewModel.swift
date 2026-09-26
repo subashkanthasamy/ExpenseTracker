@@ -26,7 +26,7 @@ class SettingsViewModel {
 
     func export(as format: ExportService.Format) async {
         guard let hid = await authService.getActiveHouseholdId() else {
-            error = "No active household"
+            error = "You're not in a household yet. Create or join one first."
             return
         }
         isBusy = true
@@ -34,13 +34,13 @@ class SettingsViewModel {
         do {
             let expenses = try await firestoreService.getExpenses(householdId: hid)
             guard !expenses.isEmpty else {
-                error = "There are no expenses to export"
+                error = "There are no expenses to export yet."
                 isBusy = false
                 return
             }
             exportedFile = try exportService.export(expenses, as: format)
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Couldn't export your expenses. Try again."
         }
         isBusy = false
     }
@@ -49,7 +49,7 @@ class SettingsViewModel {
 
     func importCSV(from url: URL) async {
         guard let hid = await authService.getActiveHouseholdId() else {
-            error = "No active household"
+            error = "You're not in a household yet. Create or join one first."
             return
         }
         isBusy = true
@@ -65,10 +65,12 @@ class SettingsViewModel {
                 try await firestoreService.addExpense(householdId: hid, expense: expense)
             }
             statusMessage = result.skipped == 0
-                ? "Imported \(result.imported) expenses"
-                : "Imported \(result.imported) expenses, skipped \(result.skipped) unreadable rows"
+                ? "Imported \(result.imported) \(result.imported == 1 ? "expense" : "expenses")"
+                : "Imported \(result.imported) \(result.imported == 1 ? "expense" : "expenses"). Skipped \(result.skipped) \(result.skipped == 1 ? "row" : "rows") that couldn't be read."
+        } catch let importError as ExportService.ImportError {
+            self.error = importError.errorDescription
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Couldn't import the file. Check that it's a CSV file and try again."
         }
         isBusy = false
     }
@@ -77,7 +79,7 @@ class SettingsViewModel {
 
     func resetAllExpenses() async {
         guard let hid = await authService.getActiveHouseholdId() else {
-            error = "No active household"
+            error = "You're not in a household yet. Create or join one first."
             return
         }
         isBusy = true
@@ -87,9 +89,9 @@ class SettingsViewModel {
             for expense in expenses {
                 try await firestoreService.deleteExpense(householdId: hid, expenseId: expense.id)
             }
-            statusMessage = "Deleted \(expenses.count) expenses"
+            statusMessage = "Deleted \(expenses.count) \(expenses.count == 1 ? "expense" : "expenses")"
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Couldn't delete all expenses. Check your connection and try again."
         }
         isBusy = false
     }
@@ -99,13 +101,13 @@ class SettingsViewModel {
     func setBiometricEnabled(_ enabled: Bool, prefs: AppPreferences) async {
         if enabled {
             guard biometricAvailable else {
-                error = "Biometrics are not available on this device"
+                error = "Face ID and Touch ID aren't available on this device."
                 return
             }
             if await biometricService.authenticate() {
                 prefs.biometricEnabled = true
             } else {
-                error = "Could not verify biometrics — lock not enabled"
+                error = "Couldn't verify it's you, so the lock is still off."
                 prefs.biometricEnabled = false
             }
         } else {

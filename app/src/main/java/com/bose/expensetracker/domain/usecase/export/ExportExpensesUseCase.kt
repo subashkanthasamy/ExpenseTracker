@@ -73,20 +73,20 @@ class ExportExpensesUseCase @Inject constructor(
         val bodyPaint = Paint().apply { textSize = 10f }
 
         // Title
-        canvas.drawText("Expense Report", 40f, yPosition, titlePaint)
+        canvas.drawText("Expense report", 40f, yPosition, titlePaint)
         yPosition += 30f
 
         // Summary
         val total = expenses.sumOf { it.amount }
-        canvas.drawText("Total: ${currencyFormat.format(total)}  |  ${expenses.size} expenses", 40f, yPosition, bodyPaint)
+        canvas.drawText("Total: ${currencyFormat.format(total)}  |  ${expenses.size} ${if (expenses.size == 1) "expense" else "expenses"}", 40f, yPosition, bodyPaint)
         yPosition += 30f
 
         // Header
         canvas.drawText("Date", 40f, yPosition, headerPaint)
         canvas.drawText("Category", 150f, yPosition, headerPaint)
         canvas.drawText("Amount", 300f, yPosition, headerPaint)
-        canvas.drawText("Paid With", 390f, yPosition, headerPaint)
-        canvas.drawText("Added By", 480f, yPosition, headerPaint)
+        canvas.drawText("Paid with", 390f, yPosition, headerPaint)
+        canvas.drawText("Added by", 480f, yPosition, headerPaint)
         yPosition += 20f
 
         expenses.forEach { expense ->

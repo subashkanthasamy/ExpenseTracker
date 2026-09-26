@@ -45,13 +45,17 @@ class CategoryViewModel {
         do {
             try await firestoreService.addCategory(householdId: hid, category: cat)
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Couldn't add the category. Check your connection and try again."
         }
     }
 
     func deleteCategory(_ id: String) async {
         guard let hid = householdId else { return }
-        try? await firestoreService.deleteCategory(householdId: hid, categoryId: id)
+        do {
+            try await firestoreService.deleteCategory(householdId: hid, categoryId: id)
+        } catch {
+            self.error = "Couldn't delete the category. Check your connection and try again."
+        }
     }
 
     func cleanup() { listener?.remove() }
@@ -110,7 +114,7 @@ class BudgetViewModel {
             isLoading = false
         } catch {
             print("BudgetVM error: \(error)")
-            self.error = error.localizedDescription
+            self.error = "Couldn't load budgets. Check your connection and try again."
             isLoading = false
         }
     }
@@ -121,7 +125,7 @@ class BudgetViewModel {
         do {
             try await firestoreService.addBudget(householdId: hid, budget: budget)
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Couldn't add the budget. Check your connection and try again."
         }
         await load()
     }
@@ -235,7 +239,7 @@ class SavingsViewModel {
         do {
             try await firestoreService.addSavingsGoal(householdId: hid, goal: goal)
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Couldn't add the savings goal. Check your connection and try again."
         }
         await load()
     }
@@ -375,6 +379,7 @@ class HouseholdViewModel {
             print("HouseholdVM: Loaded \(allHouseholds.count) households, active: \(household?.name ?? "none")")
         } catch {
             print("HouseholdVM load error: \(error)")
+            self.error = "Couldn't load your household. Check your connection and try again."
             isLoading = false
         }
     }
@@ -389,7 +394,7 @@ class HouseholdViewModel {
             try await firestoreService.updateMemberRole(householdId: hid, uid: uid, role: role)
             await load()
         } catch {
-            self.error = "Could not change role: \(error.localizedDescription)"
+            self.error = "Couldn't change the member's role. Check your connection and try again."
         }
     }
 
@@ -399,18 +404,23 @@ class HouseholdViewModel {
             try await firestoreService.removeMember(householdId: hid, uid: uid)
             await load()
         } catch {
-            self.error = "Could not remove member: \(error.localizedDescription)"
+            self.error = "Couldn't remove the member from the household. Check your connection and try again."
         }
     }
 
     func deleteHousehold() async {
-        guard let hid = household?.id else { return }
+        guard let household else { return }
         do {
-            try await firestoreService.deleteHousehold(hid)
-            household = nil
-            await load()
+            try await firestoreService.deleteHousehold(household)
+            // No reload: the active household id still points at the deleted document, and
+            // reading it is denied, so load() would report a failure after a success.
+            self.household = nil
+            households.removeAll { $0.id == household.id }
+            members = []
+            role = HouseholdRole.none
         } catch {
             print("Delete household error: \(error)")
+            self.error = "Couldn't delete the household. Check your connection and try again."
         }
     }
 }
@@ -450,7 +460,7 @@ class FinancialCoachViewModel {
         }
 
         let welcomeMsg = ChatMessage(id: UUID().uuidString,
-            text: "Hi! I'm your Financial Coach. This month you've spent \(formatCurrency(totalExpenses)). How can I help?",
+            text: "Hi, I'm your financial coach. This month you've spent \(formatCurrency(totalExpenses)). How can I help?",
             isUser: false, timestamp: Date())
         messages = [welcomeMsg]
     }
@@ -475,14 +485,14 @@ class FinancialCoachViewModel {
             return "Based on your spending of \(formatCurrency(totalExpenses)) this month, try cutting \(topCategory) by 20% to save \(formatCurrency(topCategoryAmount * 0.2))."
         }
         if lower.contains("score") {
-            return "Your financial score is \(financialScore)/100. Keep tracking expenses consistently to improve it!"
+            return "Your financial score is \(financialScore)/100. Keep tracking your expenses to improve it."
         }
         if lower.contains("spend") || lower.contains("overspend") {
             return "Your top spending is \(topCategory) at \(formatCurrency(topCategoryAmount)). That's \(Int(topCategoryAmount / max(totalExpenses, 1) * 100))% of your total."
         }
         if lower.contains("invest") {
-            return "Consider the 50/30/20 rule: 50% needs, 30% wants, 20% savings/investment. Track your categories to see where you stand!"
+            return "Consider the 50/30/20 rule: 50% needs, 30% wants, 20% savings/investment. Track your categories to see where you stand."
         }
-        return "This month you've spent \(formatCurrency(totalExpenses)). Your biggest category is \(topCategory). Ask me about saving, spending, or your score!"
+        return "This month you've spent \(formatCurrency(totalExpenses)). Your biggest category is \(topCategory). Ask me about saving, spending or your score."
     }
 }

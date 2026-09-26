@@ -36,7 +36,7 @@ class NotificationHelper @Inject constructor(
 
             manager.createNotificationChannel(NotificationChannel(
                 CHANNEL_ID_SMS_IMPORT,
-                "SMS Auto-Import",
+                "SMS auto-import",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "SMS expense confirmations"
@@ -47,15 +47,15 @@ class NotificationHelper @Inject constructor(
                 "Reminders",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Daily expense reminders and bill due alerts"
+                description = "Daily expense reminders and bill due dates"
             })
 
             manager.createNotificationChannel(NotificationChannel(
                 CHANNEL_ID_BUDGET,
-                "Budget Alerts",
+                "Budget alerts",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Alerts when spending exceeds budget limits"
+                description = "Alerts when spending goes over a budget"
             })
         }
     }
@@ -121,7 +121,7 @@ class NotificationHelper @Inject constructor(
         val notification = NotificationCompat.Builder(context, CHANNEL_ID_SMS_IMPORT)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("₹${"%.2f".format(amount)} — $merchant")
-            .setContentText("$categoryName • SMS Import")
+            .setContentText("$categoryName • From SMS")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(contentPending)
             .setAutoCancel(true)
@@ -160,7 +160,7 @@ class NotificationHelper @Inject constructor(
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID_REMINDER)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Don't forget to log expenses!")
+            .setContentTitle("Time to add your expenses")
             .setContentText("Tap to add today's expenses")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -176,7 +176,7 @@ class NotificationHelper @Inject constructor(
         val percentage = ((spent / limit) * 100).toInt()
         val notification = NotificationCompat.Builder(context, CHANNEL_ID_BUDGET)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Budget Alert! $percentage% spent")
+            .setContentTitle("Budget alert: $percentage% spent")
             .setContentText("You've spent ₹${"%.0f".format(spent)} of your ₹${"%.0f".format(limit)} budget")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -191,7 +191,7 @@ class NotificationHelper @Inject constructor(
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID_REMINDER)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Bill Due: $title")
+            .setContentTitle("Bill due: $title")
             .setContentText("₹${"%.2f".format(amount)} is due soon")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)

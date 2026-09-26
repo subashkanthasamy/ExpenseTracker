@@ -63,16 +63,16 @@ export function NetWorth() {
 
   return (
     <>
-      <PageHead title="Net worth" subtitle="What the household owns, less what it owes.">
+      <PageHead title="Net worth" subtitle="What your household owns, minus what it owes">
         {canManage && (
           <>
             <button className="btn" type="button" onClick={() => setEditing({ kind: 'asset' })}>
               <Icon name="add" />
-              Asset
+              Add asset
             </button>
             <button className="btn" type="button" onClick={() => setEditing({ kind: 'liability' })}>
               <Icon name="add" />
-              Liability
+              Add liability
             </button>
           </>
         )}
@@ -86,7 +86,7 @@ export function NetWorth() {
 
       {!canManage && (
         <div style={{ marginBottom: 16 }}>
-          <Notice>Assets and liabilities are managed by the household owner.</Notice>
+          <Notice>Only the household owner and admins can change assets and liabilities.</Notice>
         </div>
       )}
 
@@ -116,7 +116,7 @@ export function NetWorth() {
           <Card>
             <CardHeader title="Assets" />
             {assets.rows.length === 0 ? (
-              <Empty icon="account_balance_wallet" title="No assets recorded" />
+              <Empty icon="account_balance_wallet" title="No assets yet" />
             ) : (
               <div className="list">
                 {assets.rows.map((asset) => (
@@ -145,12 +145,11 @@ export function NetWorth() {
                         <button
                           className="btn ghost"
                           type="button"
-                          aria-label={`Remove ${asset.name}`}
+                          aria-label={`Delete ${asset.name}`}
                           onClick={() =>
                             destructive.ask({
-                              title: `Remove ${asset.name}?`,
-                              message: `${money(asset.value)} will stop counting towards net worth.`,
-                              confirmLabel: 'Remove',
+                              title: `Delete ${asset.name}?`,
+                              message: `Its ${money(asset.value)} will no longer count toward your net worth. This can't be undone.`,
                               run: () => deleteAsset(householdId, asset.id),
                             })
                           }
@@ -168,7 +167,7 @@ export function NetWorth() {
           <Card>
             <CardHeader title="Liabilities" />
             {liabilities.rows.length === 0 ? (
-              <Empty icon="credit_card_off" title="No liabilities recorded" />
+              <Empty icon="credit_card_off" title="No liabilities yet" />
             ) : (
               <div className="list">
                 {liabilities.rows.map((liability) => (
@@ -197,12 +196,11 @@ export function NetWorth() {
                         <button
                           className="btn ghost"
                           type="button"
-                          aria-label={`Remove ${liability.name}`}
+                          aria-label={`Delete ${liability.name}`}
                           onClick={() =>
                             destructive.ask({
-                              title: `Remove ${liability.name}?`,
-                              message: `${money(liability.amount)} will stop counting against net worth.`,
-                              confirmLabel: 'Remove',
+                              title: `Delete ${liability.name}?`,
+                              message: `Its ${money(liability.amount)} will no longer count against your net worth. This can't be undone.`,
                               run: () => deleteLiability(householdId, liability.id),
                             })
                           }
@@ -265,7 +263,7 @@ function HoldingForm({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!valid) {
-      setError('Give it a name and a value above zero.')
+      setError(`Enter a name and ${isAsset ? 'a value' : 'an amount owed'} greater than zero.`)
       return
     }
     setBusy(true)
@@ -283,7 +281,7 @@ function HoldingForm({
       else await upsertLiability({ ...base, amount: parsed })
       onClose()
     } catch (caught) {
-      setError((caught as Error)?.message ?? 'Could not save.')
+      setError(`Couldn't save the ${isAsset ? 'asset' : 'liability'}. ${(caught as Error)?.message ?? 'Check your connection and try again.'}`)
       setBusy(false)
     }
   }

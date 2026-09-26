@@ -59,7 +59,7 @@ export function Settings() {
 
       <div className="grid cols-2">
         <Card>
-          <CardHeader title="Appearance" sub="Follows your system unless you pick one." />
+          <CardHeader title="Appearance" sub="Matches your device setting unless you choose one" />
           <Segmented
             options={[
               { value: 'system' as ThemeChoice, label: 'System' },
@@ -74,7 +74,7 @@ export function Settings() {
         <Card>
           <CardHeader
             title="Export"
-            sub={`${expenses.length} expenses · ${money(total)}. Only what you can see is exported, so a member's file will not contain other people's personal expenses.`}
+            sub={`${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'} · ${money(total)}. The file includes only the expenses you can see.`}
           />
           <button className="btn" type="button" onClick={download} disabled={expenses.length === 0}>
             <Icon name="download" />
@@ -96,7 +96,7 @@ export function Settings() {
             <div>
               <span style={{ color: 'var(--text-secondary)' }}>Role </span>
               {roleLabel(session.role)}
-              {session.isAdmin && ' (global admin)'}
+              {session.isAdmin && ' (support access)'}
             </div>
             <div>
               <span style={{ color: 'var(--text-secondary)' }}>Created </span>
@@ -129,22 +129,21 @@ export function Settings() {
             }}
           >
             <li>
-              <strong>Automatic SMS import.</strong> No browser can read an SMS inbox — the same
-              limit iOS has. Pasting a bank alert into the expense form uses the identical parser.
+              <strong>Automatic SMS import.</strong> Browsers can't read your text messages. You
+              can paste a bank SMS into the expense form instead.
             </li>
             <li>
-              <strong>Recurring generation.</strong> Rules are edited here; the mobile apps create
-              the expenses.
+              <strong>Adding recurring expenses.</strong> You can set them up here. They're added
+              when someone opens the Android or iOS app.
             </li>
             <li>
-              <strong>Biometric unlock and reminders.</strong> Both need a device the browser
-              cannot reach in the background.
+              <strong>Biometric unlock and reminders.</strong> These need the Android or iOS app.
             </li>
           </ul>
           <div style={{ marginTop: 12 }}>
             <Notice>
-              Everything else — expenses, budgets, goals, net worth, categories and household
-              management — works the same on all three clients, against the same Firestore data.
+              Everything else — expenses, budgets, savings goals, net worth, categories and your
+              household — works the same as on Android and iOS, with the same data.
             </Notice>
           </div>
         </Card>

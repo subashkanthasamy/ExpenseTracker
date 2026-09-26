@@ -28,9 +28,9 @@ struct BiometricLockView: View {
             if checking {
                 ProgressView()
             } else if failed {
-                Text("Authentication failed")
+                Text("Couldn't unlock Expense Tracker.")
                     .foregroundStyle(DS.textSecondary)
-                Button("Retry") { Task { await unlock() } }
+                Button("Try again") { Task { await unlock() } }
                     .buttonStyle(.borderedProminent)
                     .tint(AppColors.accentPurple)
             }

@@ -14,9 +14,9 @@ struct RecurringView: View {
                 ProgressView("Loading…")
             } else if viewModel.items.isEmpty {
                 ContentUnavailableView(
-                    "No recurring expenses",
+                    "No recurring expenses yet",
                     systemImage: "arrow.clockwise.circle",
-                    description: Text("Add rent, subscriptions or EMIs and they'll be created automatically.")
+                    description: Text("Add rent, subscriptions or EMIs, and they're added as expenses when they're due.")
                 )
             } else {
                 ForEach(viewModel.items) { item in
@@ -61,7 +61,9 @@ struct RecurringView: View {
 
             if viewModel.generatedCount > 0 {
                 Section {
-                    Label("Created \(viewModel.generatedCount) expense(s) that were due",
+                    Label(viewModel.generatedCount == 1
+                          ? "Added 1 expense that was due"
+                          : "Added \(viewModel.generatedCount) expenses that were due",
                           systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.caption)
@@ -76,11 +78,11 @@ struct RecurringView: View {
         .sheet(isPresented: $showAdd) {
             AddRecurringSheet(viewModel: viewModel)
         }
-        .alert("Error", isPresented: Binding(
+        .alert("Something went wrong", isPresented: Binding(
             get: { viewModel.error != nil },
             set: { if !$0 { viewModel.error = nil } }
         )) {
-            Button("OK") { viewModel.error = nil }
+            Button("Close") { viewModel.error = nil }
         } message: { Text(viewModel.error ?? "") }
     }
 }
@@ -109,7 +111,7 @@ private struct AddRecurringSheet: View {
 
                 Section("Category") {
                     Picker("Category", selection: $selectedCategory) {
-                        Text("Select").tag(nil as Shared.Category?)
+                        Text("Choose a category").tag(nil as Shared.Category?)
                         ForEach(viewModel.categories) { cat in
                             Text(cat.name).tag(cat as Shared.Category?)
                         }
@@ -138,8 +140,8 @@ private struct AddRecurringSheet: View {
 
                 // Asked once on the rule: a standing charge leaves by the same instrument
                 // every time, so every expense it generates inherits this.
-                Section("Paid with") {
-                    Picker("Paid with", selection: $paymentMethod) {
+                Section("Payment method") {
+                    Picker("Payment method", selection: $paymentMethod) {
                         ForEach(PaymentMethod.companion.selectable, id: \.self) { method in
                             Text("\(method.emoji)  \(method.label)").tag(method)
                         }
@@ -151,7 +153,7 @@ private struct AddRecurringSheet: View {
                     TextField("Rent, Netflix, EMI…", text: $notes)
                 }
             }
-            .navigationTitle("Add Recurring")
+            .navigationTitle("Add recurring expense")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

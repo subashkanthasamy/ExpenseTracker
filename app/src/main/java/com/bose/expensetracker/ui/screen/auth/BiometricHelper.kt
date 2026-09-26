@@ -51,7 +51,7 @@ object BiometricHelper {
 
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Expense Tracker")
-            .setSubtitle("Verify your identity")
+            .setSubtitle("Confirm it's you")
             .setAllowedAuthenticators(
                 BiometricManager.Authenticators.BIOMETRIC_STRONG or
                         BiometricManager.Authenticators.DEVICE_CREDENTIAL
